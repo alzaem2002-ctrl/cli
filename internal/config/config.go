@@ -281,6 +281,14 @@ func (c *AuthConfig) SetActiveToken(token, source string) {
 // TokenFromKeyring will retrieve the auth token for the given hostname,
 // only searching in encrypted storage.
 func (c *AuthConfig) TokenFromKeyring(hostname string) (string, error) {
+	if user, err := c.ActiveUser(hostname); err == nil && user != "" {
+		// Prioritize the user-specific token if it exists, which may be
+		// different from the blank active token, for example if a user uses
+		// GH_CONFIG_DIR to point to a different config directory.
+		if tok, err := c.TokenFromKeyringForUser(hostname, user); err == nil && tok != "" {
+			return tok, nil
+		}
+	}
 	return keyring.Get(keyringServiceName(hostname), "")
 }
 

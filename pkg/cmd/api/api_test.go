@@ -1343,6 +1343,16 @@ func Test_apiRun_inputFile(t *testing.T) {
 	}
 }
 
+type stubAuthConfig struct {
+	config.AuthConfig
+}
+
+var _ gh.AuthConfig = (*stubAuthConfig)(nil)
+
+func (c *stubAuthConfig) ActiveToken(host string) (string, string) {
+	return "token", "stub"
+}
+
 func Test_apiRun_cache(t *testing.T) {
 	// Given we have a test server that spies on the number of requests it receives
 	requestCount := 0
@@ -1355,10 +1365,10 @@ func Test_apiRun_cache(t *testing.T) {
 	ios, _, stdout, stderr := iostreams.Test()
 	options := ApiOptions{
 		IO: ios,
-		Config: func() (gh.Config, error) {
+		Config: func() (cfg gh.Config, err error) {
 			return &ghmock.ConfigMock{
 				AuthenticationFunc: func() gh.AuthConfig {
-					return &config.AuthConfig{}
+					return &stubAuthConfig{}
 				},
 				// Cached responses are stored in a tempdir that gets automatically cleaned up
 				CacheDirFunc: func() string {
