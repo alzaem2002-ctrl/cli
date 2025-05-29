@@ -1365,7 +1365,7 @@ func Test_apiRun_cache(t *testing.T) {
 	ios, _, stdout, stderr := iostreams.Test()
 	options := ApiOptions{
 		IO: ios,
-		Config: func() (cfg gh.Config, err error) {
+		Config: func() (gh.Config, error) {
 			return &ghmock.ConfigMock{
 				AuthenticationFunc: func() gh.AuthConfig {
 					return &stubAuthConfig{}
