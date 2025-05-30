@@ -36,7 +36,7 @@ if ([string]::IsNullOrEmpty($_winresJson)) {
 }
 
 if (-not (Test-Path $_winresJson)) {
-    Write-Host "error: winres.json file not found at '$_winresjson'"
+    Write-Host "error: winres.json file not found at '$_winresJson'"
     exit 1
 }
 
