@@ -46,6 +46,11 @@ if ([string]::IsNullOrEmpty($_output)) {
     exit 1
 }
 
+if (-not (Test-Path $_output -PathType Container)) {
+    Write-Host "error: output path '$_output' is not a directory"
+    exit 1
+}
+
 # Note that we intentionally leave the `--file-version` option in the command
 # below, because it's meant to be a 4-component version, while ours is a semver
 # (3-component). If we populate the `--file-version` with our semver value, then
