@@ -38,7 +38,7 @@ Using this tool, it should be obvious that it’s GitHub and not anything else. 
 
 **Resources**
 
-- [GitHub Brand Content Guide](https://brand.github.com/content/)
+- [GitHub Brand Content Guide](https://brand.github.com)
 
 ### Reduce cognitive load
 
