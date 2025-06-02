@@ -143,7 +143,7 @@ _Note: In Windows, Powershell’s default font (Lucida Console) has poor Unicode
 ```
 ✓ 	Success
 - 	Neutral
-✗   Failure
+✗ 	Failure
 + 	Changes requested
 ! 	Alert
 ```
