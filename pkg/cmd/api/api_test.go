@@ -1343,16 +1343,6 @@ func Test_apiRun_inputFile(t *testing.T) {
 	}
 }
 
-type stubAuthConfig struct {
-	config.AuthConfig
-}
-
-var _ gh.AuthConfig = (*stubAuthConfig)(nil)
-
-func (c *stubAuthConfig) ActiveToken(host string) (string, string) {
-	return "token", "stub"
-}
-
 func Test_apiRun_cache(t *testing.T) {
 	// Given we have a test server that spies on the number of requests it receives
 	requestCount := 0
@@ -1368,7 +1358,12 @@ func Test_apiRun_cache(t *testing.T) {
 		Config: func() (gh.Config, error) {
 			return &ghmock.ConfigMock{
 				AuthenticationFunc: func() gh.AuthConfig {
-					return &stubAuthConfig{}
+					cfg := &config.AuthConfig{}
+					// Required because the http client tries to get the active token and otherwise
+					// this goes down to to go-gh config and panics. Pretty bad solution, it would
+					// be better if this were black box.
+					cfg.SetActiveToken("token", "stub")
+					return cfg
 				},
 				// Cached responses are stored in a tempdir that gets automatically cleaned up
 				CacheDirFunc: func() string {
