@@ -234,8 +234,18 @@ func (c *AuthConfig) ActiveToken(hostname string) (string, string) {
 	}
 	token, source := ghauth.TokenFromEnvOrConfig(hostname)
 	if token == "" {
+		var user string
 		var err error
-		token, err = c.TokenFromKeyring(hostname)
+		if user, err = c.ActiveUser(hostname); err == nil {
+			token, err = c.TokenFromKeyringForUser(hostname, user)
+		}
+		if err != nil {
+			// We should generally be able to find a token for the active user,
+			// but in some cases such as if the keyring was set up in a very old
+			// version of the CLI, it may only have a unkeyed token, so fallback
+			// to it.
+			token, err = c.TokenFromKeyring(hostname)
+		}
 		if err == nil {
 			source = "keyring"
 		}
@@ -281,14 +291,6 @@ func (c *AuthConfig) SetActiveToken(token, source string) {
 // TokenFromKeyring will retrieve the auth token for the given hostname,
 // only searching in encrypted storage.
 func (c *AuthConfig) TokenFromKeyring(hostname string) (string, error) {
-	if user, err := c.ActiveUser(hostname); err == nil && user != "" {
-		// Prioritize the user-specific token if it exists, which may be
-		// different from the blank active token, for example if a user uses
-		// GH_CONFIG_DIR to point to a different config directory.
-		if tok, err := c.TokenFromKeyringForUser(hostname, user); err == nil && tok != "" {
-			return tok, nil
-		}
-	}
 	return keyring.Get(keyringServiceName(hostname), "")
 }
 

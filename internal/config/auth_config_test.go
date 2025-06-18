@@ -42,59 +42,6 @@ func TestTokenFromKeyringForUser(t *testing.T) {
 	require.Equal(t, "test-token", token)
 }
 
-func TestTokenFromKeyringPrioritizesActiveUserToken(t *testing.T) {
-	// Given a keyring that contains a token for a host
-	authCfg := newTestAuthConfig(t)
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "", "test-token"))
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token"))
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user2", "test-token2"))
-
-	// When we get the token from the auth config
-	token, err := authCfg.TokenFromKeyring("github.com")
-
-	// Then it returns successfully with the correct token
-	require.NoError(t, err)
-	require.Equal(t, "test-token", token)
-
-	// When we set the active user to test-user1
-	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user1")
-
-	// And get the token from the auth config
-	token, err = authCfg.TokenFromKeyring("github.com")
-
-	// Then it returns successfully with the correct token
-	require.NoError(t, err)
-	require.Equal(t, "test-token", token)
-
-	// When we set the active user to test-user2
-	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user2")
-
-	// And get the token from the auth config
-	token, err = authCfg.TokenFromKeyring("github.com")
-
-	// Then it returns successfully with the correct token
-	require.NoError(t, err)
-	require.Equal(t, "test-token2", token)
-}
-
-func TestTokenFromKeyringActiveUserNotInKeyringFallsBackToBlank(t *testing.T) {
-	// Given a keyring that contains a token for a host
-	authCfg := newTestAuthConfig(t)
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "", "test-token"))
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token1"))
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user2", "test-token2"))
-
-	// When we set the active user to test-user3
-	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user3")
-
-	// And get the token from the auth config
-	token, err := authCfg.TokenFromKeyring("github.com")
-
-	// Then it returns successfully with the fallback token
-	require.NoError(t, err)
-	require.Equal(t, "test-token", token)
-}
-
 func TestTokenFromKeyringForUserErrorsIfUsernameIsBlank(t *testing.T) {
 	authCfg := newTestAuthConfig(t)
 
@@ -820,6 +767,59 @@ func TestTokenWorksRightAfterMigration(t *testing.T) {
 	token, source := authCfg.ActiveToken("github.com")
 	require.Equal(t, "test-token", token)
 	require.Equal(t, oauthTokenKey, source)
+}
+
+func TestTokenPrioritizesActiveUserToken(t *testing.T) {
+	// Given a keyring that contains a token for a host
+	authCfg := newTestAuthConfig(t)
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "", "test-token"))
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token"))
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user2", "test-token2"))
+
+	// When we get the token from the auth config
+	token, source := authCfg.ActiveToken("github.com")
+
+	// Then it returns successfully with the correct token
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token", token)
+
+	// When we set the active user to test-user1
+	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user1")
+
+	// And get the token from the auth config
+	token, source = authCfg.ActiveToken("github.com")
+
+	// Then it returns successfully with the correct token
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token", token)
+
+	// When we set the active user to test-user2
+	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user2")
+
+	// And get the token from the auth config
+	token, source = authCfg.ActiveToken("github.com")
+
+	// Then it returns successfully with the correct token
+	require.Equal(t, source, "keyring")
+	require.Equal(t, "test-token2", token)
+}
+
+func TestTokenWithActiveUserNotInKeyringFallsBackToBlank(t *testing.T) {
+	// Given a keyring that contains a token for a host
+	authCfg := newTestAuthConfig(t)
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "", "test-token"))
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token1"))
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user2", "test-token2"))
+
+	// When we set the active user to test-user3
+	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user3")
+
+	// And get the token from the auth config
+	token, source := authCfg.ActiveToken("github.com")
+
+	// Then it returns successfully with the fallback token
+	require.Equal(t, "keyring", source)
+	require.Equal(t, "test-token", token)
 }
 
 func TestLogoutRightAfterMigrationRemovesHost(t *testing.T) {
