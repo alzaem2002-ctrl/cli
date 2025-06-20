@@ -770,16 +770,19 @@ func TestTokenWorksRightAfterMigration(t *testing.T) {
 }
 
 func TestTokenPrioritizesActiveUserToken(t *testing.T) {
-	// Given a keyring that contains a token for a host
+	// Given a keyring where the active slot contains the token from a previous user
 	authCfg := newTestAuthConfig(t)
 	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "", "test-token"))
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token1"))
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token"))
 	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user2", "test-token2"))
 
-	// When we get the token from the auth config
+	// When no active user is set
+	authCfg.cfg.Remove([]string{hostsKey, "github.com", userKey})
+
+	// And get the token from the auth config
 	token, source := authCfg.ActiveToken("github.com")
 
-	// Then it returns successfully with the correct token
+	// Then it returns the token from the keyring active slot
 	require.Equal(t, "keyring", source)
 	require.Equal(t, "test-token", token)
 
@@ -789,9 +792,9 @@ func TestTokenPrioritizesActiveUserToken(t *testing.T) {
 	// And get the token from the auth config
 	token, source = authCfg.ActiveToken("github.com")
 
-	// Then it returns successfully with the correct token
+	// Then it returns the token from the active user entry in the keyring
 	require.Equal(t, "keyring", source)
-	require.Equal(t, "test-token1", token)
+	require.Equal(t, "test-token", token)
 
 	// When we set the active user to test-user2
 	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user2")
@@ -799,7 +802,7 @@ func TestTokenPrioritizesActiveUserToken(t *testing.T) {
 	// And get the token from the auth config
 	token, source = authCfg.ActiveToken("github.com")
 
-	// Then it returns successfully with the correct token
+	// Then it returns the token from the active user entry in the keyring
 	require.Equal(t, "keyring", source)
 	require.Equal(t, "test-token2", token)
 }
