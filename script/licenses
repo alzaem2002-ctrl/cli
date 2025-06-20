@@ -2,11 +2,13 @@
 
 go install github.com/google/go-licenses@latest
 
+# Setup temporary directory to collect updated third-party source code
+export TEMPDIR="$(mktemp -d)"
+trap "rm -fr ${TEMPDIR}" EXIT
+
+# Clear third-party source code to avoid stale content
 rm -rf third-party
 mkdir -p third-party
-export TEMPDIR="$(mktemp -d)"
-
-trap "rm -fr ${TEMPDIR}" EXIT
 
 for goos in linux darwin windows ; do
     # Note: we ignore warnings because we want the command to succeed, however the output should be checked
