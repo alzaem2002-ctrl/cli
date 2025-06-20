@@ -773,7 +773,7 @@ func TestTokenPrioritizesActiveUserToken(t *testing.T) {
 	// Given a keyring that contains a token for a host
 	authCfg := newTestAuthConfig(t)
 	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "", "test-token"))
-	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token"))
+	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user1", "test-token1"))
 	require.NoError(t, keyring.Set(keyringServiceName("github.com"), "test-user2", "test-token2"))
 
 	// When we get the token from the auth config
@@ -791,7 +791,7 @@ func TestTokenPrioritizesActiveUserToken(t *testing.T) {
 
 	// Then it returns successfully with the correct token
 	require.Equal(t, "keyring", source)
-	require.Equal(t, "test-token", token)
+	require.Equal(t, "test-token1", token)
 
 	// When we set the active user to test-user2
 	authCfg.cfg.Set([]string{hostsKey, "github.com", userKey}, "test-user2")
@@ -800,7 +800,7 @@ func TestTokenPrioritizesActiveUserToken(t *testing.T) {
 	token, source = authCfg.ActiveToken("github.com")
 
 	// Then it returns successfully with the correct token
-	require.Equal(t, source, "keyring")
+	require.Equal(t, "keyring", source)
 	require.Equal(t, "test-token2", token)
 }
 
