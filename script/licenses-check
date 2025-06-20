@@ -15,7 +15,7 @@ for goos in linux darwin windows ; do
     echo "Checking licenses for ${goos}..."
     GOOS="${goos}" go-licenses report ./... --template .github/licenses.tmpl --ignore github.com/cli/cli > "${TEMPDIR}/third-party-licenses.${goos}.md" || echo "Ignore warnings"
     if ! diff -s "${TEMPDIR}/third-party-licenses.${goos}.md" "third-party-licenses.${goos}.md"; then
-        echo "::error title=License check failed::Please update the license files by running \`script/licenses\` and committing the output."
+        echo "::error title=License check failed::Please update the license files by running \`make licenses\` and committing the output."
         exit 1
     fi
 done

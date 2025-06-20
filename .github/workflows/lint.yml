@@ -58,4 +58,4 @@ jobs:
         run: |
           export GOROOT=$(go env GOROOT)
           export PATH=${GOROOT}/bin:$PATH
-          ./script/licenses-check
+          make licenses-check

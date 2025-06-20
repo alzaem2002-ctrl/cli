@@ -25,7 +25,7 @@ When dependencies change, you need to update the license information:
 1. Update license information for all platforms:
 
    ```shell
-   script/licenses
+   make licenses
    ```
 
 2. Commit the changes:
@@ -40,13 +40,7 @@ When dependencies change, you need to update the license information:
 The CI workflow checks if license information is up to date. To check locally:
 
 ```sh
-script/licenses-check
+make licenses-check
 ```
 
 If the check fails, follow the instructions to update the license information.
-
-## How It Works
-
-- `script/licenses` - Script to generate license information for all platforms or a specific platform
-- `script/licenses-check` - Script to check if license information is up to date
-- `.github/workflows/lint.yml` - CI workflow that includes license compliance checking
