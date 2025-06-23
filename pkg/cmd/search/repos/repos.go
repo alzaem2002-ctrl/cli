@@ -46,6 +46,9 @@ func NewCmdRepos(f *cmdutil.Factory, runF func(*ReposOptions) error) *cobra.Comm
 
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-for-repositories>
+
+			Note: When using GitHub search syntax to exclude results (e.g. '-topic:linux'), you must use 
+			a '--' delimiter before the search query to separate it from command flags.
 		`),
 		Example: heredoc.Doc(`
 			# Search repositories matching set of keywords "cli" and "shell"

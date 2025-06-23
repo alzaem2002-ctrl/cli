@@ -36,6 +36,9 @@ func NewCmdPrs(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *cobr
 
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-issues-and-pull-requests>
+
+			Note: When using GitHub search syntax to exclude results (e.g. '-label:bug'), you must use 
+			a '--' delimiter before the search query to separate it from command flags.
 		`),
 		Example: heredoc.Doc(`
 			# Search pull requests matching set of keywords "fix" and "bug"

@@ -45,6 +45,9 @@ func NewCmdCommits(f *cmdutil.Factory, runF func(*CommitsOptions) error) *cobra.
 
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-commits>
+
+			Note: When using GitHub search syntax to exclude results (e.g. '-user:monalisa'), you must use 
+			a '--' delimiter before the search query to separate it from command flags.
 		`),
 		Example: heredoc.Doc(`
 			# Search commits matching set of keywords "readme" and "typo"
