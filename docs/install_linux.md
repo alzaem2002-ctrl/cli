@@ -305,6 +305,7 @@ sudo eopkg install github-cli
 ```
 
 For more information about the `github-cli` package, see [the package definition](https://github.com/getsolus/packages/blob/main/packages/g/github-cli/package.yml) in the `getsolus/packages` repository.
+
 [releases page]: https://github.com/cli/cli/releases/latest
 [arch linux repo]: https://www.archlinux.org/packages/extra/x86_64/github-cli
 [arch linux aur]: https://aur.archlinux.org/packages/github-cli-git
