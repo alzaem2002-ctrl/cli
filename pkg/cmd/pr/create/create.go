@@ -18,6 +18,7 @@ import (
 	ghContext "github.com/cli/cli/v2/context"
 	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/browser"
+	fd "github.com/cli/cli/v2/internal/featuredetection"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/text"
@@ -31,6 +32,7 @@ import (
 
 type CreateOptions struct {
 	// This struct stores user input and factory functions
+	Detector         fd.Detector
 	HttpClient       func() (*http.Client, error)
 	GitClient        *git.Client
 	Config           func() (gh.Config, error)
@@ -199,6 +201,8 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Long: heredoc.Docf(`
 			Create a pull request on GitHub.
 
+			Upon success, the URL of the created pull request will be printed.
+
 			When the current branch isn't fully pushed to a git remote, a prompt will ask where
 			to push the branch and offer an option to fork the base repository. Use %[1]s--head%[1]s to
 			explicitly skip any forking or pushing behavior.
@@ -363,6 +367,20 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
+	httpClient, err := opts.HttpClient()
+	if err != nil {
+		return err
+	}
+
+	// TODO projectsV1Deprecation
+	// Remove this section as we should no longer need to detect
+	if opts.Detector == nil {
+		cachedClient := api.NewCachedHTTPClient(httpClient, time.Hour*24)
+		opts.Detector = fd.NewDetector(cachedClient, ctx.PRRefs.BaseRepo().RepoHost())
+	}
+
+	projectsV1Support := opts.Detector.ProjectsV1()
+
 	client := ctx.Client
 
 	state, err := NewIssueState(*ctx, *opts)
@@ -384,7 +402,7 @@ func createRun(opts *CreateOptions) error {
 		if err != nil {
 			return err
 		}
-		openURL, err = generateCompareURL(*ctx, *state)
+		openURL, err = generateCompareURL(*ctx, *state, projectsV1Support)
 		if err != nil {
 			return err
 		}
@@ -440,7 +458,7 @@ func createRun(opts *CreateOptions) error {
 		if err != nil {
 			return err
 		}
-		return submitPR(*opts, *ctx, *state)
+		return submitPR(*opts, *ctx, *state, projectsV1Support)
 	}
 
 	if opts.RecoverFile != "" {
@@ -517,7 +535,7 @@ func createRun(opts *CreateOptions) error {
 			}
 		}
 
-		openURL, err = generateCompareURL(*ctx, *state)
+		openURL, err = generateCompareURL(*ctx, *state, projectsV1Support)
 		if err != nil {
 			return err
 		}
@@ -536,7 +554,7 @@ func createRun(opts *CreateOptions) error {
 				Repo:      ctx.PRRefs.BaseRepo(),
 				State:     state,
 			}
-			err = shared.MetadataSurvey(opts.Prompter, opts.IO, ctx.PRRefs.BaseRepo(), fetcher, state)
+			err = shared.MetadataSurvey(opts.Prompter, opts.IO, ctx.PRRefs.BaseRepo(), fetcher, state, projectsV1Support)
 			if err != nil {
 				return err
 			}
@@ -565,11 +583,11 @@ func createRun(opts *CreateOptions) error {
 
 	if action == shared.SubmitDraftAction {
 		state.Draft = true
-		return submitPR(*opts, *ctx, *state)
+		return submitPR(*opts, *ctx, *state, projectsV1Support)
 	}
 
 	if action == shared.SubmitAction {
-		return submitPR(*opts, *ctx, *state)
+		return submitPR(*opts, *ctx, *state, projectsV1Support)
 	}
 
 	err = errors.New("expected to cancel, preview, or submit")
@@ -621,13 +639,13 @@ func NewIssueState(ctx CreateContext, opts CreateOptions) (*shared.IssueMetadata
 	}
 
 	state := &shared.IssueMetadataState{
-		Type:       shared.PRMetadata,
-		Reviewers:  opts.Reviewers,
-		Assignees:  assignees,
-		Labels:     opts.Labels,
-		Projects:   opts.Projects,
-		Milestones: milestoneTitles,
-		Draft:      opts.IsDraft,
+		Type:          shared.PRMetadata,
+		Reviewers:     opts.Reviewers,
+		Assignees:     assignees,
+		Labels:        opts.Labels,
+		ProjectTitles: opts.Projects,
+		Milestones:    milestoneTitles,
+		Draft:         opts.IsDraft,
 	}
 
 	if opts.FillVerbose || opts.Autofill || opts.FillFirst || !opts.TitleProvided || !opts.BodyProvided {
@@ -966,7 +984,7 @@ func getRemotes(opts *CreateOptions) (ghContext.Remotes, error) {
 	return remotes, nil
 }
 
-func submitPR(opts CreateOptions, ctx CreateContext, state shared.IssueMetadataState) error {
+func submitPR(opts CreateOptions, ctx CreateContext, state shared.IssueMetadataState, projectV1Support gh.ProjectsV1Support) error {
 	client := ctx.Client
 
 	params := map[string]interface{}{
@@ -982,7 +1000,7 @@ func submitPR(opts CreateOptions, ctx CreateContext, state shared.IssueMetadataS
 		return errors.New("pull request title must not be blank")
 	}
 
-	err := shared.AddMetadataToIssueParams(client, ctx.PRRefs.BaseRepo(), params, &state)
+	err := shared.AddMetadataToIssueParams(client, ctx.PRRefs.BaseRepo(), params, &state, projectV1Support)
 	if err != nil {
 		return err
 	}
@@ -1028,8 +1046,8 @@ func renderPullRequestPlain(w io.Writer, params map[string]interface{}, state *s
 	if len(state.Milestones) != 0 {
 		fmt.Fprintf(w, "milestones:\t%v\n", strings.Join(state.Milestones, ", "))
 	}
-	if len(state.Projects) != 0 {
-		fmt.Fprintf(w, "projects:\t%v\n", strings.Join(state.Projects, ", "))
+	if len(state.ProjectTitles) != 0 {
+		fmt.Fprintf(w, "projects:\t%v\n", strings.Join(state.ProjectTitles, ", "))
 	}
 	fmt.Fprintf(w, "maintainerCanModify:\t%t\n", params["maintainerCanModify"])
 	fmt.Fprint(w, "body:\n")
@@ -1060,8 +1078,8 @@ func renderPullRequestTTY(io *iostreams.IOStreams, params map[string]interface{}
 	if len(state.Milestones) != 0 {
 		fmt.Fprintf(out, "%s: %s\n", cs.Bold("Milestones"), strings.Join(state.Milestones, ", "))
 	}
-	if len(state.Projects) != 0 {
-		fmt.Fprintf(out, "%s: %s\n", cs.Bold("Projects"), strings.Join(state.Projects, ", "))
+	if len(state.ProjectTitles) != 0 {
+		fmt.Fprintf(out, "%s: %s\n", cs.Bold("Projects"), strings.Join(state.ProjectTitles, ", "))
 	}
 	fmt.Fprintf(out, "%s: %t\n", cs.Bold("MaintainerCanModify"), params["maintainerCanModify"])
 
@@ -1212,12 +1230,12 @@ func handlePush(opts CreateOptions, ctx CreateContext) error {
 	return pushBranch()
 }
 
-func generateCompareURL(ctx CreateContext, state shared.IssueMetadataState) (string, error) {
+func generateCompareURL(ctx CreateContext, state shared.IssueMetadataState, projectsV1Support gh.ProjectsV1Support) (string, error) {
 	u := ghrepo.GenerateRepoURL(
 		ctx.PRRefs.BaseRepo(),
 		"compare/%s...%s?expand=1",
 		url.PathEscape(ctx.PRRefs.BaseRef()), url.PathEscape(ctx.PRRefs.QualifiedHeadRef()))
-	url, err := shared.WithPrAndIssueQueryParams(ctx.Client, ctx.PRRefs.BaseRepo(), u, state)
+	url, err := shared.WithPrAndIssueQueryParams(ctx.Client, ctx.PRRefs.BaseRepo(), u, state, projectsV1Support)
 	if err != nil {
 		return "", err
 	}

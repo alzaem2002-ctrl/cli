@@ -1,3 +1,5 @@
+skip 'it creates a fork owned by the user running the test'
+
 env REPO=${SCRIPT_NAME}-${RANDOM_STRING}
 env FORK=${REPO}-fork
 

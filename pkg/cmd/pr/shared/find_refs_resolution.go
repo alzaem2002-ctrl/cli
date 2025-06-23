@@ -129,7 +129,7 @@ func NewPullRequestFindRefsResolver(gitConfigClient GitConfigClient, remotesFn f
 	}
 }
 
-// ResolvePullRequests takes a base repository, a base branch name and a local branch name and uses the git configuration to
+// ResolvePullRequestRefs takes a base repository, a base branch name and a local branch name and uses the git configuration to
 // determine the head repository and remote branch name. If we were unable to determine this from git, we default the head
 // repository to the base repository.
 func (r *PullRequestFindRefsResolver) ResolvePullRequestRefs(baseRepo ghrepo.Interface, baseBranchName, localBranchName string) (PRFindRefs, error) {
@@ -333,12 +333,12 @@ func tryDetermineDefaultPushTarget(gitClient GitConfigClient, localBranchName st
 	}
 
 	// We assume the PR's branch name is the same as whatever was provided, unless the user has specified
-	// push.default = upstream or tracking, then we use the branch name from the merge ref.
+	// push.default = upstream or tracking, then we use the branch name from the merge ref if it exists. Otherwise, we fall back to the local branch name
 	remoteBranch := localBranchName
 	if pushDefault == git.PushDefaultUpstream || pushDefault == git.PushDefaultTracking {
-		remoteBranch = strings.TrimPrefix(branchConfig.MergeRef, "refs/heads/")
-		if remoteBranch == "" {
-			return defaultPushTarget{}, fmt.Errorf("could not determine remote branch name")
+		mergeRef := strings.TrimPrefix(branchConfig.MergeRef, "refs/heads/")
+		if mergeRef != "" {
+			remoteBranch = mergeRef
 		}
 	}
 
