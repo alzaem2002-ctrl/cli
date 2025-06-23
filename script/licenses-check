@@ -1,6 +1,9 @@
 #!/bin/bash
 
-go install github.com/google/go-licenses@latest
+# Manage go-licenses version externally for CI
+if [ "$CI" != "true" ]; then
+    go install github.com/google/go-licenses@latest
+fi
 
 # Setup temporary directory for generated license reports
 export TEMPDIR="$(mktemp -d)"
