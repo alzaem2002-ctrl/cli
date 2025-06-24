@@ -1,65 +1,70 @@
 #!/usr/bin/env pwsh
 
-# Generate Windows resource files as '.syso'
-# 
-# Usage:
-#   gen-winres.ps1 <arch> <version> <path-to-winres.json> <output-path>
-#
-# Arguments:
-#   <arch>                 comma-separated list of architectures (e.g. "386,amd64,arm64")
-#   <version>              version string (e.g. "1.0.0")
-#   <path-to-winres.json>  path to the `winres.json` file containing static metadata
-#   <output-path>          directory where the generated `.syso` files should be placed
-#
-# The created `.syso` files are named as `rsrc_windows_<arch>.syso` which helps
-# Go compiler to pick the correct file based on the target architecture.
-#
+$_usage = @"
+Generate Windows resource files as ``.syso``
+
+Usage:
+  gen-winres.ps1 <file-version> <product-version> <path-to-versioninfo.json> <output-path>
+
+Arguments:
+  <file-version>              string to set as file version (e.g. "1.0.0")
+  <product-version>           string to set as product version (e.g. "1.0.0")
+  <path-to-versioninfo.json>  path to the ``versioninfo.json`` file containing static metadata
+  <output-path>               directory where the generated ``.syso`` files should be placed
+
+The created ``.syso`` files are named as ``resource_windows_<arch>.syso``. This
+helps Go compiler to pick the correct file based on the target platform and
+architecture.
+"@
 
 $ErrorActionPreference = "Stop"
 
-$_arch = $args[0]
-if ([string]::IsNullOrEmpty($_arch)) {
-    Write-Host "error: architecture argument is missing"
+$_file_version = $args[0]
+if ([string]::IsNullOrEmpty($_file_version)) {
+    Write-Host "error: file-version argument is missing"
+    Write-Host $_usage
     exit 1
 }
 
-$_version = $args[1]
-if ([string]::IsNullOrEmpty($_version)) {
-    Write-Host "error: version argument is missing"
+$_product_version = $args[1]
+if ([string]::IsNullOrEmpty($_product_version)) {
+    Write-Host "error: product-version argument is missing"
+    Write-Host $_usage
     exit 1
 }
 
-$_winresJson = $args[2]
-if ([string]::IsNullOrEmpty($_winresJson)) {
-    Write-Host "error: path to winres.json is missing"
+$_versioninfo_path = $args[2]
+if ([string]::IsNullOrEmpty($_versioninfo_path)) {
+    Write-Host "error: path to versioninfo.json is missing"
+    Write-Host $_usage
     exit 1
 }
 
-if (-not (Test-Path $_winresJson)) {
-    Write-Host "error: winres.json file not found at '$_winresJson'"
+if (-not (Test-Path $_versioninfo_path)) {
+    Write-Host "error: file not found at '$_versioninfo_path'"
+    Write-Host $_usage
     exit 1
 }
 
 $_output = $args[3]
 if ([string]::IsNullOrEmpty($_output)) {
     Write-Host "error: output path is missing"
+    Write-Host $_usage
     exit 1
 }
 
 if (-not (Test-Path $_output -PathType Container)) {
     Write-Host "error: output path '$_output' is not a directory"
+    Write-Host $_usage
     exit 1
 }
 
-# Note that we intentionally leave the `--file-version` option in the command
-# below, because it's meant to be a 4-component version, while ours is a semver
-# (3-component). If we populate the `--file-version` with our semver value, then
-# a zero component will be added to the end, which is not what we want.
+go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.5.0
 
-go run github.com/tc-hib/go-winres@v0.3.3 make `
-    --arch "$_arch" `
-    --product-version "$_version" `
-    --in "$_winresJson" `
-    --out rsrc
+goversioninfo `
+    -64 -arm -platform-specific `
+    -file-version "$_file_version" `
+    -product-version "$_product_version" `
+    "$_versioninfo_path"
 
-Move-Item -Path ".\rsrc_*.syso" -Destination "$_output" -Force
+Move-Item -Path "resource_windows_*.syso" -Destination "$_output" -Force
