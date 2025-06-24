@@ -41,7 +41,7 @@ if ([string]::IsNullOrEmpty($_versioninfo_path)) {
 }
 
 if (-not (Test-Path $_versioninfo_path)) {
-    Write-Host "error: file not found at '$_versioninfo_path'"
+    Write-Host "error: path to versioninfo.json '$_versioninfo_path' is not a file"
     Write-Host $_usage
     exit 1
 }
