@@ -25,7 +25,6 @@ jobs:
         id: pr-vars-dispatch
         if: github.event_name == 'workflow_dispatch'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
           # We only need to construct the PR URL from the dispatch event input.
