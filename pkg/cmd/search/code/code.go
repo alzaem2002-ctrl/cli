@@ -6,6 +6,8 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/browser"
+	"github.com/cli/cli/v2/internal/gh"
+	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/search/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
@@ -16,6 +18,7 @@ import (
 
 type CodeOptions struct {
 	Browser  browser.Browser
+	Config   func() (gh.Config, error)
 	Exporter cmdutil.Exporter
 	IO       *iostreams.IOStreams
 	Query    search.Query
@@ -26,6 +29,7 @@ type CodeOptions struct {
 func NewCmdCode(f *cmdutil.Factory, runF func(*CodeOptions) error) *cobra.Command {
 	opts := &CodeOptions{
 		Browser: f.Browser,
+		Config:  f.Config,
 		IO:      f.IOStreams,
 		Query:   search.Query{Kind: search.KindCode},
 	}
@@ -104,8 +108,33 @@ func NewCmdCode(f *cmdutil.Factory, runF func(*CodeOptions) error) *cobra.Comman
 func codeRun(opts *CodeOptions) error {
 	io := opts.IO
 	if opts.WebMode {
-		// FIXME: convert legacy `filename` and `extension` ES qualifiers to Blackbird's `path` qualifier
-		// when opening web search, otherwise the Blackbird search UI will complain.
+		// Convert legacy `filename` and `extension` elasticsearch qualifiers to Blackbird's `path`
+		// qualifier when opening web search.
+		if opts.Query.Qualifiers.Filename != "" || opts.Query.Qualifiers.Extension != "" {
+			cfg, err := opts.Config()
+			if err != nil {
+				return err
+			}
+			host, _ := cfg.Authentication().DefaultHost()
+			// FIXME: Remove this check once GHES supports Blackbird.
+			if host == ghinstance.Default() {
+				filename, extension, _ := strings.Cut(opts.Query.Qualifiers.Filename, ".")
+				if filename == "" {
+					filename = "*"
+				}
+				// Prioritize file extension that may have been provided with the `--filename` flag.
+				if extension == "" {
+					if opts.Query.Qualifiers.Extension != "" {
+						extension, _ = strings.CutPrefix(opts.Query.Qualifiers.Extension, ".")
+					} else {
+						extension = "*"
+					}
+				}
+				opts.Query.Qualifiers.Filename = ""
+				opts.Query.Qualifiers.Extension = ""
+				opts.Query.Qualifiers.Path = fmt.Sprintf("%s.%s", filename, extension)
+			}
+		}
 		url := opts.Searcher.URL(opts.Query)
 		if io.IsStdoutTTY() {
 			fmt.Fprintf(io.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(url))
