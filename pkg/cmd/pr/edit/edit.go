@@ -3,6 +3,7 @@ package edit
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
@@ -81,10 +82,21 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Finder = shared.NewFinder(f)
+
+			// support `-R, --repo` override
 			opts.BaseRepo = f.BaseRepo
 
 			if len(args) > 0 {
 				opts.SelectorArg = args[0]
+			}
+
+			if opts.SelectorArg != "" {
+				// If a URL is provided, parse it to get the base repository.
+				if baseRepo, _, err := shared.ParseURL(opts.SelectorArg); err == nil {
+					opts.BaseRepo = func() (ghrepo.Interface, error) {
+						return baseRepo, nil
+					}
+				}
 			}
 
 			flags := cmd.Flags()
@@ -203,15 +215,36 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 }
 
 func editRun(opts *EditOptions) error {
-	findOptions := shared.FindOptions{
-		Selector: opts.SelectorArg,
-		Fields:   []string{"id", "url", "title", "body", "baseRefName", "reviewRequests", "labels", "projectCards", "projectItems", "milestone", "assignees"},
-		Detector: opts.Detector,
-	}
-
 	httpClient, err := opts.HttpClient()
 	if err != nil {
 		return err
+	}
+
+	if opts.Detector == nil {
+		baseRepo, err := opts.BaseRepo()
+		if err != nil {
+			return err
+		}
+
+		cachedClient := api.NewCachedHTTPClient(httpClient, time.Hour*24)
+		opts.Detector = fd.NewDetector(cachedClient, baseRepo.RepoHost())
+	}
+
+	findOptions := shared.FindOptions{
+		Selector: opts.SelectorArg,
+		Fields:   []string{"id", "url", "title", "body", "baseRefName", "reviewRequests", "labels", "projectCards", "projectItems", "milestone"},
+		Detector: opts.Detector,
+	}
+
+	issueFeatures, err := opts.Detector.IssueFeatures()
+	if err != nil {
+		return err
+	}
+
+	if issueFeatures.ActorIsAssignable {
+		findOptions.Fields = append(findOptions.Fields, "assignedActors")
+	} else {
+		findOptions.Fields = append(findOptions.Fields, "assignees")
 	}
 
 	pr, repo, err := opts.Finder.Find(findOptions)
@@ -225,7 +258,7 @@ func editRun(opts *EditOptions) error {
 	editable.Body.Default = pr.Body
 	editable.Base.Default = pr.BaseRefName
 	editable.Reviewers.Default = pr.ReviewRequests.Logins()
-	if pr.AssignedActorsUsed {
+	if issueFeatures.ActorIsAssignable {
 		editable.Assignees.ActorAssignees = true
 		editable.Assignees.Default = pr.AssignedActors.DisplayNames()
 		editable.Assignees.DefaultLogins = pr.AssignedActors.Logins()
