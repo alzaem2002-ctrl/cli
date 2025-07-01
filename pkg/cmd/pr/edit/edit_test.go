@@ -364,8 +364,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 				}, ghrepo.New("OWNER", "REPO")),
 				Interactive: false,
 				Editable: shared.Editable{
@@ -428,8 +427,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 				}, ghrepo.New("OWNER", "REPO")),
 				Interactive: false,
 				Editable: shared.Editable{
@@ -486,8 +484,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 				}, ghrepo.New("OWNER", "REPO")),
 				Interactive: false,
 				Editable: shared.Editable{
@@ -549,8 +546,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 				}, ghrepo.New("OWNER", "REPO")),
 				Interactive: true,
 				Surveyor: testSurveyor{
@@ -596,8 +592,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 				}, ghrepo.New("OWNER", "REPO")),
 				Interactive: true,
 				Surveyor: testSurveyor{
@@ -640,8 +635,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 				}, ghrepo.New("OWNER", "REPO")),
 				Interactive: true,
 				Surveyor: testSurveyor{
@@ -687,8 +681,7 @@ func Test_editRun(t *testing.T) {
 				Detector:    &fd.EnabledDetectorMock{},
 				SelectorArg: "123",
 				Finder: shared.NewMockFinder("123", &api.PullRequest{
-					URL:                "https://github.com/OWNER/REPO/pull/123",
-					AssignedActorsUsed: true,
+					URL: "https://github.com/OWNER/REPO/pull/123",
 					AssignedActors: api.AssignedActors{
 						Nodes: []api.Actor{
 							{
