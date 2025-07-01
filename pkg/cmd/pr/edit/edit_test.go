@@ -26,11 +26,12 @@ func TestNewCmdEdit(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name     string
-		input    string
-		stdin    string
-		output   EditOptions
-		wantsErr bool
+		name             string
+		input            string
+		stdin            string
+		output           EditOptions
+		expectedBaseRepo ghrepo.Interface
+		wantsErr         bool
 	}{
 		{
 			name:  "no argument",
@@ -46,6 +47,16 @@ func TestNewCmdEdit(t *testing.T) {
 			input:    "1 2",
 			output:   EditOptions{},
 			wantsErr: true,
+		},
+		{
+			name:  "URL argument",
+			input: "https://example.com/cli/cli/pull/23",
+			output: EditOptions{
+				SelectorArg: "https://example.com/cli/cli/pull/23",
+				Interactive: true,
+			},
+			expectedBaseRepo: ghrepo.NewWithHost("cli", "cli", "example.com"),
+			wantsErr:         false,
 		},
 		{
 			name:  "pull request number argument",
@@ -326,6 +337,15 @@ func TestNewCmdEdit(t *testing.T) {
 			assert.Equal(t, tt.output.SelectorArg, gotOpts.SelectorArg)
 			assert.Equal(t, tt.output.Interactive, gotOpts.Interactive)
 			assert.Equal(t, tt.output.Editable, gotOpts.Editable)
+			if tt.expectedBaseRepo != nil {
+				baseRepo, err := gotOpts.BaseRepo()
+				require.NoError(t, err)
+				require.True(
+					t,
+					ghrepo.IsSame(tt.expectedBaseRepo, baseRepo),
+					"expected base repo %+v, got %+v", tt.expectedBaseRepo, baseRepo,
+				)
+			}
 		})
 	}
 }
