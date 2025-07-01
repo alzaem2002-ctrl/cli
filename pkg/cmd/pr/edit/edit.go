@@ -91,7 +91,12 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(*EditOptions) error) *cobra.Comman
 			}
 
 			if opts.SelectorArg != "" {
-				// If a URL is provided, parse it to get the base repository.
+				// If a URL is provided, we need to parse it to override the
+				// base repository, especially the hostname part. That's because
+				// we need a feature detector down in this command, and that
+				// needs to know the API host. If the command is run outside of
+				// a git repo, we cannot instantiate the detector unless we have
+				// already parsed the URL.
 				if baseRepo, _, err := shared.ParseURL(opts.SelectorArg); err == nil {
 					opts.BaseRepo = func() (ghrepo.Interface, error) {
 						return baseRepo, nil
