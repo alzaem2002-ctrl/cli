@@ -112,17 +112,16 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 		Long: heredoc.Docf(`
 			View a summary of a workflow run.
 
-			This command does not support authenticating via fine grained PATs
-			as it is not currently possible to create a PAT with the %[1]schecks:read%[1]s permission.
-
 			Due to platform limitations, %[1]sgh%[1]s may not always be able to associate jobs with their
-			corresponding log via our primary method of fetching logs in zip format. In this case, %[1]sgh%[1]s
-			will attempt to fetch logs individually from the API. As this is a more expensive and slow operation,
-			%[1]sgh%[1]s will exit with an error if there are more than %[2]d missing job logs.
+			corresponding logs when using the primary method of fetching logs in zip format.
 
-			Furthermore, for similar platform limitations %[1]sgh%[1]s may not always be able to associate 
-			log lines with a particular step in a job. In this case, the step name in the log output will be replaced
-			with %[1]sUNKNOWN STEP%[1]s.
+			In such cases, %[1]sgh%[1]s will attempt to fetch logs for each job individually via the API.
+			This fallback is slower and more resource-intensive. If more than 25 job logs are missing,
+			the operation will fail with an error.
+
+			Additionally, due to similar platform constraints, some log lines may not be
+			associated with a specific step within a job. In these cases, the step name will
+			appear as %[1]sUNKNOWN STEP%[1]s in the log output.
 		`, "`", maxAPILogFetchers),
 		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
