@@ -115,10 +115,15 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 			This command does not support authenticating via fine grained PATs
 			as it is not currently possible to create a PAT with the %[1]schecks:read%[1]s permission.
 
-			Due to platform limitations, %[1]sgh%[1]s may not always be able to associate log lines with a
-			particular step in a job. In this case, the step name in the log output will be replaced with
-			%[1]sUNKNOWN STEP%[1]s.
-		`, "`"),
+			Due to platform limitations, %[1]sgh%[1]s may not always be able to associate jobs with their
+			corresponding log via our primary method of fetching logs in zip format. In this case, %[1]sgh%[1]s
+			will attempt to fetch logs individually from the API. As this is a more expensive and slow operation,
+			%[1]sgh%[1]s will exit with an error if there are more than %[2]d missing job logs.
+
+			Furthermore, for similar platform limitations %[1]sgh%[1]s may not always be able to associate 
+			log lines with a particular step in a job. In this case, the step name in the log output will be replaced
+			with %[1]sUNKNOWN STEP%[1]s.
+		`, "`", maxAPILogFetchers),
 		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Interactively select a run to view, optionally selecting a single job
