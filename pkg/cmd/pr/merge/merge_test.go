@@ -746,13 +746,13 @@ func TestPrMerge_deleteBranch_apiError(t *testing.T) {
 
 			output, err := runCommand(http, nil, "blueberries", true, `pr merge --merge --delete-branch`)
 			assert.Equal(t, "", output.String())
+			assert.Equal(t, tt.wantStderr, output.Stderr())
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
 				return
 			}
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantStderr, output.Stderr())
 		})
 	}
 }
