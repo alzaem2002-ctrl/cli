@@ -1165,6 +1165,14 @@ func TestSearcherURL(t *testing.T) {
 			query: query,
 			url:   "https://enterprise.com/search?order=desc&q=keyword+stars%3A%3E%3D5+topic%3Atopic&sort=stars&type=repositories",
 		},
+		{
+			name: "outputs encoded query url with quoted multi-word keywords",
+			query: Query{
+				Keywords: []string{"keyword with whitespace"},
+				Kind:     "repositories",
+			},
+			url: "https://github.com/search?q=%22keyword+with+whitespace%22&type=repositories",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
