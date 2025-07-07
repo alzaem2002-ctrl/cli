@@ -76,6 +76,9 @@ if [[ "$CURRENT_TOOLCHAIN_DIRECTIVE" != "go$TOOLCHAIN_VERSION" ]]; then
   echo "  • toolchain $CURRENT_TOOLCHAIN_DIRECTIVE → go$TOOLCHAIN_VERSION"
 fi
 
+# ---- Run go mod tidy to ensure .0 minor version is added to go directive ----
+go mod tidy
+
 rm -f "$GO_MOD.bak"
 
 git add "$GO_MOD"
