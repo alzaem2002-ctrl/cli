@@ -942,6 +942,47 @@ func TestIssueCreate_AtMeAssignee(t *testing.T) {
 	assert.Equal(t, "https://github.com/OWNER/REPO/issues/12\n", output.String())
 }
 
+// TODO: Create an interactive variant of this test, which will ensure that Copilot is in the assignee list and can be selected
+func TestIssueCreate_AtCopilotAssigneeNonInteractive(t *testing.T) {
+	http := &httpmock.Registry{}
+	defer http.Verify(t)
+
+	http.Register(
+		httpmock.GraphQL(`query RepositoryInfo\b`),
+		httpmock.StringResponse(`
+		{ "data": { "repository": {
+			"id": "REPOID",
+			"hasIssuesEnabled": true
+		} } }
+	`))
+	http.Register(
+		httpmock.GraphQL(`query RepositoryResolveMetadataIDs\b`),
+		httpmock.StringResponse(`
+		{ "data": {
+			"u000": { "login": "copilot-swe-agent", "id": "COPILOTID" }
+		} }
+		`),
+	)
+	http.Register(
+		httpmock.GraphQL(`mutation IssueCreate\b`),
+		httpmock.GraphQLMutation(`
+		{ "data": { "createIssue": { "issue": {
+			"URL": "https://github.com/OWNER/REPO/issues/12"
+		} } } }
+	`, func(inputs map[string]interface{}) {
+			assert.Equal(t, "hello", inputs["title"])
+			assert.Equal(t, "cash rules everything around me", inputs["body"])
+			assert.Equal(t, []interface{}{"COPILOTID"}, inputs["assigneeIds"])
+		}))
+
+	output, err := runCommand(http, true, `-a @copilot -t hello -b "cash rules everything around me"`, nil)
+	if err != nil {
+		t.Errorf("error running command `issue create`: %v", err)
+	}
+
+	assert.Equal(t, "https://github.com/OWNER/REPO/issues/12\n", output.String())
+}
+
 func TestIssueCreate_projectsV2(t *testing.T) {
 	http := &httpmock.Registry{}
 	defer http.Verify(t)

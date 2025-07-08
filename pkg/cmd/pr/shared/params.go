@@ -107,6 +107,7 @@ func AddMetadataToIssueParams(client *api.Client, baseRepo ghrepo.Interface, par
 		return err
 	}
 
+	// TODO: Think we need to adapt the logic in `Editable.AssigneeIds()` which is called by `UpdateIssue()` here to replace @me and @copilot
 	assigneeIDs, err := tb.MetadataResult.MembersToIDs(tb.Assignees)
 	if err != nil {
 		return fmt.Errorf("could not assign user: %w", err)

@@ -1063,6 +1063,7 @@ func RepoResolveMetadataIDs(client *Client, repo ghrepo.Interface, input RepoRes
 		}
 	}
 
+	// TODO: Should this retrieve actors separate from `user`?
 	// there is no way to look up projects nor milestones by name, so preload them all
 	mi := RepoMetadataInput{
 		ProjectsV1: input.ProjectsV1,
@@ -1079,6 +1080,8 @@ func RepoResolveMetadataIDs(client *Client, repo ghrepo.Interface, input RepoRes
 
 	query := &bytes.Buffer{}
 	fmt.Fprint(query, "query RepositoryResolveMetadataIDs {\n")
+	// TODO: Should we really be using the `user` query to lookup bots even though it technically works?
+	// This logic is used to lookup information about assignees that were explicitly defined upfront
 	for i, u := range users {
 		fmt.Fprintf(query, "u%03d: user(login:%q){id,login}\n", i, u)
 	}
