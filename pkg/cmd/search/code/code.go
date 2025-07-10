@@ -7,12 +7,12 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/gh"
-	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/search/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/cli/cli/v2/pkg/search"
+	ghauth "github.com/cli/go-gh/v2/pkg/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -117,22 +117,15 @@ func codeRun(opts *CodeOptions) error {
 			}
 			host, _ := cfg.Authentication().DefaultHost()
 			// FIXME: Remove this check once GHES supports Blackbird.
-			if host == ghinstance.Default() {
-				filename, extension, _ := strings.Cut(opts.Query.Qualifiers.Filename, ".")
-				if filename == "" {
-					filename = "*"
-				}
-				// Prioritize file extension that may have been provided with the `--filename` flag.
-				if extension == "" {
-					if opts.Query.Qualifiers.Extension != "" {
-						extension, _ = strings.CutPrefix(opts.Query.Qualifiers.Extension, ".")
-					} else {
-						extension = "*"
-					}
+			if !ghauth.IsEnterprise(host) {
+				filename := opts.Query.Qualifiers.Filename
+				extension := opts.Query.Qualifiers.Extension
+				if extension != "" && !strings.HasPrefix(extension, ".") {
+					extension = "." + extension
 				}
 				opts.Query.Qualifiers.Filename = ""
 				opts.Query.Qualifiers.Extension = ""
-				opts.Query.Qualifiers.Path = fmt.Sprintf("%s.%s", filename, extension)
+				opts.Query.Qualifiers.Path = fmt.Sprintf("%s%s", filename, extension)
 			}
 		}
 		url := opts.Searcher.URL(opts.Query)
