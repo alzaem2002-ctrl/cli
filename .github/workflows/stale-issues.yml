@@ -17,7 +17,7 @@ jobs:
           only-issue-labels: 
             "needs-triage,needs-user-input"   # Only issues with all of these labels can be marked as stale
           exempt-issue-labels: "keep"         # Issues marked with this label should not be marked as stale
-          stale-issue-label: stale            # Mark stale issues with this label
+          stale-issue-label: "stale"          # Mark stale issues with this label
           stale-issue-message: |
             This issue has been automatically marked as stale because it has not had any activity in the last 30 days,
             and it will be closed in 30 days if no further activity occurs.
