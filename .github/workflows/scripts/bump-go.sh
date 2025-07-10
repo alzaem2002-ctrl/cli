@@ -40,7 +40,9 @@ echo "Fetching latest stable Go version…"
 LATEST_JSON=$(curl -fsSL https://go.dev/dl/?mode=json | jq -c '[.[] | select(.stable==true)][0]')
 FULL_VERSION=$(jq -r '.version' <<< "$LATEST_JSON")        # e.g. go1.23.4
 TOOLCHAIN_VERSION="${FULL_VERSION#go}"                     # e.g. 1.23.4
-GO_DIRECTIVE_VERSION=$(cut -d. -f1-2 <<< "$TOOLCHAIN_VERSION")
+# `go mod tidy` will always add `.0` if there is no minor version
+# so let's just ensure .0 is suffixed to the go directive.
+GO_DIRECTIVE_VERSION="$(cut -d. -f1-2 <<< "$TOOLCHAIN_VERSION").0"
 
 echo "  → go : $GO_DIRECTIVE_VERSION"
 echo "  → toolchain : $TOOLCHAIN_VERSION"
@@ -75,9 +77,6 @@ if [[ "$CURRENT_TOOLCHAIN_DIRECTIVE" != "go$TOOLCHAIN_VERSION" ]]; then
   sed -Ei.bak "s/^toolchain go[0-9]+\.[0-9]+\.[0-9]+.*$/toolchain go$TOOLCHAIN_VERSION/" "$GO_MOD"
   echo "  • toolchain $CURRENT_TOOLCHAIN_DIRECTIVE → go$TOOLCHAIN_VERSION"
 fi
-
-# ---- Run go mod tidy to ensure .0 minor version is added to go directive ----
-go mod tidy
 
 rm -f "$GO_MOD.bak"
 
