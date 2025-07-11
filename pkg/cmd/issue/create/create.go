@@ -179,7 +179,7 @@ func createRun(opts *CreateOptions) (err error) {
 	// Replace special values in assignees
 	assigneeSet := set.NewStringSet()
 	meReplacer := prShared.NewMeReplacer(apiClient, baseRepo.RepoHost())
-	copilotReplacer := prShared.NewCopilotReplacer()
+	copilotReplacer := prShared.NewCopilotReplacer(opts.WebMode)
 	assignees, err := meReplacer.ReplaceSlice(opts.Assignees)
 	if err != nil {
 		return err

@@ -306,6 +306,15 @@ func Test_createRun(t *testing.T) {
 			wantsStderr: "Opening https://github.com/OWNER/REPO/issues/new in your browser.\n",
 		},
 		{
+			name: "@copilot",
+			opts: CreateOptions{
+				WebMode:   true,
+				Assignees: []string{"@copilot"},
+			},
+			wantsBrowse: "https://github.com/OWNER/REPO/issues/new?assignees=copilot&body=",
+			wantsStderr: "Opening https://github.com/OWNER/REPO/issues/new in your browser.\n",
+		},
+		{
 			name: "project",
 			opts: CreateOptions{
 				WebMode:  true,
@@ -589,16 +598,17 @@ func TestIssueCreate_recover(t *testing.T) {
 				"id": "REPOID",
 				"hasIssuesEnabled": true
 			} } }`))
+	// Should only be one fetch of metadata.
 	http.Register(
-		httpmock.GraphQL(`query RepositoryResolveMetadataIDs\b`),
+		httpmock.GraphQL(`query RepositoryLabelList\b`),
 		httpmock.StringResponse(`
-		{ "data": {
-			"u000": { "login": "MonaLisa", "id": "MONAID" },
-			"repository": {
-				"l000": { "name": "bug", "id": "BUGID" },
-				"l001": { "name": "TODO", "id": "TODOID" }
-			}
-		} }
+			{ "data": { "repository": { "labels": {
+				"nodes": [
+					{ "name": "TODO", "id": "TODOID" },
+					{ "name": "bug", "id": "BUGID" }
+				],
+				"pageInfo": { "hasNextPage": false }
+			} } } }
 		`))
 	http.Register(
 		httpmock.GraphQL(`mutation IssueCreate\b`),
@@ -777,15 +787,25 @@ func TestIssueCreate_metadata(t *testing.T) {
 
 	http.StubRepoInfoResponse("OWNER", "REPO", "main")
 	http.Register(
-		httpmock.GraphQL(`query RepositoryResolveMetadataIDs\b`),
+		httpmock.GraphQL(`query RepositoryAssignableActors\b`),
 		httpmock.StringResponse(`
-		{ "data": {
-			"u000": { "login": "MonaLisa", "id": "MONAID" },
-			"repository": {
-				"l000": { "name": "bug", "id": "BUGID" },
-				"l001": { "name": "TODO", "id": "TODOID" }
-			}
-		} }
+		{ "data": { "repository": { "suggestedActors": {
+			"nodes": [
+				{ "login": "MonaLisa", "id": "MONAID", "name": "Mona Display Name", "__typename": "User" }
+			],
+			"pageInfo": { "hasNextPage": false }
+		} } } }
+		`))
+	http.Register(
+		httpmock.GraphQL(`query RepositoryLabelList\b`),
+		httpmock.StringResponse(`
+		{ "data": { "repository": { "labels": {
+			"nodes": [
+				{ "name": "TODO", "id": "TODOID" },
+				{ "name": "bug", "id": "BUGID" }
+			],
+			"pageInfo": { "hasNextPage": false }
+		} } } }
 		`))
 	http.Register(
 		httpmock.GraphQL(`query RepositoryMilestoneList\b`),
@@ -910,18 +930,16 @@ func TestIssueCreate_AtMeAssignee(t *testing.T) {
 		} } }
 	`))
 	http.Register(
-		httpmock.GraphQL(`query RepositoryResolveMetadataIDs\b`),
+		httpmock.GraphQL(`query RepositoryAssignableActors\b`),
 		httpmock.StringResponse(`
-		{ "data": {
-			"u000": { "login": "MonaLisa", "id": "MONAID" },
-			"u001": { "login": "SomeOneElse", "id": "SOMEID" },
-			"repository": {
-				"l000": { "name": "bug", "id": "BUGID" },
-				"l001": { "name": "TODO", "id": "TODOID" }
-			}
-		} }
-		`),
-	)
+		{ "data": { "repository": { "suggestedActors": {
+			"nodes": [
+				{ "login": "MonaLisa", "id": "MONAID", "name": "Mona Display Name", "__typename": "User" },
+				{ "login": "SomeOneElse", "id": "SOMEID", "name": "Someone else", "__typename": "User" }
+			],
+			"pageInfo": { "hasNextPage": false }
+		} } } }
+	`))
 	http.Register(
 		httpmock.GraphQL(`mutation IssueCreate\b`),
 		httpmock.GraphQLMutation(`
@@ -956,13 +974,15 @@ func TestIssueCreate_AtCopilotAssigneeNonInteractive(t *testing.T) {
 		} } }
 	`))
 	http.Register(
-		httpmock.GraphQL(`query RepositoryResolveMetadataIDs\b`),
+		httpmock.GraphQL(`query RepositoryAssignableActors\b`),
 		httpmock.StringResponse(`
-		{ "data": {
-			"u000": { "login": "copilot-swe-agent", "id": "COPILOTID" }
-		} }
-		`),
-	)
+		{ "data": { "repository": { "suggestedActors": {
+			"nodes": [
+				{ "login": "copilot-swe-agent", "id": "COPILOTID", "name": "Copilot (AI)", "__typename": "Bot" }
+			],
+			"pageInfo": { "hasNextPage": false }
+		} } } }
+	`))
 	http.Register(
 		httpmock.GraphQL(`mutation IssueCreate\b`),
 		httpmock.GraphQLMutation(`
