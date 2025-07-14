@@ -167,7 +167,7 @@ Some packages may only be included on certain architectures or operating systems
 - [go.opentelemetry.io/otel/trace](https://pkg.go.dev/go.opentelemetry.io/otel/trace) ([Apache-2.0](https://github.com/open-telemetry/opentelemetry-go/blob/trace/v1.37.0/trace/LICENSE))
 - [go.uber.org/multierr](https://pkg.go.dev/go.uber.org/multierr) ([MIT](https://github.com/uber-go/multierr/blob/v1.11.0/LICENSE.txt))
 - [go.uber.org/zap](https://pkg.go.dev/go.uber.org/zap) ([MIT](https://github.com/uber-go/zap/blob/v1.27.0/LICENSE))
-- [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto) ([BSD-3-Clause](https://cs.opensource.google/go/x/crypto/+/v0.39.0:LICENSE))
+- [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto) ([BSD-3-Clause](https://cs.opensource.google/go/x/crypto/+/v0.40.0:LICENSE))
 - [golang.org/x/exp/slices](https://pkg.go.dev/golang.org/x/exp/slices) ([BSD-3-Clause](https://cs.opensource.google/go/x/exp/+/b7579e27:LICENSE))
 - [golang.org/x/mod](https://pkg.go.dev/golang.org/x/mod) ([BSD-3-Clause](https://cs.opensource.google/go/x/mod/+/v0.25.0:LICENSE))
 - [golang.org/x/net](https://pkg.go.dev/golang.org/x/net) ([BSD-3-Clause](https://cs.opensource.google/go/x/net/+/v0.41.0:LICENSE))
