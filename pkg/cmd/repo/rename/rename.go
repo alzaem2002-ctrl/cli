@@ -126,7 +126,7 @@ func renameRun(opts *RenameOptions) error {
 	}
 
 	if strings.Contains(newRepoName, "/") {
-		return fmt.Errorf("New repository name cannot contain '/' character - to transfer a repository to a new owner, you must follow additional steps on <github.com>. For more information on transferring repository ownership, see <https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository>.")
+		return fmt.Errorf("New repository name cannot contain '/' character - to transfer a repository to a new owner, see <https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository>.")
 	}
 
 	if opts.DoConfirm {
