@@ -1082,6 +1082,7 @@ func RepoProjects(client *Client, repo ghrepo.Interface) ([]RepoProject, error) 
 // This is returned from assignable actors and issue/pr assigned actors.
 // We use this to check if the actor is Copilot.
 const CopilotActorLogin = "copilot-swe-agent"
+const CopilotActorName = "Copilot"
 
 type AssignableActor interface {
 	DisplayName() string
@@ -1142,7 +1143,7 @@ func NewAssignableBot(id, login string) AssignableBot {
 
 func (b AssignableBot) DisplayName() string {
 	if b.login == CopilotActorLogin {
-		return "Copilot (AI)"
+		return fmt.Sprintf("%s (AI)", CopilotActorName)
 	}
 	return b.Login()
 }

@@ -304,7 +304,7 @@ func (r *CopilotReplacer) replace(handle string) string {
 	if r.returnLogin {
 		return api.CopilotActorLogin
 	}
-	return "copilot"
+	return api.CopilotActorName
 }
 
 // ReplaceSlice replaces usages of `@copilot` in a slice with Copilot's login.
