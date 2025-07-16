@@ -285,14 +285,15 @@ func (r *MeReplacer) ReplaceSlice(handles []string) ([]string, error) {
 	return res, nil
 }
 
-// CopilotReplacer resolves usages of `@copilot` to Copilot's login.
+// CopilotReplacer resolves usages of `@copilot` to either Copilot's login or name.
+// Login is generally needed for API calls; name is used when launching web browser.
 type CopilotReplacer struct {
-	webMode bool
+	returnLogin bool
 }
 
-func NewCopilotReplacer(webMode bool) *CopilotReplacer {
+func NewCopilotReplacer(returnLogin bool) *CopilotReplacer {
 	return &CopilotReplacer{
-		webMode: webMode,
+		returnLogin: returnLogin,
 	}
 }
 
@@ -300,11 +301,10 @@ func (r *CopilotReplacer) replace(handle string) string {
 	if !strings.EqualFold(handle, "@copilot") {
 		return handle
 	}
-	// When Copilot is used as an assignee in web mode, the login is not used.
-	if r.webMode {
-		return "copilot"
+	if r.returnLogin {
+		return api.CopilotActorLogin
 	}
-	return api.CopilotActorLogin
+	return "copilot"
 }
 
 // ReplaceSlice replaces usages of `@copilot` in a slice with Copilot's login.
