@@ -21,10 +21,11 @@ _check_issue_script=".github/workflows/scripts/spam-detection/check-issue.sh"
 _result="$($_check_issue_script "$_issue_url")"
 
 if [[ "$_result" == "PASS" ]]; then
+    echo "detected as not-spam: $_issue_url"
     exit 0
 fi
 
-echo "spam issue detected: $_issue_url"
+echo "detected as spam: $_issue_url"
 
 gh issue edit --add-label "$_suspected_spam_label" "$_issue_url"
 
