@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Performs spam detection on an issue and labels if if it's spam.
+# Performs spam detection on an issue and labels it if it's spam.
 #
 # Regardless of the spam detection result, the script always exits with a zero
 # exit code, unless there's a runtime error.
