@@ -256,6 +256,7 @@ func Test_createRun(t *testing.T) {
 		name        string
 		opts        CreateOptions
 		httpStubs   func(*httpmock.Registry)
+		promptStubs func(*prompter.PrompterMock)
 		wantsStdout string
 		wantsStderr string
 		wantsBrowse string
@@ -264,7 +265,8 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "no args",
 			opts: CreateOptions{
-				WebMode: true,
+				Detector: &fd.EnabledDetectorMock{},
+				WebMode:  true,
 			},
 			wantsBrowse: "https://github.com/OWNER/REPO/issues/new",
 			wantsStderr: "Opening https://github.com/OWNER/REPO/issues/new in your browser.\n",
@@ -272,9 +274,10 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "title and body",
 			opts: CreateOptions{
-				WebMode: true,
-				Title:   "myissue",
-				Body:    "hello cli",
+				Detector: &fd.EnabledDetectorMock{},
+				WebMode:  true,
+				Title:    "myissue",
+				Body:     "hello cli",
 			},
 			wantsBrowse: "https://github.com/OWNER/REPO/issues/new?body=hello+cli&title=myissue",
 			wantsStderr: "Opening https://github.com/OWNER/REPO/issues/new in your browser.\n",
@@ -282,6 +285,7 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "assignee",
 			opts: CreateOptions{
+				Detector:  &fd.EnabledDetectorMock{},
 				WebMode:   true,
 				Assignees: []string{"monalisa"},
 			},
@@ -291,6 +295,7 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "@me",
 			opts: CreateOptions{
+				Detector:  &fd.EnabledDetectorMock{},
 				WebMode:   true,
 				Assignees: []string{"@me"},
 			},
@@ -308,6 +313,7 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "@copilot",
 			opts: CreateOptions{
+				Detector:  &fd.EnabledDetectorMock{},
 				WebMode:   true,
 				Assignees: []string{"@copilot"},
 			},
@@ -317,6 +323,7 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "project",
 			opts: CreateOptions{
+				Detector: &fd.EnabledDetectorMock{},
 				WebMode:  true,
 				Projects: []string{"cleanup"},
 			},
@@ -373,7 +380,8 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "has templates",
 			opts: CreateOptions{
-				WebMode: true,
+				Detector: &fd.EnabledDetectorMock{},
+				WebMode:  true,
 			},
 			httpStubs: func(r *httpmock.Registry) {
 				r.Register(
@@ -393,8 +401,9 @@ func Test_createRun(t *testing.T) {
 		{
 			name: "too long body",
 			opts: CreateOptions{
-				WebMode: true,
-				Body:    strings.Repeat("A", 9216),
+				Detector: &fd.EnabledDetectorMock{},
+				WebMode:  true,
+				Body:     strings.Repeat("A", 9216),
 			},
 			wantsErr: "cannot open in browser: maximum URL length exceeded",
 		},
@@ -404,22 +413,23 @@ func Test_createRun(t *testing.T) {
 				r.Register(
 					httpmock.GraphQL(`query RepositoryInfo\b`),
 					httpmock.StringResponse(`
-			{ "data": { "repository": {
-				"id": "REPOID",
-				"hasIssuesEnabled": true
-			} } }`))
+						{ "data": { "repository": {
+							"id": "REPOID",
+							"hasIssuesEnabled": true
+						} } }`))
 				r.Register(
 					httpmock.GraphQL(`mutation IssueCreate\b`),
 					httpmock.GraphQLMutation(`
-		{ "data": { "createIssue": { "issue": {
-			"URL": "https://github.com/OWNER/REPO/issues/12"
-		} } } }
-	`, func(inputs map[string]interface{}) {
+						{ "data": { "createIssue": { "issue": {
+							"URL": "https://github.com/OWNER/REPO/issues/12"
+						} } } }
+					`, func(inputs map[string]interface{}) {
 						assert.Equal(t, "title", inputs["title"])
 						assert.Equal(t, "body", inputs["body"])
 					}))
 			},
 			opts: CreateOptions{
+				Detector:         &fd.EnabledDetectorMock{},
 				EditorMode:       true,
 				TitledEditSurvey: func(string, string) (string, string, error) { return "title", "body", nil },
 			},
@@ -457,9 +467,156 @@ func Test_createRun(t *testing.T) {
 					}))
 			},
 			opts: CreateOptions{
+				Detector:         &fd.EnabledDetectorMock{},
 				EditorMode:       true,
 				Template:         "Bug report",
 				TitledEditSurvey: func(title string, body string) (string, string, error) { return title, body, nil },
+			},
+			wantsStdout: "https://github.com/OWNER/REPO/issues/12\n",
+			wantsStderr: "\nCreating issue in OWNER/REPO\n\n",
+		},
+		{
+			name: "interactive prompts with actor assignee display names when actors available",
+			opts: CreateOptions{
+				Interactive: true,
+				Detector:    &fd.EnabledDetectorMock{},
+				Title:       "test `gh issue create` actor assignees",
+				Body:        "Actor assignees allow users and bots to be assigned to issues",
+			},
+			promptStubs: func(pm *prompter.PrompterMock) {
+				firstConfirmSubmission := true
+				pm.InputFunc = func(message, defaultValue string) (string, error) {
+					switch message {
+					default:
+						return "", fmt.Errorf("unexpected input prompt: %s", message)
+					}
+				}
+				pm.MultiSelectFunc = func(message string, defaults []string, options []string) ([]int, error) {
+					switch message {
+					case "What would you like to add?":
+						return prompter.IndexesFor(options, "Assignees")
+					case "Assignees":
+						return prompter.IndexesFor(options, "Copilot (AI)", "MonaLisa (Mona Display Name)")
+					default:
+						return nil, fmt.Errorf("unexpected multi-select prompt: %s", message)
+					}
+				}
+				pm.SelectFunc = func(message, defaultValue string, options []string) (int, error) {
+					switch message {
+					case "What's next?":
+						if firstConfirmSubmission {
+							firstConfirmSubmission = false
+							return prompter.IndexFor(options, "Add metadata")
+						}
+						return prompter.IndexFor(options, "Submit")
+					default:
+						return 0, fmt.Errorf("unexpected select prompt: %s", message)
+					}
+				}
+			},
+			httpStubs: func(r *httpmock.Registry) {
+				r.Register(
+					httpmock.GraphQL(`query RepositoryInfo\b`),
+					httpmock.StringResponse(`
+						{ "data": { "repository": {
+							"id": "REPOID",
+							"hasIssuesEnabled": true,
+							"viewerPermission": "WRITE"
+						} } }
+					`))
+				r.Register(
+					httpmock.GraphQL(`query RepositoryAssignableActors\b`),
+					httpmock.StringResponse(`
+						{ "data": { "repository": { "suggestedActors": {
+							"nodes": [
+								{ "login": "copilot-swe-agent", "id": "COPILOTID", "name": "Copilot (AI)", "__typename": "Bot" },
+								{ "login": "MonaLisa", "id": "MONAID", "name": "Mona Display Name", "__typename": "User" }
+							],
+							"pageInfo": { "hasNextPage": false }
+						} } } }
+					`))
+				r.Register(
+					httpmock.GraphQL(`mutation IssueCreate\b`),
+					httpmock.GraphQLMutation(`
+						{ "data": { "createIssue": { "issue": {
+							"URL": "https://github.com/OWNER/REPO/issues/12"
+						} } } }
+					`, func(inputs map[string]interface{}) {
+						assert.Equal(t, []interface{}{"COPILOTID", "MONAID"}, inputs["assigneeIds"])
+					}))
+			},
+			wantsStdout: "https://github.com/OWNER/REPO/issues/12\n",
+			wantsStderr: "\nCreating issue in OWNER/REPO\n\n",
+		},
+		{
+			name: "interactive prompts with user assignee logins when actors unavailable",
+			opts: CreateOptions{
+				Interactive: true,
+				Detector:    &fd.DisabledDetectorMock{},
+				Title:       "test `gh issue create` user assignees",
+				Body:        "User assignees allow only users to be assigned to issues",
+			},
+			promptStubs: func(pm *prompter.PrompterMock) {
+				firstConfirmSubmission := true
+				pm.InputFunc = func(message, defaultValue string) (string, error) {
+					switch message {
+					default:
+						return "", fmt.Errorf("unexpected input prompt: %s", message)
+					}
+				}
+				pm.MultiSelectFunc = func(message string, defaults []string, options []string) ([]int, error) {
+					switch message {
+					case "What would you like to add?":
+						return prompter.IndexesFor(options, "Assignees")
+					case "Assignees":
+						return prompter.IndexesFor(options, "hubot", "MonaLisa (Mona Display Name)")
+					default:
+						return nil, fmt.Errorf("unexpected multi-select prompt: %s", message)
+					}
+				}
+				pm.SelectFunc = func(message, defaultValue string, options []string) (int, error) {
+					switch message {
+					case "What's next?":
+						if firstConfirmSubmission {
+							firstConfirmSubmission = false
+							return prompter.IndexFor(options, "Add metadata")
+						}
+						return prompter.IndexFor(options, "Submit")
+					default:
+						return 0, fmt.Errorf("unexpected select prompt: %s", message)
+					}
+				}
+			},
+			httpStubs: func(r *httpmock.Registry) {
+				r.Register(
+					httpmock.GraphQL(`query RepositoryInfo\b`),
+					httpmock.StringResponse(`
+						{ "data": { "repository": {
+							"id": "REPOID",
+							"hasIssuesEnabled": true,
+							"viewerPermission": "WRITE"
+						} } }
+					`))
+				r.Register(
+					httpmock.GraphQL(`query RepositoryAssignableUsers\b`),
+					httpmock.StringResponse(`
+						{ "data": { "repository": { "assignableUsers": {
+							"nodes": [
+								{ "login": "hubot", "id": "HUBOTID", "name": "" },
+								{ "login": "MonaLisa", "id": "MONAID", "name": "Mona Display Name" }
+							],
+							"pageInfo": { "hasNextPage": false }
+						} } } }
+					`))
+				r.Register(
+					httpmock.GraphQL(`mutation IssueCreate\b`),
+					httpmock.GraphQLMutation(`
+						{ "data": { "createIssue": { "issue": {
+							"URL": "https://github.com/OWNER/REPO/issues/12"
+						} } } }
+					`, func(inputs map[string]interface{}) {
+						assert.Equal(t, []interface{}{"HUBOTID", "MONAID"}, inputs["assigneeIds"])
+					}))
 			},
 			wantsStdout: "https://github.com/OWNER/REPO/issues/12\n",
 			wantsStderr: "\nCreating issue in OWNER/REPO\n\n",
@@ -483,9 +640,14 @@ func Test_createRun(t *testing.T) {
 			opts.BaseRepo = func() (ghrepo.Interface, error) {
 				return ghrepo.New("OWNER", "REPO"), nil
 			}
-			opts.Detector = &fd.EnabledDetectorMock{}
 			browser := &browser.Stub{}
 			opts.Browser = browser
+
+			prompterMock := &prompter.PrompterMock{}
+			opts.Prompter = prompterMock
+			if tt.promptStubs != nil {
+				tt.promptStubs(prompterMock)
+			}
 
 			err := createRun(opts)
 			if tt.wantsErr == "" {
@@ -960,8 +1122,7 @@ func TestIssueCreate_AtMeAssignee(t *testing.T) {
 	assert.Equal(t, "https://github.com/OWNER/REPO/issues/12\n", output.String())
 }
 
-// TODO: Create an interactive variant of this test, which will ensure that Copilot is in the assignee list and can be selected
-func TestIssueCreate_AtCopilotAssigneeNonInteractive(t *testing.T) {
+func TestIssueCreate_AtCopilotAssignee(t *testing.T) {
 	http := &httpmock.Registry{}
 	defer http.Verify(t)
 
