@@ -107,7 +107,7 @@ for template_file in .github/ISSUE_TEMPLATE/*.md; do
     _template_content="$(cat "$template_file")"
 
     # Remove YAML front matter (everything between the first two --- lines)
-    _template_content="$(echo "$_template_content" | sed '1,/^---$/d; /^---$/,$d')"
+    _template_content="$(echo "$_template_content" | sed '/^---$/,/^---$/d')"
     _escaped_template="$(sed -e 's/^```/\\```/g' <<< "$_template_content" )"
 
     _system_prompt="${_system_prompt}
