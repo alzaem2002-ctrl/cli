@@ -198,7 +198,7 @@ func TestCopilotReplacer_ReplaceSlice(t *testing.T) {
 		want        []string
 	}{
 		{
-			name:        "replaces @copilot with copilot-swe-agent for non-web mode",
+			name:        "replaces @copilot with login",
 			returnLogin: true,
 			args: args{
 				handles: []string{"monalisa", "@copilot", "hubot"},
@@ -206,7 +206,7 @@ func TestCopilotReplacer_ReplaceSlice(t *testing.T) {
 			want: []string{"monalisa", "copilot-swe-agent", "hubot"},
 		},
 		{
-			name: "replaces @copilot with copilot for web mode",
+			name: "replaces @copilot with name",
 			args: args{
 				handles: []string{"monalisa", "@copilot", "hubot"},
 			},
