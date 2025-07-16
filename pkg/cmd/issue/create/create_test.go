@@ -317,7 +317,7 @@ func Test_createRun(t *testing.T) {
 				WebMode:   true,
 				Assignees: []string{"@copilot"},
 			},
-			wantsBrowse: "https://github.com/OWNER/REPO/issues/new?assignees=copilot&body=",
+			wantsBrowse: "https://github.com/OWNER/REPO/issues/new?assignees=Copilot&body=",
 			wantsStderr: "Opening https://github.com/OWNER/REPO/issues/new in your browser.\n",
 		},
 		{

@@ -210,7 +210,7 @@ func TestCopilotReplacer_ReplaceSlice(t *testing.T) {
 			args: args{
 				handles: []string{"monalisa", "@copilot", "hubot"},
 			},
-			want: []string{"monalisa", "copilot", "hubot"},
+			want: []string{"monalisa", "Copilot", "hubot"},
 		},
 		{
 			name: "handles no @copilot mentions",
