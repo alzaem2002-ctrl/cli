@@ -203,8 +203,9 @@ func MetadataSurvey(p Prompt, io *iostreams.IOStreams, baseRepo ghrepo.Interface
 		reviewers = append(reviewers, fmt.Sprintf("%s/%s", baseRepo.RepoOwner(), t.Slug))
 	}
 
-	// In order to select any provided assignee, the following code needs to take the provided default assignees in `state`
-	// and translate them to the appropriate actor / user.
+	// Populate the list of selectable assignees and their default selections.
+	// This logic maps the default assignees from `state` to the corresponding actors or users
+	// so that the correct display names are preselected in the prompt.
 	var assignees []string
 	var assigneesDefault []string
 	if state.ActorAssignees {
