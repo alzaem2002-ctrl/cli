@@ -67,7 +67,7 @@ Here are the common patterns of spam issues:
 - Promotional content, advertisements, or unrelated marketing material.
 - Content in languages that seem inappropriate for the project context.
 - Issues that don''t relate to the project''s purpose (e.g. personal messages, off-topic discussions).
-- Content that seems like to be taken from, or quoting, another discussion or issue which does not not establish a sensible
+- Content that seems like to be taken from, or quoting, another discussion or issue which does not establish a sensible
   context, or problem statement, or feedback.
 
 '
