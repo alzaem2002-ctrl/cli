@@ -108,15 +108,15 @@ func NewCmdCode(f *cmdutil.Factory, runF func(*CodeOptions) error) *cobra.Comman
 func codeRun(opts *CodeOptions) error {
 	io := opts.IO
 	if opts.WebMode {
-		// Convert legacy `filename` and `extension` elasticsearch qualifiers to Blackbird's `path`
-		// qualifier when opening web search.
+		// Convert `filename` and `extension` legacy search qualifiers to the new code search's `path`
+		// qualifier when used with `--web` because they are incompatible.
 		if opts.Query.Qualifiers.Filename != "" || opts.Query.Qualifiers.Extension != "" {
 			cfg, err := opts.Config()
 			if err != nil {
 				return err
 			}
 			host, _ := cfg.Authentication().DefaultHost()
-			// FIXME: Remove this check once GHES supports Blackbird.
+			// FIXME: Remove this check once GHES supports the new `path` search qualifier.
 			if !ghauth.IsEnterprise(host) {
 				filename := opts.Query.Qualifiers.Filename
 				extension := opts.Query.Qualifiers.Extension
