@@ -342,6 +342,24 @@ func TestCodeRun(t *testing.T) {
 			wantBrowse: "https://github.com/search?q=map+path%3Atesting.go&type=code",
 		},
 		{
+			name: "properly handles extension with dot prefix when converting to path qualifier",
+			opts: &CodeOptions{
+				Config: func() (gh.Config, error) { return config.NewBlankConfig(), nil },
+				Query: search.Query{
+					Keywords: []string{"map"},
+					Kind:     "code",
+					Limit:    30,
+					Qualifiers: search.Qualifiers{
+						Filename:  "testing",
+						Extension: ".cpp",
+					},
+				},
+				Searcher: search.NewSearcher(nil, "github.com"),
+				WebMode:  true,
+			},
+			wantBrowse: "https://github.com/search?q=map+path%3Atesting.cpp&type=code",
+		},
+		{
 			name: "does not convert filename and extension qualifiers for GHES web search",
 			opts: &CodeOptions{
 				Config: func() (gh.Config, error) {
