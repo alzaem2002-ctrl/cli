@@ -20,17 +20,17 @@ if [[ -z "$_issue_url" ]]; then
     exit 1
 fi
 
-_issue="$(gh issue view --json title,body "$_issue_url")"
-
-cat << EOF | _user_prompt
+_user_prompt_template='
 <TITLE>
-$(jq -r ".title" <<< "$_issue")
+{{ .title }}
 </TITLE>
 
 <BODY>
-$(jq -r ".body" <<< "$_issue")
+{{ .body }}
 </BODY>
-EOF
+'
+
+_user_prompt="$(gh issue view --json title,body --template "$_user_prompt_template" "$_issue_url")"
 
 # Generate dynamic prompts for inference
 _system_prompt="$($SPAM_DIR/generate-sys-prompt.sh)"
