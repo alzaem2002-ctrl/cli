@@ -16,10 +16,8 @@ on:
       - go.sum
       - ".github/licenses.tmpl"
       - "script/licenses*"
-
 permissions:
   contents: read
-
 jobs:
   lint:
     runs-on: ubuntu-latest
