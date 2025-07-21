@@ -38,7 +38,7 @@ Your response must be single word `FAIL` if the issue looks like a spam, and `PA
 The GitHub CLI (also known as `gh`) project is a command-line tool for GitHub. It provides many commands to interact
 with various GitHub features.
 
-You can find a the general docs of the GitHub CLI tool in section "GitHub CLI docs" below, which helps you understand
+You can find the GitHub CLI tool documentation in the "GitHub CLI docs" section below, which helps you understand
 the available commands and their usages.
 
 ## Legitimate content indicators
