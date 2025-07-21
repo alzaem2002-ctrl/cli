@@ -14,15 +14,8 @@ SPAM_DIR="$(dirname "$(realpath "$0")")"
 _system_prompt="$($SPAM_DIR/generate-sys-prompt.sh)"
 _final_prompt="$(_value="$_system_prompt" yq eval '.messages[0].content = strenv(_value)' $SPAM_DIR/eval-prompts.yml)"
 
-# We should be able to just run the following command:
+# The following `gh models eval` command will fail after 20 requests due to rate limits.
+# We are going to open up an issue in `github/gh-models` to address this.
 #
-# ```
-# gh models eval <(echo "$_final_prompt")
-# ```
-#
-# But since `gh-models` does not throttle the rate of API requests, we need to
-# modify the extension code and introduce a deliberate delay between the runs.
-# Here, we assume a binary of the `gh-models` extension (with appropriate
-# throttling) is available in the root directory of the repository and we're
-# calling it directly (not though `gh`).
+# TODO: break up `eval-prompts.yml` file into smaller batches to avoid hitting the rate limit.
 gh models eval <(echo "$_final_prompt")
