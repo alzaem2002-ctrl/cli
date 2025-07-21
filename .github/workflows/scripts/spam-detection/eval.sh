@@ -6,16 +6,18 @@
 
 set -euo pipefail
 
-_prompt_file=".github/workflows/scripts/spam-detection/prompt.yml"
-_generate_sys_prompt_script=".github/workflows/scripts/spam-detection/generate-sys-prompt.sh"
+# Determine absolute path to script directory based on where it is called from.
+# This allows the script to be run from any directory.
+SPAM_DIR="$(dirname "$(realpath "$0")")"
 
-_system_prompt="$($_generate_sys_prompt_script)"
-_updated_prompt_file="$(_value="$_system_prompt" yq eval '.messages[0].content = strenv(_value)' "$_prompt_file")"
+# Generate dynamic prompts for inference
+_system_prompt="$($SPAM_DIR/generate-sys-prompt.sh)"
+_final_prompt="$(_value="$_system_prompt" yq eval '.messages[0].content = strenv(_value)' $SPAM_DIR/eval-prompts.yml)"
 
 # We should be able to just run the following command:
 #
 # ```
-# gh models eval <(echo "$_updated_prompt_file")
+# gh models eval <(echo "$_final_prompt")
 # ```
 #
 # But since `gh-models` does not throttle the rate of API requests, we need to
@@ -23,4 +25,4 @@ _updated_prompt_file="$(_value="$_system_prompt" yq eval '.messages[0].content =
 # Here, we assume a binary of the `gh-models` extension (with appropriate
 # throttling) is available in the root directory of the repository and we're
 # calling it directly (not though `gh`).
-./gh-models eval <(echo "$_updated_prompt_file")
+gh models eval <(echo "$_final_prompt")

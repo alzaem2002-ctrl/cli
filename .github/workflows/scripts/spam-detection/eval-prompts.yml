@@ -4,7 +4,7 @@ messages:
   - role: system
     content: "" # Since it's not a fix value, it should be generated and replaced at runtime
   - role: user
-    content: "{{input}}"
+    content: "{{input}}" # This will be replaced by `gh models eval` from `testData` below
 evaluators:
   - name: assert response
     string:
@@ -27,11 +27,11 @@ testData:
       > ```yaml
       > name: Dependabot fetch metadata
       > on: pull_request
-      > 
+      >
       > permissions:
       >   pull-requests: write
       >   issues: write
-      > 
+      >
       > jobs:
       >   dependabot:
       >     runs-on: ubuntu-latest
@@ -160,7 +160,7 @@ testData:
       <BODY>
       ### Describe the bug
 
-      A clear and concise description of what the bug is. 
+      A clear and concise description of what the bug is.
 
       ### Affected version
 
@@ -193,7 +193,7 @@ testData:
       <BODY>
       ### Describe the bug
 
-      A clear and concise description of what the bug is. 
+      A clear and concise description of what the bug is.
 
       ### Affected version
 
@@ -224,10 +224,10 @@ testData:
       </TITLE>
 
       <BODY>
-      > Thanks for submitting this, @brettdh! 🙏 
-      > 
+      > Thanks for submitting this, @brettdh! 🙏
+      >
       > Currently, this is similar to the GraphQL API request that `gh` uses to fetch the list of releases:
-      > 
+      >
       > ```gql
       > query {
       >   repository(owner:"cli", name:"cli") {
@@ -246,12 +246,12 @@ testData:
       >   }
       > }
       > ```
-      > 
+      >
       > You can simply try it on [GraphQL Explorer](https://docs.github.com/en/graphql/overview/explorer).
-      > 
+      >
       > There's a bit of terminology difference here, but I think what you're referring to as *notes* is actually the `description` field on a `Release` type. Can you please confirm that's what you're asking for? You can try adding `description` to the list of fields in the above query and see if that fits your purpose.
-      > 
-      >  
+      >
+      >
 
       _Originally posted by @babakks in [#11241](https://github.com/cli/cli/issues/11241#issuecomment-3049268353)_
       </BODY>
@@ -263,7 +263,7 @@ testData:
       </TITLE>
 
       <BODY>
-      ###I believe there might be a bug or just looking for work jobid 
+      ###I believe there might be a bug or just looking for work jobid
 
       Maybe theirs problem in the with log fails
 
