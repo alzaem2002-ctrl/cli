@@ -42,12 +42,13 @@ func Test_RepoMetadata(t *testing.T) {
 
 	repo, _ := ghrepo.FromFullName("OWNER/REPO")
 	input := RepoMetadataInput{
-		Assignees:  true,
-		Reviewers:  true,
-		Labels:     true,
-		ProjectsV1: true,
-		ProjectsV2: true,
-		Milestones: true,
+		Assignees:     true,
+		Reviewers:     true,
+		TeamReviewers: true,
+		Labels:        true,
+		ProjectsV1:    true,
+		ProjectsV2:    true,
+		Milestones:    true,
 	}
 
 	http.Register(
@@ -211,6 +212,42 @@ func Test_RepoMetadata(t *testing.T) {
 	if result.CurrentLogin != expectedCurrentLogin {
 		t.Errorf("expected current user %v, got %v", expectedCurrentLogin, result.CurrentLogin)
 	}
+}
+
+func Test_RepoMetadataTeams(t *testing.T) {
+	// Test that RepoMetadata only fetches teams if the input specifies it
+	http := &httpmock.Registry{}
+	client := newTestClient(http)
+	repo, _ := ghrepo.FromFullName("OWNER/REPO")
+	input := RepoMetadataInput{
+		Reviewers:     true,
+		TeamReviewers: false,
+	}
+
+	http.Register(
+		httpmock.GraphQL(`query RepositoryAssignableUsers\b`),
+		httpmock.StringResponse(`
+		{ "data": { "repository": { "assignableUsers": {
+			"nodes": [
+				{ "login": "hubot", "id": "HUBOTID" },
+				{ "login": "MonaLisa", "id": "MONAID" }
+			],
+			"pageInfo": { "hasNextPage": false }
+		} } } }
+		`))
+
+	http.Register(
+		httpmock.GraphQL(`query UserCurrent\b`),
+		httpmock.StringResponse(`
+		  { "data": { "viewer": { "login": "monalisa" } } }
+		`))
+
+	_, err := RepoMetadata(client, repo, input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	require.NoError(t, err)
 }
 
 func Test_ProjectNamesToPaths(t *testing.T) {
