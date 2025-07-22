@@ -1315,14 +1315,6 @@ func Test_createRun(t *testing.T) {
 						} } } }
 					`))
 				reg.Register(
-					httpmock.GraphQL(`query OrganizationTeamList\b`),
-					httpmock.StringResponse(`
-					{ "data": { "organization": { "teams": {
-						"nodes": [],
-						"pageInfo": { "hasNextPage": false }
-					} } } }
-					`))
-				reg.Register(
 					httpmock.GraphQL(`mutation PullRequestCreateRequestReviews\b`),
 					httpmock.GraphQLMutation(`
 						{ "data": { "requestReviews": {
