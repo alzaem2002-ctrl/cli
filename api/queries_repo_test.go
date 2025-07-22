@@ -243,10 +243,6 @@ func Test_RepoMetadataTeams(t *testing.T) {
 		`))
 
 	_, err := RepoMetadata(client, repo, input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
 	require.NoError(t, err)
 }
 
