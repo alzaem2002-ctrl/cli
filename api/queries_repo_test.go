@@ -214,14 +214,14 @@ func Test_RepoMetadata(t *testing.T) {
 	}
 }
 
-func Test_RepoMetadataTeams(t *testing.T) {
-	// Test that RepoMetadata only fetches teams if the input specifies it
+// Test that RepoMetadata only fetches teams if the input specifies it
+func Test_RepoMetadata_TeamsAreConditionallyFetched(t *testing.T) {
 	http := &httpmock.Registry{}
 	client := newTestClient(http)
 	repo, _ := ghrepo.FromFullName("OWNER/REPO")
 	input := RepoMetadataInput{
 		Reviewers:     true,
-		TeamReviewers: false,
+		TeamReviewers: false, // Do not fetch teams
 	}
 
 	http.Register(
@@ -241,6 +241,11 @@ func Test_RepoMetadataTeams(t *testing.T) {
 		httpmock.StringResponse(`
 		  { "data": { "viewer": { "login": "monalisa" } } }
 		`))
+
+	http.Exclude(
+		t,
+		httpmock.GraphQL(`query OrganizationTeamList\b`),
+	)
 
 	_, err := RepoMetadata(client, repo, input)
 	require.NoError(t, err)
