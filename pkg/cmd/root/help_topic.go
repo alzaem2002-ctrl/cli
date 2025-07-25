@@ -305,7 +305,7 @@ var HelpTopics = []helpTopic{
 		`),
 	},
 	{
-		name:  "search",
+		name:  "search-syntax",
 		short: "Search syntax for gh commands",
 		long: heredoc.Docf(`
 			Excluding search results that match a qualifier
