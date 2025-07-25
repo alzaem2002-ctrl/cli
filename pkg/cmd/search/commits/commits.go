@@ -37,7 +37,7 @@ func NewCmdCommits(f *cmdutil.Factory, runF func(*CommitsOptions) error) *cobra.
 	cmd := &cobra.Command{
 		Use:   "commits [<query>]",
 		Short: "Search for commits",
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 			Search for commits on GitHub.
 
 			The command supports constructing queries using the GitHub search syntax,
@@ -46,9 +46,8 @@ func NewCmdCommits(f *cmdutil.Factory, runF func(*CommitsOptions) error) *cobra.
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-commits>
 
-			Note: When using GitHub search syntax to exclude results (e.g. '-user:monalisa'), you must use 
-			a '--' delimiter before the search query to separate it from command flags.
-		`),
+			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Search commits matching set of keywords "readme" and "typo"
 			$ gh search commits readme typo

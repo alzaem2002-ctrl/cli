@@ -28,7 +28,7 @@ func NewCmdPrs(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *cobr
 	cmd := &cobra.Command{
 		Use:   "prs [<query>]",
 		Short: "Search for pull requests",
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 			Search for pull requests on GitHub.
 
 			The command supports constructing queries using the GitHub search syntax,
@@ -37,9 +37,8 @@ func NewCmdPrs(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *cobr
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-issues-and-pull-requests>
 
-			Note: When using GitHub search syntax to exclude results (e.g. '-label:bug'), you must use 
-			a '--' delimiter before the search query to separate it from command flags.
-		`),
+			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Search pull requests matching set of keywords "fix" and "bug"
 			$ gh search prs fix bug

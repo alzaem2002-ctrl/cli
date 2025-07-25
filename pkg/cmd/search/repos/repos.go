@@ -38,7 +38,7 @@ func NewCmdRepos(f *cmdutil.Factory, runF func(*ReposOptions) error) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:   "repos [<query>]",
 		Short: "Search for repositories",
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 			Search for repositories on GitHub.
 
 			The command supports constructing queries using the GitHub search syntax,
@@ -47,9 +47,8 @@ func NewCmdRepos(f *cmdutil.Factory, runF func(*ReposOptions) error) *cobra.Comm
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-for-repositories>
 
-			Note: When using GitHub search syntax to exclude results (e.g. '-topic:linux'), you must use 
-			a '--' delimiter before the search query to separate it from command flags.
-		`),
+			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Search repositories matching set of keywords "cli" and "shell"
 			$ gh search repos cli shell

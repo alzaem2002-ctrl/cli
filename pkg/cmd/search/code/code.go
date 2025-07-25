@@ -47,8 +47,7 @@ func NewCmdCode(f *cmdutil.Factory, runF func(*CodeOptions) error) *cobra.Comman
 			The results might not match what is seen on %[1]sgithub.com%[1]s, and new features like regex search
 			are not yet available via the GitHub API.
 
-			Note: When using GitHub search syntax to exclude results (e.g. '-language:xml'), you must use 
-			a '--' delimiter before the search query to separate it from command flags.
+			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Search code matching "react" and "lifecycle"
