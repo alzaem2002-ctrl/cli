@@ -78,7 +78,7 @@ if [ ${#ISSUES_WITHOUT_HELP_WANTED[@]} -gt 0 ]; then
     gh pr comment "$PR_URL" --body-file - <<EOF
 Thank you for your pull request! 🎉
 
-This PR appears to fix the following issues that are not labeled with \`help wanted\`:
+This PR appears to fix the following issues that are not labeled with https://github.com/cli/cli/labels/help%20wanted:
 
 $ISSUE_LIST
 As outlined in our [Contributing Guidelines](https://github.com/cli/cli/blob/trunk/.github/CONTRIBUTING.md), we expect that PRs are only created for issues that have been labeled \`help wanted\`.
