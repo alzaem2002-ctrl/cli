@@ -46,7 +46,7 @@ func NewCmdCommits(f *cmdutil.Factory, runF func(*CommitsOptions) error) *cobra.
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-commits>
 
-			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
+			For more information on handling search queries containing a hyphen, run %[1]sgh search --help%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Search commits matching set of keywords "readme" and "typo"

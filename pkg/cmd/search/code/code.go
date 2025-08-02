@@ -47,7 +47,7 @@ func NewCmdCode(f *cmdutil.Factory, runF func(*CodeOptions) error) *cobra.Comman
 			The results might not match what is seen on %[1]sgithub.com%[1]s, and new features like regex search
 			are not yet available via the GitHub API.
 
-			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
+			For more information on handling search queries containing a hyphen, run %[1]sgh search --help%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Search code matching "react" and "lifecycle"

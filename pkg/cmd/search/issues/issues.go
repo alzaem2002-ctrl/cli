@@ -35,7 +35,7 @@ func NewCmdIssues(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *c
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-issues-and-pull-requests>
 
-			For more information on handling search queries containing a hyphen, run %[1]sgh help search-syntax%[1]s.
+			For more information on handling search queries containing a hyphen, run %[1]sgh search --help%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Search issues matching set of keywords "readme" and "typo"
