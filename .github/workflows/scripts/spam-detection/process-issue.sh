@@ -39,6 +39,6 @@ We appreciate your understanding and apologize if this action was taken in error
 EOF
 
 gh issue edit --add-label "suspected-spam" --add-label "invalid" "$_issue_url"
-gh issue close "$_issue_url"
+gh issue close --reason 'not planned' "$_issue_url"
 
 echo "issue labelled as suspected spam"
