@@ -25,7 +25,7 @@ To be considered triaged, `bug` issues require the following:
 | `p2` | Affects more than a few users but doesn't prevent core functions |
 | `p3` | Affects a small number of users or is largely cosmetic |
 
-### Enhancements & Docs
+### Enhancements and Docs
 
 For `enhancement` issues, the FR's role is to prepare the issue for team review and triage.
 
