@@ -73,7 +73,7 @@ The FR should **avoid** adding these labels outside of team enhancement triage.
 
 ## Expectations for community pull requests
 
-All incoming pull requests are assigned to one of the engineers for review on a load balanced basis.
+All incoming pull requests are assigned to one of the engineers for review on a load-balanced basis.
 The person in a triage role for a week could take a glance at these pull requests, mostly to see whether
 the changeset is feasible and to allow the associated CI run for new contributors.
 
