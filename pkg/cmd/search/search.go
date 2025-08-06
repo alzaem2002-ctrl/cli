@@ -1,9 +1,9 @@
 package search
 
 import (
+	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/spf13/cobra"
-	"github.com/MakeNowJust/heredoc"
 
 	searchCodeCmd "github.com/cli/cli/v2/pkg/cmd/search/code"
 	searchCommitsCmd "github.com/cli/cli/v2/pkg/cmd/search/commits"
@@ -16,7 +16,7 @@ func NewCmdSearch(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search <command>",
 		Short: "Search for repositories, issues, and pull requests",
-		Long:  heredoc.Docf(`
+		Long: heredoc.Docf(`
 			Search across all of GitHub.
 
 			Excluding search results that match a qualifier
