@@ -26,7 +26,7 @@ func NewCmdSearch(f *cmdutil.Factory) *cobra.Command {
 			do not have the label "bug", you would use %[1]s-label:bug%[1]s as a search qualifier.
 
 			%[1]sgh%[1]s supports this syntax in %[1]sgh search%[1]s as well, but it requires extra
-			syntax to avoid the hyphen being interpreted as a command line flag because it begins with a hyphen.
+			command line arguments to avoid the hyphen being interpreted as a command line flag because it begins with a hyphen.
 
 			On Unix-like systems, you can use the %[1]s--%[1]s argument to indicate that
 			the arguments that follow are not a flag, but rather a query string. For example:
