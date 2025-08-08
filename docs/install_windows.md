@@ -4,7 +4,9 @@
 
 ### WinGet
 
-The [GitHub CLI package](https://winget.run/pkg/GitHub/cli) is supported by Microsoft with updates powered by [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs/tree/master/manifests/g/GitHub/cli/)
+[WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/) is a command line tool enabling users to discover, install, upgrade, remove and configure applications on Windows 10, Windows 11, and Windows Server 2025 computers. This tool is the client interface to the Windows Package Manager service.
+
+The [GitHub CLI package](https://winget.run/pkg/GitHub/cli) is supported by Microsoft with updates powered by [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs/tree/master/manifests/g/GitHub/cli/).
 
 To install:
 
@@ -32,7 +34,7 @@ winget upgrade --id GitHub.cli
 
 ### Chocolatey
 
-The [GitHub CLI package](https://community.chocolatey.org/packages/gh) is supported by the Chocolatey communty with updates powered by [pauby/ChocoPackages](https://github.com/pauby/ChocoPackages/tree/master/automatic/gh)
+The [GitHub CLI package](https://community.chocolatey.org/packages/gh) is supported by the Chocolatey communty with updates powered by [pauby/ChocoPackages](https://github.com/pauby/ChocoPackages/tree/master/automatic/gh).
 
 To install:
 
@@ -65,6 +67,8 @@ conda update gh --channel conda-forge
 ```
 
 ### Scoop
+
+The [GitHub CLI bucket](https://scoop.sh/#/apps?q=gh) is supported by the Scoop community with updated powered by [ScoopInstaller/Main](https://github.com/ScoopInstaller/Main/blob/master/bucket/gh.json).
 
 To install:
 

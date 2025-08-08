@@ -27,12 +27,6 @@ brew upgrade gh
 > [!NOTE]
 > As of May 29th, Mac OS installer `.pkg` are unsigned with efforts prioritized in [`cli/cli#9139`](https://github.com/cli/cli/issues/9139) to support signing them.
 
-### Build from source
-
-Users who want the latest changes can build the GitHub CLI from source.
-
-For more information, see [installation from source](install_source.md).
-
 ## Community _(Unofficial)_
 
 > [!IMPORTANT]
@@ -78,7 +72,7 @@ flox upgrade toplevel
 
 [MacPorts](https://www.macports.org/) is an open-source community initiative to design an easy-to-use system for compiling, installing, and upgrading either command-line, X11 or Aqua based open-source software on the Mac operating system.
 
-The [GitHub CLI port](https://ports.macports.org/port/gh/) is supported by the MacPorts community with updates powered by [macports/macports-ports](https://github.com/macports/macports-ports/blob/master/devel/gh/Portfile)
+The [GitHub CLI port](https://ports.macports.org/port/gh/) is supported by the MacPorts community with updates powered by [macports/macports-ports](https://github.com/macports/macports-ports/blob/master/devel/gh/Portfile).
 
 To install:
 
