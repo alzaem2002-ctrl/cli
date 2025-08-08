@@ -34,7 +34,7 @@ winget upgrade --id GitHub.cli
 
 ### Chocolatey
 
-The [GitHub CLI package](https://community.chocolatey.org/packages/gh) is supported by the Chocolatey communty with updates powered by [pauby/ChocoPackages](https://github.com/pauby/ChocoPackages/tree/master/automatic/gh).
+The [GitHub CLI package](https://community.chocolatey.org/packages/gh) is supported by the Chocolatey community with updates powered by [pauby/ChocoPackages](https://github.com/pauby/ChocoPackages/tree/master/automatic/gh).
 
 To install:
 
