@@ -341,7 +341,7 @@ The [GitHub CLI port](https://openports.pl/path/devel/github-cli) is supported b
 
 To install:
 
-```
+```shell
 pkg_add github-cli
 ```
 
@@ -354,6 +354,7 @@ To install:
 ```bash
 sudo zypper install gh
 ```
+
 To upgrade:
 
 ```bash
