@@ -84,7 +84,7 @@ To upgrade:
 sudo dnf update gh
 ```
 
-### Amazon Linux 2 (yum)
+#### Amazon Linux 2 (yum)
 
 To install:
 
@@ -100,7 +100,7 @@ To upgrade:
 sudo yum update gh
 ```
 
-### openSUSE/SUSE Linux (zypper)
+#### openSUSE/SUSE Linux (zypper)
 
 To install:
 

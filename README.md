@@ -21,38 +21,25 @@ If you are a hubber and are interested in shipping new commands for the CLI, che
 
 ### [macOS](docs/install_macos.md)
 
-#### [Recommended _(Official)_](docs/install_macos.md#recommended-official)
-
 - [Homebrew](docs/install_macos.md#homebrew)
 - [Precompiled binaries](docs/install_macos.md#precompiled-binaries) on [releases page][]
 
-#### [Community _(Unofficial)_](docs/install_macos.md#community-unofficial)
-
-- Package managers: [Conda](docs/install_macos.md#conda), [Flox](docs/install_macos.md#flox), [MacPorts](docs/install_macos.md#macports), [Spack](docs/install_macos.md#spack), [Webi](docs/install_macos.md#webi)
+For additional packages and installers, see [community-supported docs](docs/install_macos.md#community-unofficial)
 
 ### [Linux & Unix](docs/install_linux.md)
-
-#### [Recommended _(Official)_](docs/install_linux.md#recommended-official)
 
 - [Debian, Raspberry Pi, Ubuntu](docs/install_linux.md#debian)
 - [Amazon Linux, CentOS, Fedora, openSUSE, RHEL, SUSE](docs/install_linux.md#rpm)
 - [Precompiled binaries](docs/install_linux.md#precompiled-binaries) on [releases page][]
 
-#### [Community _(Unofficial)_](docs/install_linux.md#community-unofficial)
-
-- Package managers: [Conda](docs/install_linux.md#conda), [Flox](docs/install_linux.md#flox), [Spack](docs/install_linux.md#spack), [Webi](docs/install_linux.md#webi)
-- Operating systems: [Alpine Linux](docs/install_linux.md#alpine-linux), [Android](docs/install_linux.md#android), [Arch Linux](docs/install_linux.md#arch-linux), [Fedora Community](docs/install_linux.md#fedora-community), [FreeBSD](docs/install_linux.md#freebsd), [Funtoo](docs/install_linux.md#funtoo), [Gentoo](docs/install_linux.md#gentoo), [Manjaro Linux](docs/install_linux.md#manjaro-linux), [MidnightBSD](docs/install_linux.md#midnightbsd), [NetBSD/pkgsrc](docs/install_linux.md#netbsdpkgsrc), [Nix/NixOS](docs/install_linux.md#nixnixos), [OpenBSD](docs/install_linux.md#openbsd), [openSUSE Tumbleweed](docs/install_linux.md#opensuse-tumbleweed), [Solus Linux](docs/install_linux.md#solus-linux), [Void Linux](docs/install_linux.md#void-linux).
+For additional packages and installers, see [community-supported docs](docs/install_linux.md#community-unofficial)
 
 ### [Windows](docs/install_windows.md)
-
-#### [Recommended _(Official)_](docs/install_windows.md#recommended-official)
 
 - [WinGet](docs/install_windows.md#winget)
 - [Precompiled binaries](docs/install_windows.md#precompiled-binaries) on [releases page][]
 
-#### [Community _(Unofficial)_](docs/install_windows.md#community-unofficial)
-
-- Package managers: [Chocolatey](docs/install_windows.md#chocolatey), [Conda](docs/install_windows.md#conda), [Scoop](docs/install_windows.md#scoop), [Webi](docs/install_windows.md#webi)
+For additional packages and installers, see [community-supported docs](docs/install_windows.md#community-unofficial)
 
 ### Build from source
 
