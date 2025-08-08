@@ -420,7 +420,7 @@ webi gh@stable
 ## Discouraged
 
 > [!WARNING]
-> The GitHub CLI team actively discourages use of the following methods of installion.
+> The GitHub CLI team actively discourages use of the following methods of installation.
 
 ### Snap
 
