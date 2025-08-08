@@ -150,7 +150,6 @@ func FetchRefSHA(ctx context.Context, httpClient *http.Client, repo ghrepo.Inter
 
 	if resp.StatusCode == http.StatusNotFound {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		// ErrRefNotFound
 		return "", ErrReleaseNotFound
 	}
 
@@ -160,11 +159,16 @@ func FetchRefSHA(ctx context.Context, httpClient *http.Client, repo ghrepo.Inter
 
 	var ref struct {
 		Object struct {
-			SHA string `json:"sha"`
+			SHA string `json:"sha,omitempty"`
 		} `json:"object"`
 	}
+
 	if err := json.NewDecoder(resp.Body).Decode(&ref); err != nil {
-		// release not found
+		return "", fmt.Errorf("failed to parse Git ref response: %w", err)
+	}
+
+	// Check if SHA is empty after successful JSON parsing
+	if ref.Object.SHA == "" {
 		return "", ErrReleaseNotFound
 	}
 
