@@ -142,7 +142,7 @@ brew upgrade gh
 ## Community _(Unofficial)_
 
 > [!IMPORTANT]
-> The GitHub CLI team does not maintain the following packages or repositories and thus we are unable to provide support for those installation methods.
+> The GitHub CLI team does not maintain the following packages or repositories. We are unable to provide support for these installation methods or any guarantees of stability, security, or availability for these installation methods.
 
 ### Alpine Linux
 

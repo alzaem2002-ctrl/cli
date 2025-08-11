@@ -24,7 +24,7 @@ If you are a hubber and are interested in shipping new commands for the CLI, che
 - [Homebrew](docs/install_macos.md#homebrew)
 - [Precompiled binaries](docs/install_macos.md#precompiled-binaries) on [releases page][]
 
-For additional packages and installers, see [community-supported docs](docs/install_macos.md#community-unofficial)
+For additional macOS packages and installers, see [community-supported docs](docs/install_macos.md#community-unofficial)
 
 ### [Linux & Unix](docs/install_linux.md)
 
@@ -32,14 +32,14 @@ For additional packages and installers, see [community-supported docs](docs/inst
 - [Amazon Linux, CentOS, Fedora, openSUSE, RHEL, SUSE](docs/install_linux.md#rpm)
 - [Precompiled binaries](docs/install_linux.md#precompiled-binaries) on [releases page][]
 
-For additional packages and installers, see [community-supported docs](docs/install_linux.md#community-unofficial)
+For additional Linux & Unix packages and installers, see [community-supported docs](docs/install_linux.md#community-unofficial)
 
 ### [Windows](docs/install_windows.md)
 
 - [WinGet](docs/install_windows.md#winget)
 - [Precompiled binaries](docs/install_windows.md#precompiled-binaries) on [releases page][]
 
-For additional packages and installers, see [community-supported docs](docs/install_windows.md#community-unofficial)
+For additional Windows packages and installers, see [community-supported docs](docs/install_windows.md#community-unofficial)
 
 ### Build from source
 
