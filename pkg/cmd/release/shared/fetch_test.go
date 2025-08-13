@@ -79,7 +79,7 @@ func TestFetchRefSHA(t *testing.T) {
 			repo, err := ghrepo.FromFullName("owner/repo")
 			require.NoError(t, err)
 
-			path := "repos/owner/repo/git/refs/tags/" + tt.tagName
+			path := "repos/owner/repo/git/ref/tags/" + tt.tagName
 			if tt.responseStatus == 404 {
 				fakeHTTP.Register(httpmock.REST("GET", path), httpmock.StatusStringResponse(404, "Not Found"))
 			} else {

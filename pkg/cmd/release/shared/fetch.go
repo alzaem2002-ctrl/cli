@@ -136,7 +136,7 @@ type fetchResult struct {
 }
 
 func FetchRefSHA(ctx context.Context, httpClient *http.Client, repo ghrepo.Interface, tagName string) (string, error) {
-	path := fmt.Sprintf("repos/%s/%s/git/refs/tags/%s", repo.RepoOwner(), repo.RepoName(), tagName)
+	path := fmt.Sprintf("repos/%s/%s/git/ref/tags/%s", repo.RepoOwner(), repo.RepoName(), tagName)
 	req, err := http.NewRequestWithContext(ctx, "GET", ghinstance.RESTPrefix(repo.RepoHost())+path, nil)
 	if err != nil {
 		return "", err
@@ -159,17 +159,12 @@ func FetchRefSHA(ctx context.Context, httpClient *http.Client, repo ghrepo.Inter
 
 	var ref struct {
 		Object struct {
-			SHA string `json:"sha,omitempty"`
+			SHA string `json:"sha"`
 		} `json:"object"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&ref); err != nil {
-		return "", fmt.Errorf("failed to parse Git ref response: %w", err)
-	}
-
-	// Check if SHA is empty after successful JSON parsing
-	if ref.Object.SHA == "" {
-		return "", ErrReleaseNotFound
+		return "", fmt.Errorf("failed to parse ref response: %w", err)
 	}
 
 	return ref.Object.SHA, nil
@@ -292,7 +287,7 @@ func StubFetchRelease(t *testing.T, reg *httpmock.Registry, owner, repoName, tag
 }
 
 func StubFetchRefSHA(t *testing.T, reg *httpmock.Registry, owner, repoName, tagName, sha string) {
-	path := fmt.Sprintf("repos/%s/%s/git/refs/tags/%s", owner, repoName, tagName)
+	path := fmt.Sprintf("repos/%s/%s/git/ref/tags/%s", owner, repoName, tagName)
 	reg.Register(
 		httpmock.REST("GET", path),
 		httpmock.StringResponse(fmt.Sprintf(`{"object": {"sha": "%s"}}`, sha)),
