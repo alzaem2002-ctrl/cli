@@ -150,8 +150,9 @@ func ProjectsV2ItemsForPullRequest(client *Client, repo ghrepo.Interface, pr *Pu
 		Repository struct {
 			PullRequest struct {
 				ProjectItems struct {
-					Nodes    []*projectV2Item
-					PageInfo struct {
+					TotalCount int
+					Nodes      []*projectV2Item
+					PageInfo   struct {
 						HasNextPage bool
 						EndCursor   string
 					}
