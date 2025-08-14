@@ -211,8 +211,6 @@ const (
 )
 
 func (d *detector) ProjectsV1() gh.ProjectsV1Support {
-	// Currently, projects v1 support is entirely dependent on the host. As this is deprecated in GHES,
-	// we will do feature detection on whether the GHES version has support.
 	if !ghauth.IsEnterprise(d.host) {
 		return gh.ProjectsV1Unsupported
 	}
