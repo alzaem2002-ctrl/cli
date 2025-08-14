@@ -109,7 +109,7 @@ func NewCmdVerify(f *cmdutil.Factory, runF func(config *VerifyConfig) error) *co
 		},
 	}
 	cmdutil.AddFormatFlags(cmd, &opts.Exporter)
-	cmd.Flags().StringVarP(&opts.TrustedRoot, "custom-trusted-root", "", "", "Path to a trusted_root.jsonl file; likely for offline verification")
+	cmd.Flags().StringVarP(&opts.TrustedRoot, "custom-trusted-root", "", "", "Path to a trusted_root.jsonl file; likely for offline verification.")
 	cmd.Flags().MarkHidden("custom-trusted-root")
 
 	return cmd
