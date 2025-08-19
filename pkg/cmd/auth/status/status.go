@@ -20,21 +20,21 @@ import (
 )
 
 type authEntry struct {
-	State       string `json:"state"`
-	Error       string `json:"error"`
-	Active      bool   `json:"active"`
-	Host        string `json:"host"`
-	Login       string `json:"login"`
-	TokenSource string `json:"token_source"`
-	Token       string `json:"token"`
-	Scopes      string `json:"scopes"`
-	GitProtocol string `json:"git_protocol"`
+	State       AuthState `json:"state"`
+	Error       string    `json:"error"`
+	Active      bool      `json:"active"`
+	Host        string    `json:"host"`
+	Login       string    `json:"login"`
+	TokenSource string    `json:"token_source"`
+	Token       string    `json:"token"`
+	Scopes      string    `json:"scopes"`
+	GitProtocol string    `json:"git_protocol"`
 }
 
 func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 	var sb strings.Builder
 	switch e.State {
-	case "valid":
+	case AuthStateSuccess:
 		sb.WriteString(
 			fmt.Sprintf("  %s Logged in to %s account %s (%s)\n", cs.SuccessIcon(), e.Host, cs.Bold(e.Login), e.TokenSource),
 		)
@@ -58,7 +58,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 			}
 		}
 
-	case "timeout":
+	case AuthStateTimeout:
 		if e.Login != "" {
 			sb.WriteString(fmt.Sprintf("  %s Timeout trying to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
 		} else {
@@ -67,7 +67,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 		activeStr := fmt.Sprintf("%v", e.Active)
 		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 
-	case "error":
+	case AuthStateError:
 		if e.Login != "" {
 			sb.WriteString(fmt.Sprintf("  %s Failed to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
 		} else {
@@ -319,7 +319,7 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		var err error
 		entry.Login, err = api.CurrentLoginName(apiClient, opts.hostname)
 		if err != nil {
-			entry.State = "error"
+			entry.State = AuthStateError
 			return entry
 		}
 	}
@@ -329,15 +329,15 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 	if err != nil {
 		var networkError net.Error
 		if errors.As(err, &networkError) && networkError.Timeout() {
-			entry.State = "timeout"
+			entry.State = AuthStateTimeout
 			return entry
 		}
 
-		entry.State = "error"
+		entry.State = AuthStateError
 		return entry
 	}
 
-	entry.State = "valid"
+	entry.State = AuthStateSuccess
 	entry.Scopes = scopesHeader
 	return entry
 }
@@ -347,5 +347,5 @@ func authTokenWriteable(src string) bool {
 }
 
 func isValidEntry(entry authEntry) bool {
-	return entry.State == "valid"
+	return entry.State == AuthStateSuccess
 }
