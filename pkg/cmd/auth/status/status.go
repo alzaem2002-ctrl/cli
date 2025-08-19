@@ -25,10 +25,10 @@ type authEntry struct {
 	Active      bool      `json:"active"`
 	Host        string    `json:"host"`
 	Login       string    `json:"login"`
-	TokenSource string    `json:"token_source"`
+	TokenSource string    `json:"tokenSource"`
 	Token       string    `json:"token"`
 	Scopes      string    `json:"scopes"`
-	GitProtocol string    `json:"git_protocol"`
+	GitProtocol string    `json:"gitProtocol"`
 }
 
 var authFields = []string{
@@ -37,10 +37,10 @@ var authFields = []string{
 	"active",
 	"host",
 	"login",
-	"token_source",
+	"tokenSource",
 	"token",
 	"scopes",
-	"git_protocol",
+	"gitProtocol",
 }
 
 func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
@@ -227,13 +227,14 @@ func statusRun(opts *StatusOptions) error {
 			activeUser, _ = authCfg.ActiveUser(hostname)
 		}
 		entry := buildEntry(httpClient, buildEntryOptions{
-			active:      true,
-			gitProtocol: gitProtocol,
-			hostname:    hostname,
-			showToken:   opts.ShowToken,
-			token:       activeUserToken,
-			tokenSource: activeUserTokenSource,
-			username:    activeUser,
+			active:       true,
+			gitProtocol:  gitProtocol,
+			hostname:     hostname,
+			showToken:    opts.ShowToken,
+			token:        activeUserToken,
+			tokenSource:  activeUserTokenSource,
+			username:     activeUser,
+			includeScope: opts.includeScope(),
 		})
 		statuses[hostname] = append(statuses[hostname], entry)
 
@@ -252,13 +253,14 @@ func statusRun(opts *StatusOptions) error {
 			}
 			token, tokenSource, _ := authCfg.TokenForUser(hostname, username)
 			entry := buildEntry(httpClient, buildEntryOptions{
-				active:      false,
-				gitProtocol: gitProtocol,
-				hostname:    hostname,
-				showToken:   opts.ShowToken,
-				token:       token,
-				tokenSource: tokenSource,
-				username:    username,
+				active:       false,
+				gitProtocol:  gitProtocol,
+				hostname:     hostname,
+				showToken:    opts.ShowToken,
+				token:        token,
+				tokenSource:  tokenSource,
+				username:     username,
+				includeScope: opts.includeScope(),
 			})
 			statuses[hostname] = append(statuses[hostname], entry)
 
@@ -333,13 +335,14 @@ func expectScopes(token string) bool {
 }
 
 type buildEntryOptions struct {
-	active      bool
-	gitProtocol string
-	hostname    string
-	showToken   bool
-	token       string
-	tokenSource string
-	username    string
+	active       bool
+	gitProtocol  string
+	hostname     string
+	showToken    bool
+	token        string
+	tokenSource  string
+	username     string
+	includeScope bool
 }
 
 func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
@@ -373,21 +376,23 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		}
 	}
 
-	// Get scopes for token.
-	scopesHeader, err := shared.GetScopes(httpClient, opts.hostname, opts.token)
-	if err != nil {
-		var networkError net.Error
-		if errors.As(err, &networkError) && networkError.Timeout() {
-			entry.State = AuthStateTimeout
+	if opts.includeScope {
+		// Get scopes for token.
+		scopesHeader, err := shared.GetScopes(httpClient, opts.hostname, opts.token)
+		if err != nil {
+			var networkError net.Error
+			if errors.As(err, &networkError) && networkError.Timeout() {
+				entry.State = AuthStateTimeout
+				return entry
+			}
+
+			entry.State = AuthStateError
 			return entry
 		}
-
-		entry.State = AuthStateError
-		return entry
+		entry.Scopes = scopesHeader
 	}
 
 	entry.State = AuthStateSuccess
-	entry.Scopes = scopesHeader
 	return entry
 }
 
@@ -397,4 +402,11 @@ func authTokenWriteable(src string) bool {
 
 func isValidEntry(entry authEntry) bool {
 	return entry.State == AuthStateSuccess
+}
+
+func (opts *StatusOptions) includeScope() bool {
+	if opts.Exporter == nil {
+		return true
+	}
+	return slices.Contains(opts.Exporter.Fields(), "scopes")
 }
