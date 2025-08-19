@@ -530,6 +530,158 @@ func Test_statusRun(t *testing.T) {
 				  - To forget about this account, run: gh auth logout -h ghe.io -u monalisa-ghe-2
 			`),
 		},
+		{
+			name: "No tokens, with json flag",
+			opts: StatusOptions{
+				Exporter: defaultJsonExporter(),
+			},
+			wantErr:    cmdutil.SilentError,
+			wantOut:    "{}\n",
+			wantErrOut: "You are not logged into any GitHub hosts. To log in, run: gh auth login\n",
+		},
+		{
+			name: "No token for the given --hostname, with json flag",
+			opts: StatusOptions{
+				Hostname: "foo.com",
+				Exporter: defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+			},
+			wantErr:    cmdutil.SilentError,
+			wantOut:    "{}\n",
+			wantErrOut: "You are not logged into any accounts on foo.com\n",
+		},
+		{
+			name: "All valid tokens, with json flag",
+			opts: StatusOptions{
+				Exporter: defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+				login(t, c, "github.com", "monalisa2", "gho_abc123", "https")
+				login(t, c, "ghe.io", "monalisa-ghe", "gho_abc123", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				// mocks for HeaderHasMinimumScopes api requests to github.com
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+				reg.Register(httpmock.REST("GET", "api/v3/"), httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+
+			},
+			wantOut: `{` +
+				`"ghe.io":[` +
+				`{"active":true,"host":"ghe.io","login":"monalisa-ghe","state":"success"}` +
+				`],` +
+				`"github.com":[` +
+				`{"active":true,"host":"github.com","login":"monalisa2","state":"success"},` +
+				`{"active":false,"host":"github.com","login":"monalisa","state":"success"}` +
+				"]}\n",
+		},
+		{
+			name: "All valid tokens, with hostname and json flag",
+			opts: StatusOptions{
+				Hostname: "github.com",
+				Exporter: defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+				login(t, c, "github.com", "monalisa2", "gho_abc123", "https")
+				login(t, c, "ghe.io", "monalisa-ghe", "gho_abc123", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				// mocks for HeaderHasMinimumScopes api requests to github.com
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+
+			},
+			wantOut: `{` +
+				`"github.com":[` +
+				`{"active":true,"host":"github.com","login":"monalisa2","state":"success"},` +
+				`{"active":false,"host":"github.com","login":"monalisa","state":"success"}` +
+				"]}\n",
+		},
+		{
+			name: "All valid tokens, with active and json flag",
+			opts: StatusOptions{
+				Active:   true,
+				Exporter: defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
+				login(t, c, "github.com", "monalisa2", "gho_abc123", "https")
+				login(t, c, "ghe.io", "monalisa-ghe", "gho_abc123", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				// mocks for HeaderHasMinimumScopes api requests to github.com
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+				reg.Register(httpmock.REST("GET", "api/v3/"), httpmock.WithHeader(httpmock.ScopesResponder("repo,read:org"), "X-Oauth-Scopes", "repo, read:org"))
+			},
+			wantOut: `{` +
+				`"ghe.io":[` +
+				`{"active":true,"host":"ghe.io","login":"monalisa-ghe","state":"success"}` +
+				`],` +
+				`"github.com":[` +
+				`{"active":true,"host":"github.com","login":"monalisa2","state":"success"}` +
+				"]}\n",
+		},
+		{
+			name: "bad token, with json flag",
+			opts: StatusOptions{
+				Exporter: defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "ghe.io", "monalisa-ghe", "gho_abc123", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				// mock for HeaderHasMinimumScopes api requests to a non-github.com host
+				reg.Register(httpmock.REST("GET", "api/v3/"), httpmock.StatusStringResponse(400, "no bueno"))
+			},
+			wantErr: cmdutil.SilentError,
+			wantOut: `{"ghe.io":[{"active":true,"host":"ghe.io","login":"monalisa-ghe","state":"error"}]}` + "\n",
+		},
+		{
+			name: "timeout error, with json flag",
+			opts: StatusOptions{
+				Hostname: "github.com",
+				Exporter: defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "abc123", "https")
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(httpmock.REST("GET", ""), func(req *http.Request) (*http.Response, error) {
+					// timeout error
+					return nil, context.DeadlineExceeded
+				})
+			},
+			wantErr: cmdutil.SilentError,
+			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","state":"timeout"}]}` + "\n",
+		},
+
+		// TODO: is MarkFlagsMutuallyExclusive ok?
+		// {
+		// 	name: "Both show token and json flags",
+		// 	opts: StatusOptions{
+		// 		ShowToken: true,
+		// 	},
+		// 	cfgStubs: func(t *testing.T, c gh.Config) {
+		// 		login(t, c, "github.com", "monalisa", "abc123", "https")
+		// 	},
+		// 	jsonFields: []string{"login", "host", "state", "active"},
+		// 	wantErr:    cmdutil.SilentError,
+		// 	wantErrOut: "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
+		// },
 	}
 
 	for _, tt := range tests {
@@ -580,4 +732,10 @@ func login(t *testing.T, c gh.Config, hostname, username, protocol, token string
 	t.Helper()
 	_, err := c.Authentication().Login(hostname, username, protocol, token, false)
 	require.NoError(t, err)
+}
+
+func defaultJsonExporter() cmdutil.Exporter {
+	e := cmdutil.NewJSONExporter()
+	e.SetFields([]string{"login", "host", "state", "active"})
+	return e
 }

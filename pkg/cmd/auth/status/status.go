@@ -31,6 +31,18 @@ type authEntry struct {
 	GitProtocol string    `json:"git_protocol"`
 }
 
+var authFields = []string{
+	"state",
+	"error",
+	"active",
+	"host",
+	"login",
+	"token_source",
+	"token",
+	"scopes",
+	"git_protocol",
+}
+
 func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 	var sb strings.Builder
 	switch e.State {
@@ -87,8 +99,13 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 	return sb.String()
 }
 
+func (e authEntry) ExportData(fields []string) map[string]interface{} {
+	return cmdutil.StructExportData(e, fields)
+}
+
 type Entry interface {
 	String(cs *iostreams.ColorScheme, showToken bool) string
+	ExportData(fields []string) map[string]interface{}
 }
 
 type Entries []Entry
@@ -101,10 +118,19 @@ func (e Entries) Strings(cs *iostreams.ColorScheme, showToken bool) []string {
 	return out
 }
 
+func (e Entries) ExportData(fields []string) []map[string]interface{} {
+	var out []map[string]interface{}
+	for _, entry := range e {
+		out = append(out, entry.ExportData(fields))
+	}
+	return out
+}
+
 type StatusOptions struct {
 	HttpClient func() (*http.Client, error)
 	IO         *iostreams.IOStreams
 	Config     func() (gh.Config, error)
+	Exporter   cmdutil.Exporter
 
 	Hostname  string
 	ShowToken bool
@@ -142,8 +168,12 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().StringVarP(&opts.Hostname, "hostname", "h", "", "Check only a specific hostname's auth status")
-	cmd.Flags().BoolVarP(&opts.ShowToken, "show-token", "t", false, "Display the auth token")
+	// FIXME this conflicts with `--template`... temporary workaround
+	cmd.Flags().BoolVarP(&opts.ShowToken, "show-token", "z", false, "Display the auth token")
 	cmd.Flags().BoolVarP(&opts.Active, "active", "a", false, "Display the active account only")
+	cmdutil.AddJSONFlags(cmd, &opts.Exporter, authFields)
+
+	cmd.MarkFlagsMutuallyExclusive("show-token", "json")
 
 	return cmd
 }
@@ -165,12 +195,18 @@ func statusRun(opts *StatusOptions) error {
 	if len(hostnames) == 0 {
 		fmt.Fprintf(stderr,
 			"You are not logged into any GitHub hosts. To log in, run: %s\n", cs.Bold("gh auth login"))
+		if opts.Exporter != nil {
+			opts.Exporter.Write(opts.IO, struct{}{})
+		}
 		return cmdutil.SilentError
 	}
 
 	if opts.Hostname != "" && !slices.Contains(hostnames, opts.Hostname) {
 		fmt.Fprintf(stderr,
 			"You are not logged into any accounts on %s\n", opts.Hostname)
+		if opts.Exporter != nil {
+			opts.Exporter.Write(opts.IO, struct{}{})
+		}
 		return cmdutil.SilentError
 	}
 
@@ -230,6 +266,19 @@ func statusRun(opts *StatusOptions) error {
 				err = cmdutil.SilentError
 			}
 		}
+	}
+
+	if opts.Exporter != nil {
+		statusesForExport := make(map[string]interface{})
+
+		for _, hostname := range hostnames {
+			if len(statuses[hostname]) > 0 {
+				statusesForExport[hostname] = statuses[hostname].ExportData(opts.Exporter.Fields())
+			}
+		}
+
+		opts.Exporter.Write(opts.IO, statusesForExport)
+		return err
 	}
 
 	prevEntry := false
