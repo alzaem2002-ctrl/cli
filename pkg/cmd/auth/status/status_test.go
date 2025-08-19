@@ -78,6 +78,8 @@ func Test_NewCmdStatus(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, tt.wants.Hostname, gotOpts.Hostname)
+			assert.Equal(t, tt.wants.ShowToken, gotOpts.ShowToken)
+			assert.Equal(t, tt.wants.Active, gotOpts.Active)
 		})
 	}
 }
