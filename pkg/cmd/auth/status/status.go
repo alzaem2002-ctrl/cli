@@ -17,7 +17,6 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 type authEntry struct {
@@ -172,15 +171,7 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&opts.ShowToken, "show-token", "t", false, "Display the auth token")
 	cmd.Flags().BoolVarP(&opts.Active, "active", "a", false, "Display the active account only")
 
-	// Add JSON flags for exporting, but ignore the default `-t` abbreviation that conflicts with show-token.
-	tmpCmd := &cobra.Command{}
-	cmdutil.AddJSONFlags(tmpCmd, &opts.Exporter, authFields)
-	tmpCmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if f.Name == "template" {
-			f.Shorthand = ""
-		}
-		cmd.Flags().AddFlag(f)
-	})
+	cmdutil.AddJSONFlags(cmd, &opts.Exporter, authFields)
 
 	cmd.MarkFlagsMutuallyExclusive("show-token", "json")
 

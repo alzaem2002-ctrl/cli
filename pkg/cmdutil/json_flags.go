@@ -26,8 +26,8 @@ type JSONFlagError struct {
 func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
 	f := cmd.Flags()
 	f.StringSlice("json", nil, "Output JSON with the specified `fields`")
-	f.StringP("jq", "q", "", "Filter JSON output using a jq `expression`")
-	f.StringP("template", "t", "", "Format JSON output using a Go template; see \"gh help formatting\"")
+	addStringFlagWithSafeShorthand(f, "jq", "q", "", "Filter JSON output using a jq `expression`")
+	addStringFlagWithSafeShorthand(f, "template", "t", "", "Format JSON output using a Go template; see \"gh help formatting\"")
 
 	_ = cmd.RegisterFlagCompletionFunc("json", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var results []string
@@ -92,6 +92,15 @@ func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
 		cmd.Annotations = map[string]string{}
 	}
 	cmd.Annotations["help:json-fields"] = strings.Join(fields, ",")
+}
+
+// addStringFlagWithSafeShorthand only adds the flag with shorthand if the shorthand is not already used by another flag.
+func addStringFlagWithSafeShorthand(f *pflag.FlagSet, name, shorthand, value, usage string) {
+	if f.ShorthandLookup(shorthand) != nil {
+		f.String(name, value, usage)
+	} else {
+		f.StringP(name, shorthand, value, usage)
+	}
 }
 
 func checkJSONFlags(cmd *cobra.Command) (*jsonExporter, error) {
