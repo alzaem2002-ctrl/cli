@@ -43,7 +43,7 @@ var authFields = []string{
 	"gitProtocol",
 }
 
-func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
+func (e authEntry) String(cs *iostreams.ColorScheme) string {
 	var sb strings.Builder
 	switch e.State {
 	case authStateSuccess:
@@ -53,7 +53,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 		activeStr := fmt.Sprintf("%v", e.Active)
 		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 		sb.WriteString(fmt.Sprintf("  - Git operations protocol: %s\n", cs.Bold(e.GitProtocol)))
-		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(displayToken(e.Token, showToken))))
+		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(e.Token)))
 
 		if expectScopes(e.Token) {
 			sb.WriteString(fmt.Sprintf("  - Token scopes: %s\n", cs.Bold(displayScopes(e.Scopes))))
@@ -104,16 +104,16 @@ func (e authEntry) ExportData(fields []string) map[string]interface{} {
 }
 
 type Entry interface {
-	String(cs *iostreams.ColorScheme, showToken bool) string
+	String(cs *iostreams.ColorScheme) string
 	ExportData(fields []string) map[string]interface{}
 }
 
 type Entries []Entry
 
-func (e Entries) Strings(cs *iostreams.ColorScheme, showToken bool) []string {
+func (e Entries) Strings(cs *iostreams.ColorScheme) []string {
 	var out []string
 	for _, entry := range e {
-		out = append(out, entry.String(cs, showToken))
+		out = append(out, entry.String(cs))
 	}
 	return out
 }
@@ -303,7 +303,7 @@ func statusRun(opts *StatusOptions) error {
 		}
 		prevEntry = true
 		fmt.Fprintf(stream, "%s\n", cs.Bold(hostname))
-		fmt.Fprintf(stream, "%s", strings.Join(entries.Strings(cs, opts.ShowToken), "\n"))
+		fmt.Fprintf(stream, "%s", strings.Join(entries.Strings(cs), "\n"))
 	}
 
 	return err
@@ -355,7 +355,7 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		Host:        opts.hostname,
 		Login:       opts.username,
 		TokenSource: opts.tokenSource,
-		Token:       opts.token,
+		Token:       displayToken(opts.token, opts.showToken),
 		GitProtocol: opts.gitProtocol,
 	}
 
