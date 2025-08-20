@@ -14,6 +14,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	"github.com/cli/cli/v2/pkg/jsonfieldstest"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,6 +83,20 @@ func Test_NewCmdStatus(t *testing.T) {
 			assert.Equal(t, tt.wants.Active, gotOpts.Active)
 		})
 	}
+}
+
+func TestJSONFields(t *testing.T) {
+	jsonfieldstest.ExpectCommandToSupportJSONFields(t, NewCmdStatus, []string{
+		"state",
+		"error",
+		"active",
+		"host",
+		"login",
+		"tokenSource",
+		"token",
+		"scopes",
+		"gitProtocol",
+	})
 }
 
 func Test_statusRun(t *testing.T) {
