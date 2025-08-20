@@ -655,20 +655,18 @@ func Test_statusRun(t *testing.T) {
 			wantErr: cmdutil.SilentError,
 			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","scopes":"","state":"timeout"}]}` + "\n",
 		},
-
-		// TODO: is MarkFlagsMutuallyExclusive ok?
-		// {
-		// 	name: "Both show token and json flags",
-		// 	opts: StatusOptions{
-		// 		ShowToken: true,
-		// 	},
-		// 	cfgStubs: func(t *testing.T, c gh.Config) {
-		// 		login(t, c, "github.com", "monalisa", "abc123", "https")
-		// 	},
-		// 	jsonFields: []string{"login", "host", "state", "active"},
-		// 	wantErr:    cmdutil.SilentError,
-		// 	wantErrOut: "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
-		// },
+		{
+			name: "Both show token and json flags",
+			opts: StatusOptions{
+				ShowToken: true,
+				Exporter:  defaultJsonExporter(),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "abc123", "https")
+			},
+			wantErr:    cmdutil.SilentError,
+			wantErrOut: "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
+		},
 	}
 
 	for _, tt := range tests {

@@ -173,8 +173,6 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 
 	cmdutil.AddJSONFlags(cmd, &opts.Exporter, authFields)
 
-	cmd.MarkFlagsMutuallyExclusive("show-token", "json")
-
 	return cmd
 }
 
@@ -188,6 +186,11 @@ func statusRun(opts *StatusOptions) error {
 	stderr := opts.IO.ErrOut
 	stdout := opts.IO.Out
 	cs := opts.IO.ColorScheme()
+
+	if opts.ShowToken && opts.Exporter != nil {
+		fmt.Fprintf(stderr, "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.")
+		return cmdutil.SilentError
+	}
 
 	statuses := make(map[string]Entries)
 
