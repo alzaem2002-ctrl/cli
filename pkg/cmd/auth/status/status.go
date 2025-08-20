@@ -187,9 +187,12 @@ func statusRun(opts *StatusOptions) error {
 	stdout := opts.IO.Out
 	cs := opts.IO.ColorScheme()
 
-	if opts.ShowToken && opts.Exporter != nil {
-		fmt.Fprintf(stderr, "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.")
-		return nil
+	if opts.Exporter != nil {
+		if opts.ShowToken {
+			fmt.Fprintf(stderr, "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.")
+			return nil
+		}
+		opts.ShowToken = true
 	}
 
 	statuses := make(map[string]Entries)

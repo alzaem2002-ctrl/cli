@@ -652,6 +652,17 @@ func Test_statusRun(t *testing.T) {
 			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","scopes":"","state":"timeout"}]}` + "\n",
 		},
 		{
+			name: "token is not masked with json flag",
+			opts: StatusOptions{
+				Hostname: "github.com",
+				Exporter: addFieldsToExporter(defaultJsonExporter(), []string{"token"}),
+			},
+			cfgStubs: func(t *testing.T, c gh.Config) {
+				login(t, c, "github.com", "monalisa", "abc123", "https")
+			},
+			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","state":"success","token":"abc123"}]}` + "\n",
+		},
+		{
 			name: "Both show token and json flags",
 			opts: StatusOptions{
 				ShowToken: true,
