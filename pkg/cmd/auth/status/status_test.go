@@ -550,7 +550,6 @@ func Test_statusRun(t *testing.T) {
 			opts: StatusOptions{
 				Exporter: defaultJsonExporter(),
 			},
-			wantErr:    cmdutil.SilentError,
 			wantOut:    "{}\n",
 			wantErrOut: "You are not logged into any GitHub hosts. To log in, run: gh auth login\n",
 		},
@@ -563,7 +562,6 @@ func Test_statusRun(t *testing.T) {
 			cfgStubs: func(t *testing.T, c gh.Config) {
 				login(t, c, "github.com", "monalisa", "gho_abc123", "https")
 			},
-			wantErr:    cmdutil.SilentError,
 			wantOut:    "{}\n",
 			wantErrOut: "You are not logged into any accounts on foo.com\n",
 		},
@@ -634,7 +632,6 @@ func Test_statusRun(t *testing.T) {
 				// mock for HeaderHasMinimumScopes api requests to a non-github.com host
 				reg.Register(httpmock.REST("GET", "api/v3/"), httpmock.StatusStringResponse(400, "no bueno"))
 			},
-			wantErr: cmdutil.SilentError,
 			wantOut: `{"ghe.io":[{"active":true,"host":"ghe.io","login":"monalisa-ghe","scopes":"","state":"error"}]}` + "\n",
 		},
 		{
@@ -652,7 +649,6 @@ func Test_statusRun(t *testing.T) {
 					return nil, context.DeadlineExceeded
 				})
 			},
-			wantErr: cmdutil.SilentError,
 			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","scopes":"","state":"timeout"}]}` + "\n",
 		},
 		{
@@ -664,7 +660,6 @@ func Test_statusRun(t *testing.T) {
 			cfgStubs: func(t *testing.T, c gh.Config) {
 				login(t, c, "github.com", "monalisa", "abc123", "https")
 			},
-			wantErr:    cmdutil.SilentError,
 			wantErrOut: "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
 		},
 	}

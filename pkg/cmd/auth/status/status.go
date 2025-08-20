@@ -189,7 +189,7 @@ func statusRun(opts *StatusOptions) error {
 
 	if opts.ShowToken && opts.Exporter != nil {
 		fmt.Fprintf(stderr, "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.")
-		return cmdutil.SilentError
+		return nil
 	}
 
 	statuses := make(map[string]Entries)
@@ -200,6 +200,7 @@ func statusRun(opts *StatusOptions) error {
 			"You are not logged into any GitHub hosts. To log in, run: %s\n", cs.Bold("gh auth login"))
 		if opts.Exporter != nil {
 			opts.Exporter.Write(opts.IO, struct{}{})
+			return nil
 		}
 		return cmdutil.SilentError
 	}
@@ -209,6 +210,7 @@ func statusRun(opts *StatusOptions) error {
 			"You are not logged into any accounts on %s\n", opts.Hostname)
 		if opts.Exporter != nil {
 			opts.Exporter.Write(opts.IO, struct{}{})
+			return nil
 		}
 		return cmdutil.SilentError
 	}
@@ -283,7 +285,7 @@ func statusRun(opts *StatusOptions) error {
 		}
 
 		opts.Exporter.Write(opts.IO, statusesForExport)
-		return err
+		return nil
 	}
 
 	prevEntry := false
