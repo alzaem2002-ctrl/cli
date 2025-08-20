@@ -21,7 +21,7 @@ import (
 )
 
 type authEntry struct {
-	State       AuthState `json:"state"`
+	State       authState `json:"state"`
 	Error       string    `json:"error"`
 	Active      bool      `json:"active"`
 	Host        string    `json:"host"`
@@ -47,7 +47,7 @@ var authFields = []string{
 func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 	var sb strings.Builder
 	switch e.State {
-	case AuthStateSuccess:
+	case authStateSuccess:
 		sb.WriteString(
 			fmt.Sprintf("  %s Logged in to %s account %s (%s)\n", cs.SuccessIcon(), e.Host, cs.Bold(e.Login), e.TokenSource),
 		)
@@ -71,7 +71,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 			}
 		}
 
-	case AuthStateTimeout:
+	case authStateTimeout:
 		if e.Login != "" {
 			sb.WriteString(fmt.Sprintf("  %s Timeout trying to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
 		} else {
@@ -80,7 +80,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 		activeStr := fmt.Sprintf("%v", e.Active)
 		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 
-	case AuthStateError:
+	case authStateError:
 		if e.Login != "" {
 			sb.WriteString(fmt.Sprintf("  %s Failed to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
 		} else {
@@ -380,7 +380,7 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		var err error
 		entry.Login, err = api.CurrentLoginName(apiClient, opts.hostname)
 		if err != nil {
-			entry.State = AuthStateError
+			entry.State = authStateError
 			return entry
 		}
 	}
@@ -391,17 +391,17 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		if err != nil {
 			var networkError net.Error
 			if errors.As(err, &networkError) && networkError.Timeout() {
-				entry.State = AuthStateTimeout
+				entry.State = authStateTimeout
 				return entry
 			}
 
-			entry.State = AuthStateError
+			entry.State = authStateError
 			return entry
 		}
 		entry.Scopes = scopesHeader
 	}
 
-	entry.State = AuthStateSuccess
+	entry.State = authStateSuccess
 	return entry
 }
 
@@ -410,7 +410,7 @@ func authTokenWriteable(src string) bool {
 }
 
 func isValidEntry(entry authEntry) bool {
-	return entry.State == AuthStateSuccess
+	return entry.State == authStateSuccess
 }
 
 func (opts *StatusOptions) includeScope() bool {

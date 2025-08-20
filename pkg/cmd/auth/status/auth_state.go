@@ -2,27 +2,27 @@ package status
 
 import "encoding/json"
 
-type AuthState int
+type authState int
 
 const (
-	AuthStateSuccess AuthState = iota
-	AuthStateTimeout
-	AuthStateError
+	authStateSuccess authState = iota
+	authStateTimeout
+	authStateError
 )
 
-func (s AuthState) String() string {
+func (s authState) String() string {
 	switch s {
-	case AuthStateSuccess:
+	case authStateSuccess:
 		return "success"
-	case AuthStateTimeout:
+	case authStateTimeout:
 		return "timeout"
-	case AuthStateError:
+	case authStateError:
 		return "error"
 	default:
 		return "unknown"
 	}
 }
 
-func (s AuthState) MarshalJSON() ([]byte, error) {
+func (s authState) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.String())
 }
