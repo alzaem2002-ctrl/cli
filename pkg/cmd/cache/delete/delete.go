@@ -25,6 +25,7 @@ type DeleteOptions struct {
 	DeleteAll         bool
 	SucceedOnNoCaches bool
 	Identifier        string
+	Ref               string
 }
 
 func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
@@ -51,6 +52,12 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			# Delete a cache by id in a specific repo
 			$ gh cache delete 1234 --repo cli/cli
 
+			# Delete a cache by key and branch ref
+			$ gh cache delete cache-key --ref refs/heads/feature-branch
+
+			# Delete a cache by key and PR ref
+			$ gh cache delete cache-key --ref refs/pull/<PR-number>/merge
+
 			# Delete all caches (exit code 1 on no caches)
 			$ gh cache delete --all
 
@@ -69,8 +76,19 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 				return err
 			}
 
+			if err := cmdutil.MutuallyExclusive(
+				"--ref cannot be used with --all",
+				opts.DeleteAll, opts.Ref != "",
+			); err != nil {
+				return err
+			}
+
 			if !opts.DeleteAll && opts.SucceedOnNoCaches {
 				return cmdutil.FlagErrorf("--succeed-on-no-caches must be used in conjunction with --all")
+			}
+
+			if opts.Ref != "" && len(args) == 0 {
+				return cmdutil.FlagErrorf("--ref cannot be used without cache key/ID")
 			}
 
 			if !opts.DeleteAll && len(args) == 0 {
@@ -90,6 +108,7 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().BoolVarP(&opts.DeleteAll, "all", "a", false, "Delete all caches")
+	cmd.Flags().StringVarP(&opts.Ref, "ref", "r", "", "Narrow down deletion to a specific ref, formatted as refs/heads/<branch name> or refs/pull/<number>/merge")
 	cmd.Flags().BoolVar(&opts.SucceedOnNoCaches, "succeed-on-no-caches", false, "Return exit code 0 if no caches found. Must be used in conjunction with `--all`")
 
 	return cmd
@@ -147,6 +166,10 @@ func deleteCaches(opts *DeleteOptions, client *api.Client, repo ghrepo.Interface
 			path = fmt.Sprintf("%s/%d", base, id)
 		} else {
 			path = fmt.Sprintf("%s?key=%s", base, url.QueryEscape(cache))
+
+			if opts.Ref != "" {
+				path += fmt.Sprintf("&ref=%s", url.QueryEscape(opts.Ref))
+			}
 		}
 
 		err := client.REST(repo.RepoHost(), "DELETE", path, nil, nil)
