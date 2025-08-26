@@ -88,7 +88,7 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			}
 
 			if opts.Ref != "" && len(args) == 0 {
-				return cmdutil.FlagErrorf("--ref cannot be used without cache key/ID")
+				return cmdutil.FlagErrorf("must provide a cache key")
 			}
 
 			if !opts.DeleteAll && len(args) == 0 {

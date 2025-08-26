@@ -71,7 +71,7 @@ func TestNewCmdDelete(t *testing.T) {
 		{
 			name:     "ref flag without cache key",
 			cli:      "--ref refs/heads/main",
-			wantsErr: "--ref cannot be used without cache key/ID",
+			wantsErr: "must provide a cache key",
 		},
 		{
 			name:     "ref flag with all flag",
