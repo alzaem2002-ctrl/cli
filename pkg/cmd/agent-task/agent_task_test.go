@@ -41,7 +41,7 @@ func TestOAuthTokenAccepted(t *testing.T) {
 	cmd := NewCmdAgentTask(f)
 	err := cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, "", stdout.String())
+	require.Empty(t, stdout.String())
 }
 
 func TestKeyringOAuthTokenAccepted(t *testing.T) {
