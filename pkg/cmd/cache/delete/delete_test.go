@@ -74,6 +74,11 @@ func TestNewCmdDelete(t *testing.T) {
 			wantsErr: "must provide a cache key",
 		},
 		{
+			name:     "ref flag with cache id",
+			cli:      "123 --ref refs/heads/main",
+			wantsErr: "--ref cannot be used with cache ID",
+		},
+		{
 			name:     "ref flag with all flag",
 			cli:      "--all --ref refs/heads/main",
 			wantsErr: "--ref cannot be used with --all",
@@ -323,6 +328,21 @@ func TestDeleteRun(t *testing.T) {
 			},
 			wantErr:    true,
 			wantErrMsg: "X Failed to delete cache: HTTP 422 (https://api.github.com/repos/OWNER/REPO/actions/caches?key=cache-key&ref=invalid-ref)",
+		},
+		{
+			name: "cache key exists but ref not found",
+			opts: DeleteOptions{Identifier: "existing-cache-key", Ref: "refs/heads/nonexistent-branch"},
+			stubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.QueryMatcher("DELETE", "repos/OWNER/REPO/actions/caches", url.Values{
+						"key": []string{"existing-cache-key"},
+						"ref": []string{"refs/heads/nonexistent-branch"},
+					}),
+					httpmock.StatusStringResponse(404, ""),
+				)
+			},
+			wantErr:    true,
+			wantErrMsg: "X Could not find a cache matching existing-cache-key (with ref refs/heads/nonexistent-branch) in OWNER/REPO",
 		},
 	}
 
