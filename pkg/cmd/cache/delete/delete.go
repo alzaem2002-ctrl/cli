@@ -162,7 +162,7 @@ func deleteCaches(opts *DeleteOptions, client *api.Client, repo ghrepo.Interface
 
 	for _, cache := range toDelete {
 		path := ""
-		if id, err := strconv.Atoi(cache); err == nil {
+		if id, ok := parseCacheID(cache); ok {
 			path = fmt.Sprintf("%s/%d", base, id)
 		} else {
 			path = fmt.Sprintf("%s?key=%s", base, url.QueryEscape(cache))
@@ -194,4 +194,9 @@ func deleteCaches(opts *DeleteOptions, client *api.Client, repo ghrepo.Interface
 	}
 
 	return nil
+}
+
+func parseCacheID(arg string) (int, bool) {
+	id, err := strconv.Atoi(arg)
+	return id, err == nil
 }
