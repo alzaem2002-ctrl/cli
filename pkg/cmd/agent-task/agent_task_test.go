@@ -32,132 +32,109 @@ func setupMockOAuthConfig(t *testing.T, tokenSource string) gh.Config {
 	return c
 }
 
-func TestOAuthTokenAccepted(t *testing.T) {
-	f := &cmdutil.Factory{}
-	ios, _, stdout, _ := iostreams.Test()
-	f.IOStreams = ios
-	f.Config = func() (gh.Config, error) { return setupMockOAuthConfig(t, "oauth_token"), nil }
-
-	cmd := NewCmdAgentTask(f)
-	err := cmd.Execute()
-	require.NoError(t, err)
-	require.Empty(t, stdout.String())
-}
-
-func TestKeyringOAuthTokenAccepted(t *testing.T) {
-	f := &cmdutil.Factory{}
-	ios, _, stdout, _ := iostreams.Test()
-	f.IOStreams = ios
-	f.Config = func() (gh.Config, error) { return setupMockOAuthConfig(t, "keyring"), nil }
-
-	cmd := NewCmdAgentTask(f)
-	err := cmd.Execute()
-	require.NoError(t, err)
-	require.Equal(t, "", stdout.String())
-}
-
-func TestEnvVarTokenRejected(t *testing.T) {
-	f := &cmdutil.Factory{}
-	ios, _, _, _ := iostreams.Test()
-	f.IOStreams = ios
-	f.Config = func() (gh.Config, error) { return setupMockOAuthConfig(t, "GH_TOKEN"), nil }
-	cmd := NewCmdAgentTask(f)
-	err := cmd.Execute()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "requires an OAuth token")
-}
-
-func TestEnterpriseTokenIgnored(t *testing.T) {
-	// This test ignores the test helper because we want to test a specific config state
-	t.Run("enterprise token alone is ignored and rejected", func(t *testing.T) {
-		f := &cmdutil.Factory{}
-		ios, _, _, _ := iostreams.Test()
-		f.IOStreams = ios
-		f.Config = func() (gh.Config, error) {
-			return func() gh.Config {
-				c := config.NewBlankConfig()
-				c.Set("something.ghes.com", "oauth_token", "ghe_ENTERPRISE123")
-				return c
-			}(), nil
-		}
-
-		cmd := NewCmdAgentTask(f)
-		err := cmd.Execute()
-		require.Error(t, err)
-	})
-
-	t.Run("github.com oauth is accepted and enterprise token ignored", func(t *testing.T) {
-		f := &cmdutil.Factory{}
-		ios, _, _, _ := iostreams.Test()
-		f.IOStreams = ios
-		f.Config = func() (gh.Config, error) {
-			return func() gh.Config {
+func TestNewCmdAgentTask(t *testing.T) {
+	tests := []struct {
+		name            string
+		tokenSource     string
+		customConfig    func() (gh.Config, error)
+		wantErr         bool
+		wantErrContains string
+		wantStdout      string
+	}{
+		{
+			name:        "oauth token is accepted",
+			tokenSource: "oauth_token",
+			wantErr:     false,
+			wantStdout:  "",
+		},
+		{
+			name:        "keyring oauth token is accepted",
+			tokenSource: "keyring",
+			wantErr:     false,
+			wantStdout:  "",
+		},
+		{
+			name:            "env var token is rejected",
+			tokenSource:     "GH_TOKEN",
+			wantErr:         true,
+			wantErrContains: "requires an OAuth token",
+		},
+		{
+			name:        "enterprise token alone is ignored and rejected",
+			tokenSource: "GH_ENTERPRISE_TOKEN",
+			wantErr:     true,
+		},
+		{
+			name: "github.com oauth is accepted and enterprise token ignored",
+			customConfig: func() (gh.Config, error) {
 				c := config.NewBlankConfig()
 				c.Set("something.ghes.com", "oauth_token", "ghe_ENTERPRISE123")
 				c.Set("github.com", "oauth_token", "gho_OAUTH123")
-				return c
-			}(), nil
-		}
-
-		cmd := NewCmdAgentTask(f)
-		err := cmd.Execute()
-		require.NoError(t, err)
-	})
-
-}
-
-func TestEnterpriseHostRejected(t *testing.T) {
-	f := &cmdutil.Factory{}
-	ios, _, _, _ := iostreams.Test()
-	f.IOStreams = ios
-
-	f.Config = func() (gh.Config, error) {
-		return &ghmock.ConfigMock{
-			AuthenticationFunc: func() gh.AuthConfig {
-				c := &config.AuthConfig{}
-				c.SetDefaultHost("something.ghes.com", "GH_HOST")
-				return c
+				return c, nil
 			},
-		}, nil
+			wantErr:    false,
+			wantStdout: "",
+		},
+		{
+			name: "enterprise host is rejected",
+			customConfig: func() (gh.Config, error) {
+				return &ghmock.ConfigMock{
+					AuthenticationFunc: func() gh.AuthConfig {
+						c := &config.AuthConfig{}
+						c.SetDefaultHost("something.ghes.com", "GH_HOST")
+						return c
+					},
+				}, nil
+			},
+			wantErr:         true,
+			wantErrContains: "not supported on this host",
+		},
+		{
+			name: "empty host is rejected",
+			customConfig: func() (gh.Config, error) {
+				return &ghmock.ConfigMock{
+					AuthenticationFunc: func() gh.AuthConfig {
+						c := &config.AuthConfig{}
+						c.SetDefaultHost("", "GH_HOST")
+						return c
+					},
+				}, nil
+			},
+			wantErr:         true,
+			wantErrContains: "no default host configured",
+		},
+		{
+			name:        "no auth is rejected",
+			tokenSource: "",
+			wantErr:     true,
+		},
 	}
 
-	cmd := NewCmdAgentTask(f)
-	err := cmd.Execute()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "not supported on this host")
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &cmdutil.Factory{}
+			ios, _, stdout, _ := iostreams.Test()
+			f.IOStreams = ios
+			if tt.customConfig != nil {
+				f.Config = tt.customConfig
+			} else {
+				f.Config = func() (gh.Config, error) { return setupMockOAuthConfig(t, tt.tokenSource), nil }
+			}
 
-func TestEmptyHostRejected(t *testing.T) {
-	f := &cmdutil.Factory{}
-	ios, _, _, _ := iostreams.Test()
-	f.IOStreams = ios
+			cmd := NewCmdAgentTask(f)
+			err := cmd.Execute()
 
-	f.Config = func() (gh.Config, error) {
-		return &ghmock.ConfigMock{
-			AuthenticationFunc: func() gh.AuthConfig {
-				c := &config.AuthConfig{}
-				c.SetDefaultHost("", "GH_HOST")
-				return c
-			},
-		}, nil
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.wantErrContains != "" {
+					require.Contains(t, err.Error(), tt.wantErrContains)
+				}
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.wantStdout, stdout.String())
+			}
+		})
 	}
-
-	cmd := NewCmdAgentTask(f)
-	err := cmd.Execute()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no default host configured")
-}
-
-func TestNoAuthRejected(t *testing.T) {
-	f := &cmdutil.Factory{}
-	ios, _, _, _ := iostreams.Test()
-	f.IOStreams = ios
-	// No token configured
-	f.Config = func() (gh.Config, error) { return setupMockOAuthConfig(t, ""), nil }
-
-	cmd := NewCmdAgentTask(f)
-	err := cmd.Execute()
-	require.Error(t, err)
 }
 
 func TestAliasAreSet(t *testing.T) {
