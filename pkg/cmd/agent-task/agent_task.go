@@ -22,7 +22,7 @@ func NewCmdAgentTask(f *cmdutil.Factory) *cobra.Command {
 		// This is required to run this root command. We want to
 		// run it to test PersistentPreRunE behavior.
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
+			return cmd.Help()
 		},
 	}
 	return cmd
