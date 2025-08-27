@@ -91,6 +91,11 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 				return cmdutil.FlagErrorf("must provide a cache key")
 			}
 
+			_, isID := parseCacheID(args[0])
+			if opts.Ref != "" && isID {
+				return cmdutil.FlagErrorf("--ref cannot be used with cache ID")
+			}
+
 			if !opts.DeleteAll && len(args) == 0 {
 				return cmdutil.FlagErrorf("must provide either cache id, cache key, or use --all")
 			}
@@ -177,7 +182,14 @@ func deleteCaches(opts *DeleteOptions, client *api.Client, repo ghrepo.Interface
 			var httpErr api.HTTPError
 			if errors.As(err, &httpErr) {
 				if httpErr.StatusCode == http.StatusNotFound {
-					err = fmt.Errorf("%s Could not find a cache matching %s in %s", cs.FailureIcon(), cache, repoName)
+					errMsg := fmt.Sprintf("%s Could not find a cache matching %s", cs.FailureIcon(), cache)
+
+					if opts.Ref != "" {
+						errMsg += fmt.Sprintf(" (with ref %s)", opts.Ref)
+					}
+
+					errMsg += fmt.Sprintf(" in %s", repoName)
+					err = errors.New(errMsg)
 				} else {
 					err = fmt.Errorf("%s Failed to delete cache: %w", cs.FailureIcon(), err)
 				}
