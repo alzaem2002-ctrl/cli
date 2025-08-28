@@ -59,6 +59,11 @@ func TestNewCmdDelete(t *testing.T) {
 			wantsErr: "--succeed-on-no-caches must be used in conjunction with --all",
 		},
 		{
+			name:     "key argument and delete all flag",
+			cli:      "cache-key --all",
+			wantsErr: "specify only one of cache id, cache key, or --all",
+		},
+		{
 			name:     "id argument and delete all flag",
 			cli:      "1 --all",
 			wantsErr: "specify only one of cache id, cache key, or --all",
