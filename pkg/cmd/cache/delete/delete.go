@@ -95,9 +95,8 @@ func NewCmdDelete(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 				return cmdutil.FlagErrorf("must provide either cache id, cache key, or use --all")
 			}
 
-			if len(args) > 0 {
-				_, isID := parseCacheID(args[0])
-				if opts.Ref != "" && isID {
+			if len(args) > 0 && opts.Ref != "" {
+				if _, ok := parseCacheID(args[0]); ok {
 					return cmdutil.FlagErrorf("--ref cannot be used with cache ID")
 				}
 			}
