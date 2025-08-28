@@ -235,7 +235,8 @@ func TestDeleteRun(t *testing.T) {
 					httpmock.QueryMatcher("DELETE", "repos/OWNER/REPO/actions/caches", url.Values{
 						"key": []string{"a weird＿cache+key"},
 					}),
-					httpmock.StatusStringResponse(204, ""),
+					// The response is a JSON object but we don't need it here.
+					httpmock.StatusStringResponse(200, "{}"),
 				)
 			},
 			tty:        true,
@@ -298,7 +299,8 @@ func TestDeleteRun(t *testing.T) {
 						"key": []string{"cache-key"},
 						"ref": []string{"refs/heads/main"},
 					}),
-					httpmock.StatusStringResponse(204, ""),
+					// The response is a JSON object but we don't need it here.
+					httpmock.StatusStringResponse(200, "{}"),
 				)
 			},
 			tty:        true,
@@ -313,7 +315,8 @@ func TestDeleteRun(t *testing.T) {
 						"key": []string{"cache-key"},
 						"ref": []string{"refs/heads/main"},
 					}),
-					httpmock.StatusStringResponse(204, ""),
+					// The response is a JSON object but we don't need it here.
+					httpmock.StatusStringResponse(200, "{}"),
 				)
 			},
 			tty:        false,
