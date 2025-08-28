@@ -167,6 +167,18 @@ func deleteCaches(opts *DeleteOptions, client *api.Client, repo ghrepo.Interface
 	base := fmt.Sprintf("repos/%s/actions/caches", repoName)
 
 	for _, cache := range toDelete {
+		// TODO(babakks): We use two different endpoints here which have different
+		// response schemas:
+		//
+		//   1. /repos/OWNER/REPO/actions/caches/ID (for deleting by cache ID)
+		//      - returns HTTP 204 (NO CONTENT) on success
+		//   2. /repos/OWNER/REPO/actions/caches?key=KEY[&ref=REF] (for deleting by cache key, and optionally a ref)
+		//      - returns HTTP 200 on success including information about the deleted caches
+		//
+		// So, if/when we decided to use the data in the response body we need
+		// to be careful with parsing. Probably want to split these API calls
+		// into separate functions.
+
 		path := ""
 		if id, ok := parseCacheID(cache); ok {
 			path = fmt.Sprintf("%s/%d", base, id)
