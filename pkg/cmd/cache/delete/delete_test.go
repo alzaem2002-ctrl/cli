@@ -323,34 +323,20 @@ func TestDeleteRun(t *testing.T) {
 			wantStdout: "",
 		},
 		{
-			name: "invalid ref value returns API error",
-			opts: DeleteOptions{Identifier: "cache-key", Ref: "invalid-ref"},
-			stubs: func(reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.QueryMatcher("DELETE", "repos/OWNER/REPO/actions/caches", url.Values{
-						"key": []string{"cache-key"},
-						"ref": []string{"invalid-ref"},
-					}),
-					httpmock.StatusStringResponse(422, `{"message": "Invalid ref format"}`),
-				)
-			},
-			wantErr:    true,
-			wantErrMsg: "X Failed to delete cache: HTTP 422 (https://api.github.com/repos/OWNER/REPO/actions/caches?key=cache-key&ref=invalid-ref)",
-		},
-		{
-			name: "cache key exists but ref not found",
-			opts: DeleteOptions{Identifier: "existing-cache-key", Ref: "refs/heads/nonexistent-branch"},
+			// As of now, the API returns HTTP 404 for invalid or non-existent refs.
+			name: "cache key exists but ref is invalid/not-found",
+			opts: DeleteOptions{Identifier: "existing-cache-key", Ref: "invalid-ref"},
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.QueryMatcher("DELETE", "repos/OWNER/REPO/actions/caches", url.Values{
 						"key": []string{"existing-cache-key"},
-						"ref": []string{"refs/heads/nonexistent-branch"},
+						"ref": []string{"invalid-ref"},
 					}),
 					httpmock.StatusStringResponse(404, ""),
 				)
 			},
 			wantErr:    true,
-			wantErrMsg: "X Could not find a cache matching existing-cache-key (with ref refs/heads/nonexistent-branch) in OWNER/REPO",
+			wantErrMsg: "X Could not find a cache matching existing-cache-key (with ref invalid-ref) in OWNER/REPO",
 		},
 	}
 
