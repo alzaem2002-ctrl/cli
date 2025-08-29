@@ -147,9 +147,9 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 		return nil, err
 	}
 
-	prs := make([]*api.PullRequest, 0, len(prNodeIds))
+	prMap := make(map[string]*api.PullRequest, len(prNodeIds))
 	for _, node := range resp.Nodes {
-		prs = append(prs, &api.PullRequest{
+		prMap[node.PullRequest.FullDatabaseID] = &api.PullRequest{
 			ID:             node.PullRequest.ID,
 			FullDatabaseID: node.PullRequest.FullDatabaseID,
 			Number:         node.PullRequest.Number,
@@ -162,21 +162,15 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 			ClosedAt:       node.PullRequest.ClosedAt,
 			MergedAt:       node.PullRequest.MergedAt,
 			Repository:     node.PullRequest.Repository,
-		})
+		}
 	}
 
 	newSessions := make([]*Session, 0, len(sessions))
-	// For each session, we need to attach the Pull Request
 	for _, s := range sessions {
-		// For each Pull Request, check if it matches the session
-		for _, pr := range prs {
-			if strconv.FormatInt(s.ResourceID, 10) == pr.FullDatabaseID {
-				newSessions = append(newSessions, &Session{
-					session:     s,
-					PullRequest: pr,
-				})
-			}
-		}
+		newSessions = append(newSessions, &Session{
+			session:     s,
+			PullRequest: prMap[strconv.FormatInt(s.ResourceID, 10)],
+		})
 	}
 
 	return newSessions, nil
