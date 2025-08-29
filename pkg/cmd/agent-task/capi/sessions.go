@@ -50,9 +50,6 @@ type sessionPullRequest struct {
 	ClosedAt  *time.Time
 	MergedAt  *time.Time
 
-	// Uncomment one of these to see error
-	// Author api.Author
-	// MergedBy   *api.Author
 	Repository *api.PRRepository
 }
 
