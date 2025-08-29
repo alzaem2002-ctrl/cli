@@ -58,7 +58,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		cmdutil.EnableRepoOverride(cmd, f)
 	}
 
-	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, "Maximum number of agent tasks to fetch")
+	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, fmt.Sprintf("Maximum number of agent tasks to fetch (default %d)", defaultLimit))
 
 	opts.CapiClient = func() (*capi.CAPIClient, error) {
 		cfg, err := opts.Config()
