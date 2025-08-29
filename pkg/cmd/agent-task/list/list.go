@@ -8,6 +8,7 @@ import (
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
+	"github.com/cli/cli/v2/pkg/cmd/agent-task/shared"
 	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -107,20 +108,7 @@ func listRun(opts *ListOptions) error {
 
 		// State
 		if tp.IsTTY() {
-			var stateColor func(string) string
-			switch s.State {
-			case "completed":
-				stateColor = cs.Green
-			case "canceled":
-				stateColor = cs.Muted
-			case "in_progress", "queued":
-				stateColor = cs.Yellow
-			case "failed":
-				stateColor = cs.Red
-			default:
-				stateColor = cs.Muted
-			}
-			tp.AddField(s.State, tableprinter.WithColor(stateColor))
+			tp.AddField(s.State, tableprinter.WithColor(shared.ColorFuncForSessionState(*s, cs)))
 		} else {
 			tp.AddField(s.State)
 		}
