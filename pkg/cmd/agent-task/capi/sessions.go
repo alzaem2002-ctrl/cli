@@ -139,7 +139,7 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 	}
 
 	host, _ := c.authCfg.DefaultHost()
-	err := apiClient.Query(host, "FetchPRs", &resp, map[string]any{
+	err := apiClient.Query(host, "FetchPRsForAgentTaskSessions", &resp, map[string]any{
 		"ids": prNodeIds,
 	})
 
