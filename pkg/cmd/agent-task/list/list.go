@@ -9,7 +9,7 @@ import (
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
-	"github.com/cli/cli/v2/pkg/cmd/pr/shared"
+	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -104,7 +104,7 @@ func listRun(opts *ListOptions) error {
 		// ID
 		tp.AddField(s.ID)
 		if tp.IsTTY() {
-			tp.AddField(pr, tableprinter.WithColor(cs.ColorFromString(shared.ColorForPRState(*s.PullRequest))))
+			tp.AddField(pr, tableprinter.WithColor(cs.ColorFromString(prShared.ColorForPRState(*s.PullRequest))))
 		} else {
 			tp.AddField(pr)
 		}
