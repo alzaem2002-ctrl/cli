@@ -3,7 +3,6 @@ package list
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/cli/cli/v2/internal/gh"
@@ -22,17 +21,15 @@ type ListOptions struct {
 	IO         *iostreams.IOStreams
 	Config     func() (gh.Config, error)
 	Limit      int
-	CapiClient capi.CapiClient
-	HttpClient func() (*http.Client, error)
+	CapiClient func() (*capi.CAPIClient, error)
 }
 
 // NewCmdList creates the list command
 func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:         f.IOStreams,
-		Config:     f.Config,
-		Limit:      defaultLimit,
-		HttpClient: f.HttpClient,
+		IO:     f.IOStreams,
+		Config: f.Config,
+		Limit:  defaultLimit,
 	}
 
 	cmd := &cobra.Command{
@@ -40,24 +37,24 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Short: "List agent tasks",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := f.Config()
-			if err != nil {
-				return err
-			}
-
-			httpClient, err := opts.HttpClient()
-			if err != nil {
-				return err
-			}
-
-			authCfg := cfg.Authentication()
-			opts.CapiClient = capi.NewCAPIClient(httpClient, authCfg)
-
 			if runF != nil {
 				return runF(opts)
 			}
 			return listRun(opts)
 		},
+	}
+
+	opts.CapiClient = func() (*capi.CAPIClient, error) {
+		cfg, err := opts.Config()
+		if err != nil {
+			return nil, err
+		}
+		httpClient, err := f.HttpClient()
+		if err != nil {
+			return nil, err
+		}
+		authCfg := cfg.Authentication()
+		return capi.NewCAPIClient(httpClient, authCfg), nil
 	}
 
 	return cmd
@@ -68,7 +65,10 @@ func listRun(opts *ListOptions) error {
 		opts.Limit = defaultLimit
 	}
 
-	capiClient := opts.CapiClient
+	capiClient, err := opts.CapiClient()
+	if err != nil {
+		return err
+	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching agent tasks...")
 	defer opts.IO.StopProgressIndicator()
