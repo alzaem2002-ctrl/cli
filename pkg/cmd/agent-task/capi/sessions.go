@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"time"
@@ -14,6 +15,8 @@ import (
 	"github.com/cli/cli/v2/api"
 	"github.com/vmihailenco/msgpack/v5"
 )
+
+const defaultSessionsPerPage = 50
 
 // session is an in-flight agent task
 type session struct {
@@ -66,7 +69,7 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 
 	var sessions []session
 	page := 1
-	perPage := 50
+	perPage := defaultSessionsPerPage
 
 	for {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
@@ -111,6 +114,63 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 		return nil, err
 	}
 
+	return result, nil
+}
+
+// ListSessionsForRepo lists agent sessions for a specific repository identified by owner/name up to limit.
+func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo string, limit int) ([]*Session, error) {
+	if owner == "" || repo == "" {
+		return nil, fmt.Errorf("owner and repo are required")
+	}
+
+	url := fmt.Sprintf("%s/agents/sessions/nwo/%s/%s", baseCAPIURL, url.PathEscape(owner), url.PathEscape(repo))
+
+	var sessions []session
+	page := 1
+	perPage := defaultSessionsPerPage
+
+	for {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+		if err != nil {
+			return nil, err
+		}
+
+		q := req.URL.Query()
+		q.Set("page_size", strconv.Itoa(perPage))
+		q.Set("page_number", strconv.Itoa(page))
+		req.URL.RawQuery = q.Encode()
+
+		res, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to list sessions: %s", res.Status)
+		}
+		var response struct {
+			Sessions []session `json:"sessions"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
+		}
+		if len(response.Sessions) == 0 || len(sessions) >= limit {
+			break
+		}
+		sessions = append(sessions, response.Sessions...)
+		page++
+	}
+
+	// Drop any above the limit
+	if len(sessions) > limit {
+		sessions = sessions[:limit]
+	}
+
+	// Hydrate the result with pull request data.
+	result, err := c.hydrateSessionPullRequests(sessions)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
