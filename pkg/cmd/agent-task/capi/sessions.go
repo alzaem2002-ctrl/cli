@@ -191,15 +191,11 @@ func generatePullRequestNodeID(repoID, pullRequestID int64) string {
 	encoder := msgpack.NewEncoder(&buf)
 	encoder.UseCompactInts(true)
 
-	// Encode the parts
-	err := encoder.Encode(parts)
-	if err != nil {
+	if err := encoder.Encode(parts); err != nil {
 		panic(err)
 	}
 
-	// Use URL-safe Base64 encoding without padding
 	encoded := base64.RawURLEncoding.EncodeToString(buf.Bytes())
 
-	// Return with the PR_ prefix
 	return "PR_" + encoded
 }
