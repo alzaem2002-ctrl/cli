@@ -105,13 +105,13 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 		sessions = sessions[:limit]
 	}
 
-	// Hydrate the Sessions with pull request data.
-	Sessions, err := c.hydrateSessionPullRequests(sessions)
+	// Hydrate the result with pull request data.
+	result, err := c.hydrateSessionPullRequests(sessions)
 	if err != nil {
 		return nil, err
 	}
 
-	return Sessions, nil
+	return result, nil
 }
 
 // hydrateSessionPullRequests hydrates pull request information in sessions
