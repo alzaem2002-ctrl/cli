@@ -86,20 +86,13 @@ func listRun(opts *ListOptions) error {
 	cs := opts.IO.ColorScheme()
 	tp := tableprinter.New(opts.IO, tableprinter.WithHeader("Session ID", "Pull Request", "Repo", "Session State", "Created"))
 	for _, s := range sessions {
-		pr := ""
-		if s.ResourceType == "pull" && s.PullRequest.Number != 0 {
-			pr = fmt.Sprintf("#%d", s.PullRequest.Number)
-		} else {
+		if s.ResourceType != "pull" || s.PullRequest == nil || s.PullRequest.Repository == nil {
 			// Skip these sessions in case they happen, for now.
 			continue
 		}
-		repo := ""
-		if s.PullRequest.Repository != nil && s.PullRequest.Repository.NameWithOwner != "" {
-			repo = s.PullRequest.Repository.NameWithOwner
-		} else {
-			// Skip these sessions in case they happen, for now.
-			continue
-		}
+
+		pr := fmt.Sprintf("#%d", s.PullRequest.Number)
+		repo := s.PullRequest.Repository.NameWithOwner
 
 		// ID
 		tp.AddField(s.ID)
