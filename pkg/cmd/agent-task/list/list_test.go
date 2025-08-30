@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/config"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
@@ -44,6 +45,14 @@ func TestNewCmdList(t *testing.T) {
 			args:    "--limit 0",
 			wantErr: "invalid limit: 0",
 		},
+		{
+			name: "web flag",
+			args: "--web",
+			wantOpts: ListOptions{
+				Limit: defaultLimit,
+				Web:   true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -62,6 +71,7 @@ func TestNewCmdList(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOpts.Limit, gotOpts.Limit)
+			assert.Equal(t, tt.wantOpts.Web, gotOpts.Web)
 		})
 	}
 }
@@ -72,14 +82,17 @@ func Test_listRun(t *testing.T) {
 	createdAt := sixHoursAgo.Format(time.RFC3339)
 
 	tests := []struct {
-		name        string
-		tty         bool
-		stubs       func(*httpmock.Registry)
-		baseRepo    ghrepo.Interface
-		baseRepoErr error
-		limit       int
-		wantOut     string
-		wantErr     error
+		name           string
+		tty            bool
+		stubs          func(*httpmock.Registry)
+		baseRepo       ghrepo.Interface
+		baseRepoErr    error
+		limit          int
+		web            bool
+		wantOut        string
+		wantErr        error
+		wantStderr     string
+		wantBrowserURL string
 	}{
 		{
 			name:    "no sessions",
@@ -166,6 +179,14 @@ func Test_listRun(t *testing.T) {
 			r6          #306          OWNER/REPO  mystery        about 6 hours ago
 			`),
 		},
+		{
+			name:           "web mode",
+			tty:            true,
+			web:            true,
+			wantOut:        "",
+			wantStderr:     "Opening https://github.com/copilot/agents in your browser.\n",
+			wantBrowserURL: "https://github.com/copilot/agents",
+		},
 	}
 
 	for _, tt := range tests {
@@ -179,16 +200,28 @@ func Test_listRun(t *testing.T) {
 			cfg.Set("github.com", "oauth_token", "OTOKEN")
 			authCfg := cfg.Authentication()
 
-			ios, _, stdout, _ := iostreams.Test()
+			ios, _, stdout, stderr := iostreams.Test()
 			ios.SetStdoutTTY(tt.tty)
+
+			var br *browser.Stub
+			if tt.web {
+				br = &browser.Stub{}
+			}
 
 			httpClient := &http.Client{Transport: reg}
 			capiClient := capi.NewCAPIClient(httpClient, authCfg)
 			opts := &ListOptions{
-				IO:         ios,
-				Config:     func() (gh.Config, error) { return cfg, nil },
-				Limit:      tt.limit,
-				CapiClient: func() (*capi.CAPIClient, error) { return capiClient, nil },
+				IO:      ios,
+				Config:  func() (gh.Config, error) { return cfg, nil },
+				Limit:   tt.limit,
+				Web:     tt.web,
+				Browser: br,
+				CapiClient: func() (*capi.CAPIClient, error) {
+					if tt.web {
+						panic("CapiClient should not be invoked when --web is set")
+					}
+					return capiClient, nil
+				},
 			}
 			if tt.baseRepo != nil || tt.baseRepoErr != nil {
 				baseRepo := tt.baseRepo
@@ -205,6 +238,14 @@ func Test_listRun(t *testing.T) {
 			}
 			got := stdout.String()
 			require.Equal(t, tt.wantOut, got)
+			if tt.wantStderr != "" {
+				require.Equal(t, tt.wantStderr, stderr.String())
+			} else {
+				require.Equal(t, "", stderr.String())
+			}
+			if tt.web {
+				br.Verify(t, tt.wantBrowserURL)
+			}
 			reg.Verify(t)
 		})
 	}

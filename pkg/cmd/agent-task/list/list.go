@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/tableprinter"
+	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/shared"
 	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
@@ -25,14 +27,17 @@ type ListOptions struct {
 	Limit      int
 	CapiClient func() (*capi.CAPIClient, error)
 	BaseRepo   func() (ghrepo.Interface, error)
+	Web        bool
+	Browser    browser.Browser
 }
 
 // NewCmdList creates the list command
 func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:     f.IOStreams,
-		Config: f.Config,
-		Limit:  defaultLimit,
+		IO:      f.IOStreams,
+		Config:  f.Config,
+		Limit:   defaultLimit,
+		Browser: f.Browser,
 	}
 
 	cmd := &cobra.Command{
@@ -59,6 +64,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	}
 
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, fmt.Sprintf("Maximum number of agent tasks to fetch (default %d)", defaultLimit))
+	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open agent tasks in the browser")
 
 	opts.CapiClient = func() (*capi.CAPIClient, error) {
 		cfg, err := opts.Config()
@@ -77,6 +83,14 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 }
 
 func listRun(opts *ListOptions) error {
+	if opts.Web {
+		const webURL = "https://github.com/copilot/agents"
+		if opts.IO.IsStdoutTTY() {
+			fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
+		}
+		return opts.Browser.Browse(webURL)
+	}
+
 	if opts.Limit <= 0 {
 		opts.Limit = defaultLimit
 	}
