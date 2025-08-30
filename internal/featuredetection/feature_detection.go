@@ -16,6 +16,7 @@ type Detector interface {
 	PullRequestFeatures() (PullRequestFeatures, error)
 	RepositoryFeatures() (RepositoryFeatures, error)
 	ProjectsV1() gh.ProjectsV1Support
+	SearchFeatures() (SearchFeatures, error)
 }
 
 type IssueFeatures struct {
@@ -53,6 +54,48 @@ var allRepositoryFeatures = RepositoryFeatures{
 	PullRequestTemplateQuery: true,
 	VisibilityField:          true,
 	AutoMerge:                true,
+}
+
+type SearchFeatures struct {
+	// AdvancedIssueSearch indicates whether the host supports advanced issue
+	// search via API calls.
+	AdvancedIssueSearchAPI bool
+	// AdvancedIssueSearchOptIn indicates whether the host supports advanced
+	// issue search as an opt-in feature, which has to be explicitly enabled in
+	// API calls.
+	AdvancedIssueSearchAPIOptIn bool
+	// AdvancedIssueSearchWebInIssuesTab indicates whether the host supports
+	// advanced issue search syntax in the Issues tab of repositories.
+	AdvancedIssueSearchWebInIssuesTab bool
+
+	// TODO(babakks): when advanced issue search is supported in Pull Requests
+	// tab, or in global search we can introduce more fields to reflect the
+	// support status
+}
+
+// advancedIssueSearchNotSupported mimics GHE <3.18 where advanced issue search
+// is either not supported or is not meant to be used due to not being stable
+// enough (i.e. in preview).
+var advancedIssueSearchNotSupported = SearchFeatures{
+	AdvancedIssueSearchAPI: false,
+}
+
+// advancedIssueSearchSupportedAsOptIn mimics github.com and GHE >=3.18 before
+// the full cleanup of temp types (i.e. ISSUE_ADVANCED search type is still
+// present on the schema).
+var advancedIssueSearchSupportedAsOptIn = SearchFeatures{
+	AdvancedIssueSearchAPI:            true,
+	AdvancedIssueSearchAPIOptIn:       true,
+	AdvancedIssueSearchWebInIssuesTab: true,
+}
+
+// advancedIssueSearchSupportedAsOnlyBackend mimics github.com and GHE >=3.18
+// after the full cleanup of temp types (i.e. ISSUE_ADVANCED search type is
+// removed from the schema).
+var advancedIssueSearchSupportedAsOnlyBackend = SearchFeatures{
+	AdvancedIssueSearchAPI:            true,
+	AdvancedIssueSearchAPIOptIn:       false,
+	AdvancedIssueSearchWebInIssuesTab: true,
 }
 
 type detector struct {
@@ -223,6 +266,92 @@ func (d *detector) ProjectsV1() gh.ProjectsV1Support {
 	}
 
 	return gh.ProjectsV1Unsupported
+}
+
+const (
+	enterpriseAdvancedIssueSearchSupport = "3.18.0"
+)
+
+func (d *detector) SearchFeatures() (SearchFeatures, error) {
+	// Regarding the release of advanced issue search (AIS, for short), there
+	// are three time spans/periods:
+	//
+	// 1. Pre-deprecation (< 4 Sep): where both legacy search and AIS are available
+	//    - GraphQL: `ISSUE` and `ISSUE_ADVANCED` search types in GraphQL behave differently
+	//    - REST:    `advance_search=true` query parameter can be used to switch to AIS
+	// 2. Deprecation (>= 4 Sep): only AIS available
+	//    - GraphQL: `ISSUE` and `ISSUE_ADVANCED` search types in GraphQL behave the same (AIS)
+	//    - REST:    `advance_search` query parameter has no effect (AIS)
+	// 3. Cleanup (>= TBD): only AIS available
+	//    - GraphQL: `ISSUE` search type in GraphQL is the only available option (AIS)
+	//    - REST:    `advance_search` query parameter has no effect (AIS)
+	//
+	// Since there's no schema-wise difference between pre-deprecation and
+	// deprecation periods (i.e. `ISSUE_ADVANCED` is available during both),
+	// we cannot figure out the exact time period. The consensus is to to use
+	// the advanced search syntax during both periods.
+
+	var feature SearchFeatures
+
+	if ghauth.IsEnterprise(d.host) {
+		enterpriseAISSupportVersion, err := version.NewVersion(enterpriseAdvancedIssueSearchSupport)
+		if err != nil {
+			return SearchFeatures{}, err
+		}
+
+		hostVersion, err := resolveEnterpriseVersion(d.httpClient, d.host)
+		if err != nil {
+			return SearchFeatures{}, err
+		}
+
+		if hostVersion.GreaterThanOrEqual(enterpriseAISSupportVersion) {
+			// As of August 2025, advanced issue search is going to be available
+			// on GHES 3.18+, including Issues tabs in repositories.
+			feature.AdvancedIssueSearchAPI = true
+			feature.AdvancedIssueSearchWebInIssuesTab = true
+
+			// TODO(babakks): when the advanced search syntax is supported in
+			// global search or Pull Requests tabs (in repositories), we can
+			// enable the corresponding fields.
+		}
+	} else {
+		// As of August 2025, advanced issue search is available on github.com,
+		// including Issues tabs in repositories.
+		feature.AdvancedIssueSearchAPI = true
+		feature.AdvancedIssueSearchWebInIssuesTab = true
+
+		// TODO(babakks): when the advanced search syntax is supported in global
+		// search or Pull Requests tabs (in repositories), we can enable the
+		// corresponding fields.
+	}
+
+	if !feature.AdvancedIssueSearchAPI {
+		return feature, nil
+	}
+
+	var searchTypeFeatureDetection struct {
+		SearchType struct {
+			EnumValues []struct {
+				Name string
+			} `graphql:"enumValues(includeDeprecated: true)"`
+		} `graphql:"SearchType: __type(name: \"SearchType\")"`
+	}
+
+	gql := api.NewClientFromHTTP(d.httpClient)
+	if err := gql.Query(d.host, "SearchType_enumValues", &searchTypeFeatureDetection, nil); err != nil {
+		return SearchFeatures{}, err
+	}
+
+	for _, enumValue := range searchTypeFeatureDetection.SearchType.EnumValues {
+		if enumValue.Name == "ISSUE_ADVANCED" {
+			// As long as ISSUE_ADVANCED is present on the schema, we should
+			// explicitly opt-in when making API calls.
+			feature.AdvancedIssueSearchAPIOptIn = true
+			break
+		}
+	}
+
+	return feature, nil
 }
 
 func resolveEnterpriseVersion(httpClient *http.Client, host string) (*version.Version, error) {
