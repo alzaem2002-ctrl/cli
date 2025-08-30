@@ -159,10 +159,12 @@ func Test_listRun(t *testing.T) {
 			wantOut:  "no agent tasks found\n",
 		},
 		{
-			name:        "repo resolution error surfaces",
+			name:        "repo resolution error does not surface",
 			tty:         true,
 			baseRepoErr: errors.New("ambiguous repo"),
-			wantErr:     errors.New("ambiguous repo"),
+			wantErr:     nil,
+			stubs:       func(reg *httpmock.Registry) { registerEmptySessionsMock(reg) },
+			wantOut:     "no agent tasks found\n",
 		},
 		{
 			name:     "repo scoped many sessions (tty)",
