@@ -90,11 +90,13 @@ func listRun(opts *ListOptions) error {
 	defer opts.IO.StopProgressIndicator()
 	var sessions []*capi.Session
 	ctx := context.Background()
+
+	var repo ghrepo.Interface
 	if opts.BaseRepo != nil {
-		repo, err := opts.BaseRepo()
-		if err != nil {
-			return err
-		}
+		repo, _ = opts.BaseRepo()
+	}
+
+	if repo != nil && repo.RepoOwner() != "" && repo.RepoName() != "" {
 		sessions, err = capiClient.ListSessionsForRepo(ctx, repo.RepoOwner(), repo.RepoName(), opts.Limit)
 		if err != nil {
 			return err
