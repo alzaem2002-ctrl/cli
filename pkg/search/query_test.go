@@ -78,6 +78,69 @@ func TestQueryString(t *testing.T) {
 	}
 }
 
+func TestAdvancedIssueSearchString(t *testing.T) {
+	tests := []struct {
+		name  string
+		query Query
+		out   string
+	}{
+		{
+			name: "quotes keywords",
+			query: Query{
+				Keywords: []string{"quote keywords"},
+			},
+			out: `"quote keywords"`,
+		},
+		{
+			name: "quotes keywords that are qualifiers",
+			query: Query{
+				Keywords: []string{"quote:keywords", "quote:multiword keywords"},
+			},
+			out: `quote:keywords quote:"multiword keywords"`,
+		},
+		{
+			name: "quotes qualifiers",
+			query: Query{
+				Qualifiers: Qualifiers{
+					Label: []string{"quote qualifier"},
+				},
+			},
+			out: `label:"quote qualifier"`,
+		},
+		{
+			name: "special qualifiers when used once",
+			query: Query{
+				Keywords: []string{"keyword"},
+				Qualifiers: Qualifiers{
+					Repo: []string{"foo/bar"},
+					Is:   []string{"private"},
+					User: []string{"johndoe"},
+					In:   []string{"title"},
+				},
+			},
+			out: `keyword in:title is:private repo:foo/bar user:johndoe`,
+		},
+		{
+			name: "special qualifiers are OR-ed when used multiple times",
+			query: Query{
+				Keywords: []string{"keyword"},
+				Qualifiers: Qualifiers{
+					Repo: []string{"foo/bar", "foo/baz"},
+					Is:   []string{"private", "public", "foo"}, // "foo" is to ensure only "public" and "private" are grouped
+					User: []string{"johndoe", "janedoe"},
+					In:   []string{"title", "body", "comments", "foo"}, // "foo" is to ensure only "title", "body", and "comments" are grouped
+				},
+			},
+			out: `keyword (in:title OR in:body OR in:comments) in:foo (is:private OR is:public) is:foo (repo:foo/bar OR repo:foo/baz) (user:johndoe OR user:janedoe)`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.out, tt.query.AdvancedIssueSearchString())
+		})
+	}
+}
+
 func TestQualifiersMap(t *testing.T) {
 	tests := []struct {
 		name       string
