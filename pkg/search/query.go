@@ -87,8 +87,20 @@ type Qualifiers struct {
 }
 
 // String returns the string representation of the query which can be used with
-// search API (except for advanced issue search), global search GUI (i.e.
-// github.com/search), or Pull Requests tab (in repositories).
+// the legacy search backend, which is used in global search GUI (i.e.
+// github.com/search), or Pull Requests tab (in repositories). Note that this is
+// a common query format that can be used to search for various entity types
+// (e.g., issues, commits, repositories, etc)
+//
+// With the legacy search backend, the query is made of concatenating keywords
+// and qualifiers with whitespaces. Note that at the backend side, most of the
+// repeated qualifiers are AND-ed, while a handful of qualifiers (i.e.
+// is:private/public, repo:, user:, or in:) are implicitly OR-ed. The legacy
+// search backend does not support the advanced syntax which allows for nested
+// queries and explicit OR operators.
+//
+// At the moment, the advanced search syntax is only available for searching
+// issues, and it's called advanced issue search.
 func (q Query) String() string {
 	qualifiers := formatQualifiers(q.Qualifiers, nil)
 	keywords := formatKeywords(q.Keywords)
@@ -100,6 +112,17 @@ func (q Query) String() string {
 // compatible with the advanced issue search syntax. The query can be used in
 // Issues tab (of repositories) and the Issues dashboard (i.e.
 // github.com/issues).
+//
+// As the name suggests, this query syntax is only supported for searching
+// issues (i.e. issues and PRs). The advanced syntax allows nested queries and
+// explicit OR operators. Unlike the legacy search backend, the advanced issue
+// search does not OR repeated instances of special qualifiers (i.e.
+// is:private/public, repo:, user:, or in:).
+//
+// To keep the gh experience consistent and backward-compatible, the mentioned
+// special qualifiers are explicitly grouped and combined with an OR operator.
+//
+// The advanced syntax is documented at https://github.blog/changelog/2025-03-06-github-issues-projects-api-support-for-issues-advanced-search-and-more
 func (q Query) AdvancedIssueSearchString() string {
 	qualifiers := formatQualifiers(q.Qualifiers, formatAdvancedIssueSearch)
 	keywords := formatKeywords(q.Keywords)
