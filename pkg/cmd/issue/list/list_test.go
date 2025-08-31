@@ -191,43 +191,69 @@ func TestIssueList_disabledIssues(t *testing.T) {
 }
 
 func TestIssueList_web(t *testing.T) {
-	ios, _, stdout, stderr := iostreams.Test()
-	ios.SetStdoutTTY(true)
-	ios.SetStderrTTY(true)
-	browser := &browser.Stub{}
-
-	reg := &httpmock.Registry{}
-	defer reg.Verify(t)
-
-	_, cmdTeardown := run.Stub()
-	defer cmdTeardown(t)
-
-	err := listRun(&ListOptions{
-		IO:      ios,
-		Browser: browser,
-		HttpClient: func() (*http.Client, error) {
-			return &http.Client{Transport: reg}, nil
+	tests := []struct {
+		name     string
+		detector fd.Detector
+	}{
+		{
+			name:     "advanced issue search not supported",
+			detector: fd.AdvancedIssueSearchUnsupported(),
 		},
-		BaseRepo: func() (ghrepo.Interface, error) {
-			return ghrepo.New("OWNER", "REPO"), nil
+		{
+			name:     "advanced issue search supported as opt-in",
+			detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 		},
-		Detector:     fd.AdvancedIssueSearchUnsupported(),
-		WebMode:      true,
-		State:        "all",
-		Assignee:     "peter",
-		Author:       "john",
-		Labels:       []string{"bug", "docs"},
-		Mention:      "frank",
-		Milestone:    "v1.1",
-		LimitResults: 10,
-	})
-	if err != nil {
-		t.Errorf("error running command `issue list` with `--web` flag: %v", err)
+		{
+			name:     "advanced issue search supported as only backend",
+			detector: fd.AdvancedIssueSearchSupportedAsOnlyBackend(),
+		},
 	}
 
-	assert.Equal(t, "", stdout.String())
-	assert.Equal(t, "Opening https://github.com/OWNER/REPO/issues in your browser.\n", stderr.String())
-	browser.Verify(t, "https://github.com/OWNER/REPO/issues?q=assignee%3Apeter+author%3Ajohn+label%3Abug+label%3Adocs+mentions%3Afrank+milestone%3Av1.1+type%3Aissue")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ios, _, stdout, stderr := iostreams.Test()
+			ios.SetStdoutTTY(true)
+			ios.SetStderrTTY(true)
+			browser := &browser.Stub{}
+
+			reg := &httpmock.Registry{}
+			defer reg.Verify(t)
+
+			_, cmdTeardown := run.Stub()
+			defer cmdTeardown(t)
+
+			opts := &ListOptions{
+				IO:      ios,
+				Browser: browser,
+				HttpClient: func() (*http.Client, error) {
+					return &http.Client{Transport: reg}, nil
+				},
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+				Detector:     tt.detector,
+				WebMode:      true,
+				State:        "all",
+				Assignee:     "peter",
+				Author:       "john",
+				Labels:       []string{"bug", "docs"},
+				Mention:      "frank",
+				Milestone:    "v1.1",
+				LimitResults: 10,
+			}
+
+			err := listRun(opts)
+			require.NoError(t, err)
+
+			assert.Equal(t, "", stdout.String())
+			assert.Equal(t, "Opening https://github.com/OWNER/REPO/issues in your browser.\n", stderr.String())
+
+			// Since no repeated usage of special search qualifiers is possible
+			// with our current implementation, we can assert against the same
+			// URL for both search backend (i.e. legacy and advanced issue search).
+			browser.Verify(t, "https://github.com/OWNER/REPO/issues?q=assignee%3Apeter+author%3Ajohn+label%3Abug+label%3Adocs+mentions%3Afrank+milestone%3Av1.1+type%3Aissue")
+		})
+	}
 }
 
 func Test_issueList(t *testing.T) {
@@ -246,9 +272,8 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "default",
 			args: args{
-				detector: fd.AdvancedIssueSearchUnsupported(),
-				limit:    30,
-				repo:     ghrepo.New("OWNER", "REPO"),
+				limit: 30,
+				repo:  ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity: "issue",
 					State:  "open",
@@ -274,7 +299,7 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "milestone by number",
 			args: args{
-				detector: fd.AdvancedIssueSearchUnsupported(),
+				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
@@ -306,7 +331,7 @@ func Test_issueList(t *testing.T) {
 							"repo":  "REPO",
 							"limit": float64(30),
 							"query": "milestone:1.x repo:OWNER/REPO state:open type:issue",
-							"type":  "ISSUE",
+							"type":  "ISSUE_ADVANCED",
 						}, params)
 					}))
 			},
@@ -314,7 +339,7 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "milestone by title",
 			args: args{
-				detector: fd.AdvancedIssueSearchUnsupported(),
+				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
@@ -339,7 +364,7 @@ func Test_issueList(t *testing.T) {
 							"repo":  "REPO",
 							"limit": float64(30),
 							"query": "milestone:1.x repo:OWNER/REPO state:open type:issue",
-							"type":  "ISSUE",
+							"type":  "ISSUE_ADVANCED",
 						}, params)
 					}))
 			},
@@ -347,9 +372,8 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "@me syntax",
 			args: args{
-				detector: fd.AdvancedIssueSearchUnsupported(),
-				limit:    30,
-				repo:     ghrepo.New("OWNER", "REPO"),
+				limit: 30,
+				repo:  ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity:   "issue",
 					State:    "open",
@@ -384,7 +408,7 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "@me with search",
 			args: args{
-				detector: fd.AdvancedIssueSearchUnsupported(),
+				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
@@ -412,7 +436,7 @@ func Test_issueList(t *testing.T) {
 							"repo":  "REPO",
 							"limit": float64(30),
 							"query": "auth bug assignee:@me author:@me mentions:@me repo:OWNER/REPO state:open type:issue",
-							"type":  "ISSUE",
+							"type":  "ISSUE_ADVANCED",
 						}, params)
 					}))
 			},
@@ -420,7 +444,7 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "with labels",
 			args: args{
-				detector: fd.AdvancedIssueSearchUnsupported(),
+				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
@@ -445,7 +469,7 @@ func Test_issueList(t *testing.T) {
 							"repo":  "REPO",
 							"limit": float64(30),
 							"query": `label:"one world" label:hello repo:OWNER/REPO state:open type:issue`,
-							"type":  "ISSUE",
+							"type":  "ISSUE_ADVANCED",
 						}, params)
 					}))
 			},
@@ -516,7 +540,7 @@ func TestIssueList_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	issuesAndTotalCount, err := issueList(
 		client,
-		fd.AdvancedIssueSearchUnsupported(),
+		nil,
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{
 			Entity: "issue",
@@ -582,7 +606,7 @@ func TestIssueList_Search_withProjectItems(t *testing.T) {
 			require.Equal(t, map[string]interface{}{
 				"owner": "OWNER",
 				"repo":  "REPO",
-				"type":  "ISSUE",
+				"type":  "ISSUE_ADVANCED",
 				"limit": float64(30),
 				"query": "just used to force the search API branch repo:OWNER/REPO type:issue",
 			}, params)
@@ -591,7 +615,7 @@ func TestIssueList_Search_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	issuesAndTotalCount, err := issueList(
 		client,
-		fd.AdvancedIssueSearchUnsupported(),
+		fd.AdvancedIssueSearchSupportedAsOptIn(),
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{
 			Entity: "issue",

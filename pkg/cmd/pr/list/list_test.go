@@ -80,7 +80,7 @@ func TestPRList(t *testing.T) {
 
 	http.Register(httpmock.GraphQL(`query PullRequestList\b`), httpmock.FileResponse("./fixtures/prList.json"))
 
-	output, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, "")
+	output, err := runCommand(http, nil, true, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestPRList_nontty(t *testing.T) {
 
 	http.Register(httpmock.GraphQL(`query PullRequestList\b`), httpmock.FileResponse("./fixtures/prList.json"))
 
-	output, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), false, "")
+	output, err := runCommand(http, nil, false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestPRList_filtering(t *testing.T) {
 			assert.Equal(t, []interface{}{"OPEN", "CLOSED", "MERGED"}, params["state"].([]interface{}))
 		}))
 
-	output, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, `-s all`)
+	output, err := runCommand(http, nil, true, `-s all`)
 	assert.Error(t, err)
 
 	assert.Equal(t, "", output.String())
@@ -141,7 +141,7 @@ func TestPRList_filteringRemoveDuplicate(t *testing.T) {
 		httpmock.GraphQL(`query PullRequestList\b`),
 		httpmock.FileResponse("./fixtures/prListWithDuplicates.json"))
 
-	output, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, "")
+	output, err := runCommand(http, nil, true, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestPRList_filteringClosed(t *testing.T) {
 			assert.Equal(t, []interface{}{"CLOSED", "MERGED"}, params["state"].([]interface{}))
 		}))
 
-	_, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, `-s closed`)
+	_, err := runCommand(http, nil, true, `-s closed`)
 	assert.Error(t, err)
 }
 
@@ -178,7 +178,7 @@ func TestPRList_filteringHeadBranch(t *testing.T) {
 			assert.Equal(t, interface{}("bug-fix"), params["headBranch"])
 		}))
 
-	_, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, `-H bug-fix`)
+	_, err := runCommand(http, nil, true, `-H bug-fix`)
 	assert.Error(t, err)
 }
 
@@ -192,7 +192,7 @@ func TestPRList_filteringAssignee(t *testing.T) {
 			assert.Equal(t, `assignee:hubot base:develop is:merged label:"needs tests" repo:OWNER/REPO type:pr`, params["q"].(string))
 		}))
 
-	_, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, `-s merged -l "needs tests" -a hubot -B develop`)
+	_, err := runCommand(http, fd.AdvancedIssueSearchSupportedAsOptIn(), true, `-s merged -l "needs tests" -a hubot -B develop`)
 	assert.Error(t, err)
 }
 
@@ -225,7 +225,7 @@ func TestPRList_filteringDraft(t *testing.T) {
 					assert.Equal(t, test.expectedQuery, params["q"].(string))
 				}))
 
-			_, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, test.cli)
+			_, err := runCommand(http, fd.AdvancedIssueSearchSupportedAsOptIn(), true, test.cli)
 			assert.Error(t, err)
 		})
 	}
@@ -270,7 +270,7 @@ func TestPRList_filteringAuthor(t *testing.T) {
 					assert.Equal(t, test.expectedQuery, params["q"].(string))
 				}))
 
-			_, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, test.cli)
+			_, err := runCommand(http, fd.AdvancedIssueSearchSupportedAsOptIn(), true, test.cli)
 			assert.Error(t, err)
 		})
 	}
@@ -279,7 +279,7 @@ func TestPRList_filteringAuthor(t *testing.T) {
 func TestPRList_withInvalidLimitFlag(t *testing.T) {
 	http := initFakeHTTP()
 	defer http.Verify(t)
-	_, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, `--limit=0`)
+	_, err := runCommand(http, nil, true, `--limit=0`)
 	assert.EqualError(t, err, "invalid value for --limit: 0")
 }
 
@@ -314,7 +314,7 @@ func TestPRList_web(t *testing.T) {
 			_, cmdTeardown := run.Stub()
 			defer cmdTeardown(t)
 
-			output, err := runCommand(http, fd.AdvancedIssueSearchUnsupported(), true, "--web "+test.cli)
+			output, err := runCommand(http, nil, true, "--web "+test.cli)
 			if err != nil {
 				t.Errorf("error running command `pr list` with `--web` flag: %v", err)
 			}
@@ -372,7 +372,7 @@ func TestPRList_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	prsAndTotalCount, err := listPullRequests(
 		client,
-		fd.AdvancedIssueSearchUnsupported(),
+		nil,
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{
 			Entity: "pr",
@@ -436,14 +436,14 @@ func TestPRList_Search_withProjectItems(t *testing.T) {
 			require.Equal(t, map[string]interface{}{
 				"limit": float64(30),
 				"q":     "just used to force the search API branch repo:OWNER/REPO state:open type:pr",
-				"type":  "ISSUE",
+				"type":  "ISSUE_ADVANCED",
 			}, params)
 		}))
 
 	client := &http.Client{Transport: reg}
 	prsAndTotalCount, err := listPullRequests(
 		client,
-		fd.AdvancedIssueSearchUnsupported(),
+		fd.AdvancedIssueSearchSupportedAsOptIn(),
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{
 			Entity: "pr",
