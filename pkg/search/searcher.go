@@ -263,11 +263,18 @@ func (s searcher) search(query Query, result interface{}) (*http.Response, error
 	return resp, nil
 }
 
+// URL returns URL to the global search in web GUI (i.e. github.com/search).
 func (s searcher) URL(query Query) string {
 	path := fmt.Sprintf("https://%s/search", s.host)
 	qs := url.Values{}
 	qs.Set("type", query.Kind)
+
+	// TODO(babakks): currently, the global search GUI does not support the
+	// advanced issue search syntax (even for the issues/PRs tab on the
+	// sidebar). When the GUI is updated, we can use feature detection, and, if
+	// available, use the advanced search syntax.
 	qs.Set("q", query.String())
+
 	if query.Order != "" {
 		qs.Set(orderKey, query.Order)
 	}
