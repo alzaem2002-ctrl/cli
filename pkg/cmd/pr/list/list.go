@@ -10,6 +10,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/browser"
+	fd "github.com/cli/cli/v2/internal/featuredetection"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/internal/text"
@@ -24,6 +25,7 @@ type ListOptions struct {
 	IO         *iostreams.IOStreams
 	BaseRepo   func() (ghrepo.Interface, error)
 	Browser    browser.Browser
+	Detector   fd.Detector
 
 	WebMode      bool
 	LimitResults int
@@ -142,6 +144,11 @@ func listRun(opts *ListOptions) error {
 		return err
 	}
 
+	if opts.Detector == nil {
+		cachedClient := api.NewCachedHTTPClient(httpClient, time.Hour*24)
+		opts.Detector = fd.NewDetector(cachedClient, baseRepo.RepoHost())
+	}
+
 	prState := strings.ToLower(opts.State)
 	if prState == "open" && shared.QueryHasStateClause(opts.Search) {
 		prState = ""
@@ -164,7 +171,11 @@ func listRun(opts *ListOptions) error {
 	}
 	if opts.WebMode {
 		prListURL := ghrepo.GenerateRepoURL(baseRepo, "pulls")
-		openURL, err := shared.ListURLWithQuery(prListURL, filters)
+
+		// TODO(babakks): As of August 2025, the advanced issue search syntax is
+		// not supported in Pull Requests tab of repositories. When it's supported
+		// we can change the argument to true.
+		openURL, err := shared.ListURLWithQuery(prListURL, filters, false)
 		if err != nil {
 			return err
 		}
@@ -175,7 +186,7 @@ func listRun(opts *ListOptions) error {
 		return opts.Browser.Browse(openURL)
 	}
 
-	listResult, err := listPullRequests(httpClient, baseRepo, filters, opts.LimitResults)
+	listResult, err := listPullRequests(httpClient, opts.Detector, baseRepo, filters, opts.LimitResults)
 	if err != nil {
 		return err
 	}

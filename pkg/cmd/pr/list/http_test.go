@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	fd "github.com/cli/cli/v2/internal/featuredetection"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
 	"github.com/cli/cli/v2/pkg/httpmock"
@@ -12,9 +13,10 @@ import (
 
 func Test_ListPullRequests(t *testing.T) {
 	type args struct {
-		repo    ghrepo.Interface
-		filters prShared.FilterOptions
-		limit   int
+		detector fd.Detector
+		repo     ghrepo.Interface
+		filters  prShared.FilterOptions
+		limit    int
 	}
 	tests := []struct {
 		name     string
@@ -25,8 +27,9 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "default",
 			args: args{
-				repo:  ghrepo.New("OWNER", "REPO"),
-				limit: 30,
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				repo:     ghrepo.New("OWNER", "REPO"),
+				limit:    30,
 				filters: prShared.FilterOptions{
 					State: "open",
 				},
@@ -50,8 +53,9 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "closed",
 			args: args{
-				repo:  ghrepo.New("OWNER", "REPO"),
-				limit: 30,
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				repo:     ghrepo.New("OWNER", "REPO"),
+				limit:    30,
 				filters: prShared.FilterOptions{
 					State: "closed",
 				},
@@ -75,8 +79,9 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "with labels",
 			args: args{
-				repo:  ghrepo.New("OWNER", "REPO"),
-				limit: 30,
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				repo:     ghrepo.New("OWNER", "REPO"),
+				limit:    30,
 				filters: prShared.FilterOptions{
 					State:  "open",
 					Labels: []string{"hello", "one world"},
@@ -88,6 +93,7 @@ func Test_ListPullRequests(t *testing.T) {
 					httpmock.GraphQLQuery(`{"data":{}}`, func(query string, vars map[string]interface{}) {
 						want := map[string]interface{}{
 							"q":     `label:"one world" label:hello repo:OWNER/REPO state:open type:pr`,
+							"type":  "ISSUE",
 							"limit": float64(30),
 						}
 						if !reflect.DeepEqual(vars, want) {
@@ -99,8 +105,9 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "with author",
 			args: args{
-				repo:  ghrepo.New("OWNER", "REPO"),
-				limit: 30,
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				repo:     ghrepo.New("OWNER", "REPO"),
+				limit:    30,
 				filters: prShared.FilterOptions{
 					State:  "open",
 					Author: "monalisa",
@@ -112,6 +119,7 @@ func Test_ListPullRequests(t *testing.T) {
 					httpmock.GraphQLQuery(`{"data":{}}`, func(query string, vars map[string]interface{}) {
 						want := map[string]interface{}{
 							"q":     "author:monalisa repo:OWNER/REPO state:open type:pr",
+							"type":  "ISSUE",
 							"limit": float64(30),
 						}
 						if !reflect.DeepEqual(vars, want) {
@@ -123,8 +131,9 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "with search",
 			args: args{
-				repo:  ghrepo.New("OWNER", "REPO"),
-				limit: 30,
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				repo:     ghrepo.New("OWNER", "REPO"),
+				limit:    30,
 				filters: prShared.FilterOptions{
 					State:  "open",
 					Search: "one world in:title",
@@ -136,6 +145,7 @@ func Test_ListPullRequests(t *testing.T) {
 					httpmock.GraphQLQuery(`{"data":{}}`, func(query string, vars map[string]interface{}) {
 						want := map[string]interface{}{
 							"q":     "one world in:title repo:OWNER/REPO state:open type:pr",
+							"type":  "ISSUE",
 							"limit": float64(30),
 						}
 						if !reflect.DeepEqual(vars, want) {
@@ -153,7 +163,7 @@ func Test_ListPullRequests(t *testing.T) {
 			}
 			httpClient := &http.Client{Transport: reg}
 
-			_, err := listPullRequests(httpClient, tt.args.repo, tt.args.filters, tt.args.limit)
+			_, err := listPullRequests(httpClient, tt.args.detector, tt.args.repo, tt.args.filters, tt.args.limit)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ListPullRequests() error = %v, wantErr %v", err, tt.wantErr)
 				return

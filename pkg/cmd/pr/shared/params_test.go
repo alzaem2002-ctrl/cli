@@ -19,8 +19,9 @@ func Test_listURLWithQuery(t *testing.T) {
 	falseBool := false
 
 	type args struct {
-		listURL string
-		options FilterOptions
+		listURL                   string
+		options                   FilterOptions
+		advancedIssueSearchSyntax bool
 	}
 
 	tests := []struct {
@@ -101,7 +102,7 @@ func Test_listURLWithQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ListURLWithQuery(tt.args.listURL, tt.args.options)
+			got, err := ListURLWithQuery(tt.args.listURL, tt.args.options, tt.args.advancedIssueSearchSyntax)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("listURLWithQuery() error = %v, wantErr %v", err, tt.wantErr)
 				return

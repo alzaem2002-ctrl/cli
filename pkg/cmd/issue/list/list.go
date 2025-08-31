@@ -165,8 +165,15 @@ func listRun(opts *ListOptions) error {
 	isTerminal := opts.IO.IsStdoutTTY()
 
 	if opts.WebMode {
+		searchFeatures, err := opts.Detector.SearchFeatures()
+		if err != nil {
+			return err
+		}
+
+		advancedSyntaxSupported := searchFeatures.AdvancedIssueSearchAPI && searchFeatures.AdvancedIssueSearchWebInIssuesTab
+
 		issueListURL := ghrepo.GenerateRepoURL(baseRepo, "issues")
-		openURL, err := prShared.ListURLWithQuery(issueListURL, filterOptions)
+		openURL, err := prShared.ListURLWithQuery(issueListURL, filterOptions, advancedSyntaxSupported)
 		if err != nil {
 			return err
 		}
@@ -181,7 +188,7 @@ func listRun(opts *ListOptions) error {
 		filterOptions.Fields = opts.Exporter.Fields()
 	}
 
-	listResult, err := issueList(httpClient, baseRepo, filterOptions, opts.LimitResults)
+	listResult, err := issueList(httpClient, opts.Detector, baseRepo, filterOptions, opts.LimitResults)
 	if err != nil {
 		return err
 	}
@@ -212,7 +219,7 @@ func listRun(opts *ListOptions) error {
 	return nil
 }
 
-func issueList(client *http.Client, repo ghrepo.Interface, filters prShared.FilterOptions, limit int) (*api.IssuesAndTotalCount, error) {
+func issueList(client *http.Client, detector fd.Detector, repo ghrepo.Interface, filters prShared.FilterOptions, limit int) (*api.IssuesAndTotalCount, error) {
 	apiClient := api.NewClientFromHTTP(client)
 
 	if filters.Search != "" || len(filters.Labels) > 0 || filters.Milestone != "" {
@@ -224,7 +231,7 @@ func issueList(client *http.Client, repo ghrepo.Interface, filters prShared.Filt
 			filters.Milestone = milestone.Title
 		}
 
-		return searchIssues(apiClient, repo, filters, limit)
+		return searchIssues(apiClient, detector, repo, filters, limit)
 	}
 
 	var err error

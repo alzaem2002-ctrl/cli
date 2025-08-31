@@ -11,6 +11,7 @@ import (
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/config"
+	fd "github.com/cli/cli/v2/internal/featuredetection"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/run"
@@ -210,6 +211,7 @@ func TestIssueList_web(t *testing.T) {
 		BaseRepo: func() (ghrepo.Interface, error) {
 			return ghrepo.New("OWNER", "REPO"), nil
 		},
+		Detector:     fd.AdvancedIssueSearchUnsupported(),
 		WebMode:      true,
 		State:        "all",
 		Assignee:     "peter",
@@ -230,9 +232,10 @@ func TestIssueList_web(t *testing.T) {
 
 func Test_issueList(t *testing.T) {
 	type args struct {
-		repo    ghrepo.Interface
-		filters prShared.FilterOptions
-		limit   int
+		detector fd.Detector
+		repo     ghrepo.Interface
+		filters  prShared.FilterOptions
+		limit    int
 	}
 	tests := []struct {
 		name      string
@@ -243,8 +246,9 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "default",
 			args: args{
-				limit: 30,
-				repo:  ghrepo.New("OWNER", "REPO"),
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity: "issue",
 					State:  "open",
@@ -270,8 +274,9 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "milestone by number",
 			args: args{
-				limit: 30,
-				repo:  ghrepo.New("OWNER", "REPO"),
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity:    "issue",
 					State:     "open",
@@ -309,8 +314,9 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "milestone by title",
 			args: args{
-				limit: 30,
-				repo:  ghrepo.New("OWNER", "REPO"),
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity:    "issue",
 					State:     "open",
@@ -341,8 +347,9 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "@me syntax",
 			args: args{
-				limit: 30,
-				repo:  ghrepo.New("OWNER", "REPO"),
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity:   "issue",
 					State:    "open",
@@ -377,8 +384,9 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "@me with search",
 			args: args{
-				limit: 30,
-				repo:  ghrepo.New("OWNER", "REPO"),
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity:   "issue",
 					State:    "open",
@@ -412,8 +420,9 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "with labels",
 			args: args{
-				limit: 30,
-				repo:  ghrepo.New("OWNER", "REPO"),
+				detector: fd.AdvancedIssueSearchUnsupported(),
+				limit:    30,
+				repo:     ghrepo.New("OWNER", "REPO"),
 				filters: prShared.FilterOptions{
 					Entity: "issue",
 					State:  "open",
@@ -450,7 +459,7 @@ func Test_issueList(t *testing.T) {
 				tt.httpStubs(httpreg)
 			}
 			client := &http.Client{Transport: httpreg}
-			_, err := issueList(client, tt.args.repo, tt.args.filters, tt.args.limit)
+			_, err := issueList(client, tt.args.detector, tt.args.repo, tt.args.filters, tt.args.limit)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -507,6 +516,7 @@ func TestIssueList_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	issuesAndTotalCount, err := issueList(
 		client,
+		fd.AdvancedIssueSearchUnsupported(),
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{
 			Entity: "issue",
@@ -581,6 +591,7 @@ func TestIssueList_Search_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	issuesAndTotalCount, err := issueList(
 		client,
+		fd.AdvancedIssueSearchUnsupported(),
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{
 			Entity: "issue",
