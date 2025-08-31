@@ -131,7 +131,33 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 					In:   []string{"title", "body", "comments", "foo"}, // "foo" is to ensure only "title", "body", and "comments" are grouped
 				},
 			},
-			out: `keyword (in:title OR in:body OR in:comments) in:foo (is:private OR is:public) is:foo (repo:foo/bar OR repo:foo/baz) (user:johndoe OR user:janedoe)`,
+			out: `keyword (in:body OR in:comments OR in:title) in:foo (is:private OR is:public) is:foo (repo:foo/bar OR repo:foo/baz) (user:janedoe OR user:johndoe)`,
+		},
+		{
+			name: "special qualifiers without special values",
+			query: Query{
+				Keywords: []string{"keyword"},
+				Qualifiers: Qualifiers{
+					Is: []string{"foo", "bar"},
+					In: []string{"foo", "bar"},
+				},
+			},
+			out: `keyword in:bar in:foo is:bar is:foo`,
+		},
+		{
+			name: "non-special qualifiers used multiple times",
+			query: Query{
+				Keywords: []string{"keyword"},
+				Qualifiers: Qualifiers{
+					In:      []string{"foo", "bar"},
+					Is:      []string{"foo", "bar"},
+					Label:   []string{"foo", "bar"},
+					License: []string{"foo", "bar"},
+					No:      []string{"foo", "bar"},
+					Topic:   []string{"foo", "bar"},
+				},
+			},
+			out: `keyword in:bar in:foo is:bar is:foo label:bar label:foo license:bar license:foo no:bar no:foo topic:bar topic:foo`,
 		},
 	}
 	for _, tt := range tests {

@@ -137,8 +137,12 @@ func formatSpecialQualifiers(qualifier string, vs []string, valuesToOR []string)
 		all = append(all, groupWithOR(qualifier, specials))
 	}
 	if len(rest) > 0 {
-		all = append(all, concat(qualifier, rest))
+		for _, v := range rest {
+			all = append(all, fmt.Sprintf("%s:%s", qualifier, quote(v)))
+		}
 	}
+
+	slices.Sort(all)
 	return strings.Join(all, " ")
 }
 
@@ -155,18 +159,9 @@ func groupWithOR(qualifier string, vs []string) string {
 	if len(all) == 1 {
 		return all[0]
 	}
-	return fmt.Sprintf("(%s)", strings.Join(all, " OR "))
-}
 
-func concat(qualifier string, vs []string) string {
-	if len(vs) == 0 {
-		return ""
-	}
-	all := make([]string, 0, len(vs))
-	for _, v := range vs {
-		all = append(all, fmt.Sprintf("%s:%s", qualifier, quote(v)))
-	}
-	return strings.Join(all, " ")
+	slices.Sort(all)
+	return fmt.Sprintf("(%s)", strings.Join(all, " OR "))
 }
 
 func (q Qualifiers) Map() map[string][]string {
