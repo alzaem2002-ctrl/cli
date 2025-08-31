@@ -126,12 +126,12 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 				Keywords: []string{"keyword"},
 				Qualifiers: Qualifiers{
 					Repo: []string{"foo/bar", "foo/baz"},
-					Is:   []string{"private", "public", "foo"}, // "foo" is to ensure only "public" and "private" are grouped
+					Is:   []string{"private", "public", "issue", "pr", "open", "closed", "locked", "unlocked", "merged", "unmerged", "blocked", "blocking", "foo"}, // "foo" is to ensure only "public" and "private" are grouped
 					User: []string{"johndoe", "janedoe"},
 					In:   []string{"title", "body", "comments", "foo"}, // "foo" is to ensure only "title", "body", and "comments" are grouped
 				},
 			},
-			out: `keyword (in:body OR in:comments OR in:title) in:foo (is:private OR is:public) is:foo (repo:foo/bar OR repo:foo/baz) (user:janedoe OR user:johndoe)`,
+			out: `keyword (in:body OR in:comments OR in:title) in:foo (is:blocked OR is:blocking) (is:closed OR is:open) (is:issue OR is:pr) (is:locked OR is:unlocked) (is:merged OR is:unmerged) (is:private OR is:public) is:foo (repo:foo/bar OR repo:foo/baz) (user:janedoe OR user:johndoe)`,
 		},
 		{
 			name: "special qualifiers without special values",
@@ -158,6 +158,16 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 				},
 			},
 			out: `keyword in:bar in:foo is:bar is:foo label:bar label:foo license:bar license:foo no:bar no:foo topic:bar topic:foo`,
+		},
+		{
+			name: "unused special qualifiers should be missing from the query",
+			query: Query{
+				Keywords: []string{"keyword"},
+				Qualifiers: Qualifiers{
+					Label: []string{"foo", "bar"},
+				},
+			},
+			out: `keyword label:bar label:foo`,
 		},
 	}
 	for _, tt := range tests {

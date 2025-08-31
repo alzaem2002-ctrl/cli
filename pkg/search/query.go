@@ -110,9 +110,9 @@ func (q Query) AdvancedIssueSearchString() string {
 func formatAdvancedIssueSearch(qualifier string, vs []string) (s []string, applicable bool) {
 	switch qualifier {
 	case "in":
-		return formatSpecialQualifiers("in", vs, []string{"title", "body", "comments"}), true
+		return formatSpecialQualifiers("in", vs, [][]string{{"title", "body", "comments"}}), true
 	case "is":
-		return formatSpecialQualifiers("is", vs, []string{"private", "public"}), true
+		return formatSpecialQualifiers("is", vs, [][]string{{"blocked", "blocking"}, {"closed", "open"}, {"issue", "pr"}, {"locked", "unlocked"}, {"merged", "unmerged"}, {"private", "public"}}), true
 	case "user", "repo":
 		return []string{groupWithOR(qualifier, vs)}, true
 	}
@@ -120,21 +120,35 @@ func formatAdvancedIssueSearch(qualifier string, vs []string) (s []string, appli
 	return nil, false
 }
 
-func formatSpecialQualifiers(qualifier string, vs []string, valuesToOR []string) []string {
-	specials := make([]string, 0, len(vs))
+func formatSpecialQualifiers(qualifier string, vs []string, specialGroupsToOR [][]string) []string {
+	specialGroups := make([][]string, len(specialGroupsToOR))
 	rest := make([]string, 0, len(vs))
 	for _, v := range vs {
-		if slices.Contains(valuesToOR, v) {
-			specials = append(specials, v)
-		} else {
-			rest = append(rest, v)
+		var isSpecial bool
+		for i, subValuesToOR := range specialGroupsToOR {
+			if slices.Contains(subValuesToOR, v) {
+				specialGroups[i] = append(specialGroups[i], v)
+				isSpecial = true
+				break
+			}
 		}
+
+		if isSpecial {
+			continue
+		}
+
+		rest = append(rest, v)
 	}
 
-	all := make([]string, 0, 2)
-	if len(specials) > 0 {
-		all = append(all, groupWithOR(qualifier, specials))
+	all := make([]string, 0, len(specialGroups)+len(rest))
+
+	for _, group := range specialGroups {
+		if len(group) == 0 {
+			continue
+		}
+		all = append(all, groupWithOR(qualifier, group))
 	}
+
 	if len(rest) > 0 {
 		for _, v := range rest {
 			all = append(all, fmt.Sprintf("%s:%s", qualifier, quote(v)))
