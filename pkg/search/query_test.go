@@ -149,8 +149,8 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 			query: Query{
 				Keywords: []string{"keyword"},
 				Qualifiers: Qualifiers{
-					In:      []string{"foo", "bar"},
-					Is:      []string{"foo", "bar"},
+					In:      []string{"foo", "bar"}, // "in:" is a special qualifier but its values here are not special
+					Is:      []string{"foo", "bar"}, // "is:" is a special qualifier but its values here are not special
 					Label:   []string{"foo", "bar"},
 					License: []string{"foo", "bar"},
 					No:      []string{"foo", "bar"},
