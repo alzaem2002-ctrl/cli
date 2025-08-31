@@ -24,35 +24,31 @@ type JSONFlagError struct {
 }
 
 func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
-	f := createFlags()
-
-	f.VisitAll(func(flag *pflag.Flag) {
-		if flag.Name == "jq" {
-			flag.Shorthand = "q"
-		}
-		if flag.Name == "template" {
-			flag.Shorthand = "t"
-		}
-		cmd.Flags().AddFlag(flag)
-	})
+	f := cmd.Flags()
+	addJsonFlag(f)
+	addJqFlag(f, "q")
+	addTemplateFlag(f, "t")
 
 	setupJsonFlags(cmd, exportTarget, fields)
 }
 
 func AddJSONFlagsWithoutShorthand(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
-	f := createFlags()
-	f.VisitAll(func(flag *pflag.Flag) {
-		cmd.Flags().AddFlag(flag)
-	})
+	f := cmd.Flags()
+	addJsonFlag(f)
+	addJqFlag(f, "")
+	addTemplateFlag(f, "")
+
 	setupJsonFlags(cmd, exportTarget, fields)
 }
 
-func createFlags() *pflag.FlagSet {
-	f := pflag.NewFlagSet("", pflag.ContinueOnError)
+func addJsonFlag(f *pflag.FlagSet) {
 	f.StringSlice("json", nil, "Output JSON with the specified `fields`")
-	f.String("jq", "", "Filter JSON output using a jq `expression`")
-	f.String("template", "", "Format JSON output using a Go template; see \"gh help formatting\"")
-	return f
+}
+func addJqFlag(f *pflag.FlagSet, shorthand string) {
+	f.StringP("jq", shorthand, "", "Filter JSON output using a jq `expression`")
+}
+func addTemplateFlag(f *pflag.FlagSet, shorthand string) {
+	f.StringP("template", shorthand, "", "Format JSON output using a Go template; see \"gh help formatting\"")
 }
 
 func setupJsonFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
