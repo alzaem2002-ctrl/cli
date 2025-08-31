@@ -3,6 +3,7 @@ package search
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -86,11 +87,86 @@ type Qualifiers struct {
 	User                []string
 }
 
+// String returns the string representation of the query which can be used with
+// search API (except for advanced issue search), global search GUI (i.e.
+// github.com/search), or Pull Requests tab (in repositories).
 func (q Query) String() string {
-	qualifiers := formatQualifiers(q.Qualifiers)
+	qualifiers := formatQualifiers(q.Qualifiers, nil)
 	keywords := formatKeywords(q.Keywords)
 	all := append(keywords, qualifiers...)
 	return strings.TrimSpace(strings.Join(all, " "))
+}
+
+// AdvancedIssueSearchString returns the string representation of the query
+// compatible with the advanced issue search syntax. The query can be used in
+// Issues tab (of repositories) and the Issues dashboard (i.e.
+// github.com/issues).
+func (q Query) AdvancedIssueSearchString() string {
+	qualifiers := formatQualifiers(q.Qualifiers, formatAdvancedIssueSearch)
+	keywords := formatKeywords(q.Keywords)
+	all := append(keywords, qualifiers...)
+	return strings.TrimSpace(strings.Join(all, " "))
+}
+
+func formatAdvancedIssueSearch(qualifier string, vs []string) (s string, applicable bool) {
+	switch qualifier {
+	case "in":
+		return formatSpecialQualifiers("in", vs, []string{"title", "body", "comments"}), true
+	case "is":
+		return formatSpecialQualifiers("is", vs, []string{"private", "public"}), true
+	case "user", "repo":
+		return groupWithOR(qualifier, vs), true
+	}
+	// Let the default formatting take over
+	return "", false
+}
+
+func formatSpecialQualifiers(qualifier string, vs []string, valuesToOR []string) string {
+	specials := make([]string, 0, len(vs))
+	rest := make([]string, 0, len(vs))
+	for _, v := range vs {
+		if slices.Contains(valuesToOR, v) {
+			specials = append(specials, v)
+		} else {
+			rest = append(rest, v)
+		}
+	}
+
+	all := make([]string, 0, 2)
+	if len(specials) > 0 {
+		all = append(all, groupWithOR(qualifier, specials))
+	}
+	if len(rest) > 0 {
+		all = append(all, concat(qualifier, rest))
+	}
+	return strings.Join(all, " ")
+}
+
+func groupWithOR(qualifier string, vs []string) string {
+	if len(vs) == 0 {
+		return ""
+	}
+
+	all := make([]string, 0, len(vs))
+	for _, v := range vs {
+		all = append(all, fmt.Sprintf("%s:%s", qualifier, quote(v)))
+	}
+
+	if len(all) == 1 {
+		return all[0]
+	}
+	return fmt.Sprintf("(%s)", strings.Join(all, " OR "))
+}
+
+func concat(qualifier string, vs []string) string {
+	if len(vs) == 0 {
+		return ""
+	}
+	all := make([]string, 0, len(vs))
+	for _, v := range vs {
+		all = append(all, fmt.Sprintf("%s:%s", qualifier, quote(v)))
+	}
+	return strings.Join(all, " ")
 }
 
 func (q Qualifiers) Map() map[string][]string {
@@ -138,9 +214,21 @@ func quote(s string) string {
 	return s
 }
 
-func formatQualifiers(qs Qualifiers) []string {
+// formatQualifiers renders qualifiers into a plain query.
+//
+// The formatter is a custom formatting function that can be used to modify the
+// output of each qualifier. If the formatter returns ("", false) the default
+// formatting will be applied.
+func formatQualifiers(qs Qualifiers, formatter func(qualifier string, vs []string) (s string, applicable bool)) []string {
 	var all []string
 	for k, vs := range qs.Map() {
+		if formatter != nil {
+			if s, applicable := formatter(k, vs); applicable {
+				all = append(all, s)
+				continue
+			}
+		}
+
 		for _, v := range vs {
 			all = append(all, fmt.Sprintf("%s:%s", k, quote(v)))
 		}
