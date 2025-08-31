@@ -1136,6 +1136,82 @@ func TestSearcherIssues(t *testing.T) {
 	}
 }
 
+func TestSearcherIssuesAdvancedSyntax(t *testing.T) {
+	query := Query{
+		Kind:     KindIssues,
+		Limit:    1,
+		Keywords: []string{"keyword"},
+		Qualifiers: Qualifiers{
+			// Ordinary qualifiers
+			Author: "johndoe",
+			Label:  []string{"foo", "bar"},
+			// Special qualifiers (that should be grouped and OR-ed when using advanced issue search)
+			Repo: []string{"foo/bar", "foo/baz"},
+			Is:   []string{"private", "public"},
+			User: []string{"johndoe", "janedoe"},
+			In:   []string{"title", "body", "comments"},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		query      Query
+		detector   fd.Detector
+		wantValues url.Values
+		wantErr    string
+	}{
+		{
+			name:     "advanced issue search not supported",
+			detector: fd.AdvancedIssueSearchUnsupported(),
+			query:    query,
+			wantValues: url.Values{
+				"q":               []string{"keyword author:johndoe in:body in:comments in:title is:private is:public label:bar label:foo repo:foo/bar repo:foo/baz user:janedoe user:johndoe"},
+				"advanced_search": nil, // assert absence
+			},
+		},
+		{
+			name:     "advanced issue search supported as an opt-in feature",
+			detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
+			query:    query,
+			wantValues: url.Values{
+				"q":               []string{"keyword author:johndoe (in:body OR in:comments OR in:title) (is:private OR is:public) label:bar label:foo (repo:foo/bar OR repo:foo/baz) (user:janedoe OR user:johndoe)"},
+				"advanced_search": []string{"true"}, // opt-in
+			},
+		},
+		{
+			name:     "advanced issue search supported as the only search backend",
+			detector: fd.AdvancedIssueSearchSupportedAsOnlyBackend(),
+			query:    query,
+			wantValues: url.Values{
+				"q":               []string{"keyword author:johndoe (in:body OR in:comments OR in:title) (is:private OR is:public) label:bar label:foo (repo:foo/bar OR repo:foo/baz) (user:janedoe OR user:johndoe)"},
+				"advanced_search": nil, // assert absence
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := &httpmock.Registry{}
+			defer reg.Verify(t)
+
+			reg.Register(
+				httpmock.QueryMatcher("GET", "search/issues", tt.wantValues),
+				httpmock.JSONResponse(IssuesResult{}),
+			)
+
+			client := &http.Client{Transport: reg}
+			searcher := NewSearcher(client, "github.com", tt.detector)
+
+			_, err := searcher.Issues(tt.query)
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestSearcherURL(t *testing.T) {
 	query := Query{
 		Keywords: []string{"keyword"},
