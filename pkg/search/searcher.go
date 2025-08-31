@@ -208,7 +208,27 @@ func (s searcher) search(query Query, result interface{}) (*http.Response, error
 	qs := url.Values{}
 	qs.Set("page", strconv.Itoa(query.Page))
 	qs.Set("per_page", strconv.Itoa(query.Limit))
-	qs.Set("q", query.String())
+
+	if query.Kind == KindIssues {
+		features, err := s.detector.SearchFeatures()
+		if err != nil {
+			return nil, err
+		}
+
+		if !features.AdvancedIssueSearchAPI {
+			qs.Set("q", query.String())
+		} else {
+			qs.Set("q", query.AdvancedIssueSearchString())
+
+			if features.AdvancedIssueSearchAPIOptIn {
+				// Advanced syntax should be explicitly enabled
+				qs.Set("advanced_search", "true")
+			}
+		}
+	} else {
+		qs.Set("q", query.String())
+	}
+
 	if query.Order != "" {
 		qs.Set(orderKey, query.Order)
 	}
