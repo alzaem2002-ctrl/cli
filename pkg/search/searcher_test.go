@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
+	fd "github.com/cli/cli/v2/internal/featuredetection"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/stretchr/testify/assert"
 )
@@ -265,7 +266,7 @@ func TestSearcherCode(t *testing.T) {
 			if tt.host == "" {
 				tt.host = "github.com"
 			}
-			searcher := NewSearcher(client, tt.host)
+			searcher := NewSearcher(client, tt.host, &fd.DisabledDetectorMock{})
 			result, err := searcher.Code(tt.query)
 			if tt.wantErr {
 				assert.EqualError(t, err, tt.errMsg)
@@ -551,7 +552,7 @@ func TestSearcherCommits(t *testing.T) {
 			if tt.host == "" {
 				tt.host = "github.com"
 			}
-			searcher := NewSearcher(client, tt.host)
+			searcher := NewSearcher(client, tt.host, &fd.DisabledDetectorMock{})
 			result, err := searcher.Commits(tt.query)
 			if tt.wantErr {
 				assert.EqualError(t, err, tt.errMsg)
@@ -837,7 +838,7 @@ func TestSearcherRepositories(t *testing.T) {
 			if tt.host == "" {
 				tt.host = "github.com"
 			}
-			searcher := NewSearcher(client, tt.host)
+			searcher := NewSearcher(client, tt.host, &fd.DisabledDetectorMock{})
 			result, err := searcher.Repositories(tt.query)
 			if tt.wantErr {
 				assert.EqualError(t, err, tt.errMsg)
@@ -1123,7 +1124,7 @@ func TestSearcherIssues(t *testing.T) {
 			if tt.host == "" {
 				tt.host = "github.com"
 			}
-			searcher := NewSearcher(client, tt.host)
+			searcher := NewSearcher(client, tt.host, fd.AdvancedIssueSearchUnsupported())
 			result, err := searcher.Issues(tt.query)
 			if tt.wantErr {
 				assert.EqualError(t, err, tt.errMsg)
@@ -1179,7 +1180,7 @@ func TestSearcherURL(t *testing.T) {
 			if tt.host == "" {
 				tt.host = "github.com"
 			}
-			searcher := NewSearcher(nil, tt.host)
+			searcher := NewSearcher(nil, tt.host, nil)
 			assert.Equal(t, tt.url, searcher.URL(tt.query))
 		})
 	}
