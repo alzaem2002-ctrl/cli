@@ -61,13 +61,13 @@ func AdvancedIssueSearchUnsupported() *AdvancedIssueSearchDetectorMock {
 	}
 }
 
-func AdvancedSearchSupportedAsOptIn() *AdvancedIssueSearchDetectorMock {
+func AdvancedIssueSearchSupportedAsOptIn() *AdvancedIssueSearchDetectorMock {
 	return &AdvancedIssueSearchDetectorMock{
 		searchFeatures: advancedIssueSearchSupportedAsOptIn,
 	}
 }
 
-func AdvancedSearchSupportedAsOnlyBackend() *AdvancedIssueSearchDetectorMock {
+func AdvancedIssueSearchSupportedAsOnlyBackend() *AdvancedIssueSearchDetectorMock {
 	return &AdvancedIssueSearchDetectorMock{
 		searchFeatures: advancedIssueSearchSupportedAsOnlyBackend,
 	}
