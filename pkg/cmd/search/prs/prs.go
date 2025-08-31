@@ -37,6 +37,10 @@ func NewCmdPrs(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *cobr
 			GitHub search syntax is documented at:
 			<https://docs.github.com/search-github/searching-on-github/searching-issues-and-pull-requests>
 
+			When runs against %[1]sgithub.com%[1]s or GHE versions newer than 3.17.x,
+			the command performs advanced issue search. The advanced syntax is documented at:
+			<https://github.blog/changelog/2025-03-06-github-issues-projects-api-support-for-issues-advanced-search-and-more>
+
 			For more information on handling search queries containing a hyphen, run %[1]sgh search --help%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
