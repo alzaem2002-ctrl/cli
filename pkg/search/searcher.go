@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	fd "github.com/cli/cli/v2/internal/featuredetection"
 	"github.com/cli/cli/v2/internal/ghinstance"
 )
 
@@ -34,8 +35,9 @@ type Searcher interface {
 }
 
 type searcher struct {
-	client *http.Client
-	host   string
+	client   *http.Client
+	detector fd.Detector
+	host     string
 }
 
 type httpError struct {
@@ -52,10 +54,11 @@ type httpErrorItem struct {
 	Resource string
 }
 
-func NewSearcher(client *http.Client, host string) Searcher {
+func NewSearcher(client *http.Client, host string, detector fd.Detector) Searcher {
 	return &searcher{
-		client: client,
-		host:   host,
+		client:   client,
+		host:     host,
+		detector: detector,
 	}
 }
 
