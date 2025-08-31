@@ -171,7 +171,8 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&opts.ShowToken, "show-token", "t", false, "Display the auth token")
 	cmd.Flags().BoolVarP(&opts.Active, "active", "a", false, "Display the active account only")
 
-	cmdutil.AddJSONFlags(cmd, &opts.Exporter, authFields)
+	// the json flags are intentionally not given a shorthand to avoid conflict with -t/--show-token
+	cmdutil.AddJSONFlagsWithoutShorthand(cmd, &opts.Exporter, authFields)
 
 	return cmd
 }

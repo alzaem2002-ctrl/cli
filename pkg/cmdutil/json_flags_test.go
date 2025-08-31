@@ -119,7 +119,7 @@ func TestAddJSONFlags(t *testing.T) {
 	}
 }
 
-func TestAddJSONFlagsNoDuplicateShorthand(t *testing.T) {
+func TestAddJSONFlagsWithoutShorthand(t *testing.T) {
 	tests := []struct {
 		name      string
 		setFlags  func(cmd *cobra.Command)
@@ -129,23 +129,13 @@ func TestAddJSONFlagsNoDuplicateShorthand(t *testing.T) {
 			name: "no conflicting flags",
 			setFlags: func(cmd *cobra.Command) {
 				cmd.Flags().StringP("web", "w", "", "")
-			},
-			wantFlags: map[string]string{
-				"web":      "w",
-				"jq":       "q",
-				"template": "t",
-				"json":     "",
-			},
-		},
-		{
-			name: "conflicting flags",
-			setFlags: func(cmd *cobra.Command) {
 				cmd.Flags().StringP("token", "t", "", "")
 			},
 			wantFlags: map[string]string{
+				"web":      "w",
 				"token":    "t",
-				"jq":       "q",
-				"template": "", // no shorthand
+				"jq":       "",
+				"template": "",
 				"json":     "",
 			},
 		},
@@ -156,7 +146,7 @@ func TestAddJSONFlagsNoDuplicateShorthand(t *testing.T) {
 			cmd := &cobra.Command{Run: func(*cobra.Command, []string) {}}
 			tt.setFlags(cmd)
 
-			AddJSONFlags(cmd, nil, []string{})
+			AddJSONFlagsWithoutShorthand(cmd, nil, []string{})
 
 			for f, shorthand := range tt.wantFlags {
 				flag := cmd.Flags().Lookup(f)

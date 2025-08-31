@@ -24,10 +24,38 @@ type JSONFlagError struct {
 }
 
 func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
-	f := cmd.Flags()
+	f := createFlags()
+
+	f.VisitAll(func(flag *pflag.Flag) {
+		if flag.Name == "jq" {
+			flag.Shorthand = "q"
+		}
+		if flag.Name == "template" {
+			flag.Shorthand = "t"
+		}
+		cmd.Flags().AddFlag(flag)
+	})
+
+	setupJsonFlags(cmd, exportTarget, fields)
+}
+
+func AddJSONFlagsWithoutShorthand(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
+	f := createFlags()
+	f.VisitAll(func(flag *pflag.Flag) {
+		cmd.Flags().AddFlag(flag)
+	})
+	setupJsonFlags(cmd, exportTarget, fields)
+}
+
+func createFlags() *pflag.FlagSet {
+	f := pflag.NewFlagSet("", pflag.ContinueOnError)
 	f.StringSlice("json", nil, "Output JSON with the specified `fields`")
-	addStringFlagWithSafeShorthand(f, "jq", "q", "", "Filter JSON output using a jq `expression`")
-	addStringFlagWithSafeShorthand(f, "template", "t", "", "Format JSON output using a Go template; see \"gh help formatting\"")
+	f.String("jq", "", "Filter JSON output using a jq `expression`")
+	f.String("template", "", "Format JSON output using a Go template; see \"gh help formatting\"")
+	return f
+}
+
+func setupJsonFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
 
 	_ = cmd.RegisterFlagCompletionFunc("json", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var results []string
@@ -92,15 +120,6 @@ func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, fields []string) {
 		cmd.Annotations = map[string]string{}
 	}
 	cmd.Annotations["help:json-fields"] = strings.Join(fields, ",")
-}
-
-// addStringFlagWithSafeShorthand only adds the flag with shorthand if the shorthand is not already used by another flag.
-func addStringFlagWithSafeShorthand(f *pflag.FlagSet, name, shorthand, value, usage string) {
-	if f.ShorthandLookup(shorthand) != nil {
-		f.String(name, value, usage)
-	} else {
-		f.StringP(name, shorthand, value, usage)
-	}
 }
 
 func checkJSONFlags(cmd *cobra.Command) (*jsonExporter, error) {
