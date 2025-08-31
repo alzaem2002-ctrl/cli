@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
 	"unicode"
 )
@@ -108,20 +107,20 @@ func (q Query) AdvancedIssueSearchString() string {
 	return strings.TrimSpace(strings.Join(all, " "))
 }
 
-func formatAdvancedIssueSearch(qualifier string, vs []string) (s string, applicable bool) {
+func formatAdvancedIssueSearch(qualifier string, vs []string) (s []string, applicable bool) {
 	switch qualifier {
 	case "in":
 		return formatSpecialQualifiers("in", vs, []string{"title", "body", "comments"}), true
 	case "is":
 		return formatSpecialQualifiers("is", vs, []string{"private", "public"}), true
 	case "user", "repo":
-		return groupWithOR(qualifier, vs), true
+		return []string{groupWithOR(qualifier, vs)}, true
 	}
 	// Let the default formatting take over
-	return "", false
+	return nil, false
 }
 
-func formatSpecialQualifiers(qualifier string, vs []string, valuesToOR []string) string {
+func formatSpecialQualifiers(qualifier string, vs []string, valuesToOR []string) []string {
 	specials := make([]string, 0, len(vs))
 	rest := make([]string, 0, len(vs))
 	for _, v := range vs {
@@ -143,7 +142,7 @@ func formatSpecialQualifiers(qualifier string, vs []string, valuesToOR []string)
 	}
 
 	slices.Sort(all)
-	return strings.Join(all, " ")
+	return all
 }
 
 func groupWithOR(qualifier string, vs []string) string {
@@ -212,24 +211,48 @@ func quote(s string) string {
 // formatQualifiers renders qualifiers into a plain query.
 //
 // The formatter is a custom formatting function that can be used to modify the
-// output of each qualifier. If the formatter returns ("", false) the default
+// output of each qualifier. If the formatter returns (nil, false) the default
 // formatting will be applied.
-func formatQualifiers(qs Qualifiers, formatter func(qualifier string, vs []string) (s string, applicable bool)) []string {
-	var all []string
+func formatQualifiers(qs Qualifiers, formatter func(qualifier string, vs []string) (s []string, applicable bool)) []string {
+	type entry struct {
+		key    string
+		values []string
+	}
+
+	var all []entry
 	for k, vs := range qs.Map() {
+		if len(vs) == 0 {
+			continue
+		}
+
+		e := entry{key: k}
+
 		if formatter != nil {
 			if s, applicable := formatter(k, vs); applicable {
-				all = append(all, s)
+				e.values = s
+				all = append(all, e)
 				continue
 			}
 		}
 
 		for _, v := range vs {
-			all = append(all, fmt.Sprintf("%s:%s", k, quote(v)))
+			e.values = append(e.values, fmt.Sprintf("%s:%s", k, quote(v)))
 		}
+		if len(e.values) > 1 {
+			slices.Sort(e.values)
+		}
+		all = append(all, e)
 	}
-	sort.Strings(all)
-	return all
+
+	slices.SortFunc(all, func(a, b entry) int {
+		return strings.Compare(a.key, b.key)
+	})
+
+	result := make([]string, 0, len(all))
+	for _, e := range all {
+		result = append(result, e.values...)
+	}
+	return result
 }
 
 func formatKeywords(ks []string) []string {
