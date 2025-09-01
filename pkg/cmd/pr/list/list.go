@@ -56,6 +56,8 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List pull requests in a repository",
+		// TODO advancedIssueSearchCleanup
+		// Update the links and remove the mention at GHES 3.17 version.
 		Long: heredoc.Doc(`
 			List pull requests in a GitHub repository. By default, this only lists open PRs.
 
@@ -177,9 +179,10 @@ func listRun(opts *ListOptions) error {
 	if opts.WebMode {
 		prListURL := ghrepo.GenerateRepoURL(baseRepo, "pulls")
 
-		// TODO(babakks): As of August 2025, the advanced issue search syntax is
-		// not supported in Pull Requests tab of repositories. When it's supported
-		// we can change the argument to true.
+		// TODO advancedSearchFuture
+		// As of August 2025, the advanced issue search syntax is not supported
+		// in Pull Requests tab of repositories. When it's supported we can
+		// change the argument to true.
 		openURL, err := shared.ListURLWithQuery(prListURL, filters, false)
 		if err != nil {
 			return err

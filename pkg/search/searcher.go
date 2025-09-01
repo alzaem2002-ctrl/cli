@@ -210,6 +210,10 @@ func (s searcher) search(query Query, result interface{}) (*http.Response, error
 	qs.Set("per_page", strconv.Itoa(query.Limit))
 
 	if query.Kind == KindIssues {
+		// TODO advancedIssueSearchCleanup
+		// We won't need feature detection when GHES 3.17 support ends, since
+		// the advanced issue search is the only available search backend for
+		// issues.
 		features, err := s.detector.SearchFeatures()
 		if err != nil {
 			return nil, err
@@ -269,10 +273,11 @@ func (s searcher) URL(query Query) string {
 	qs := url.Values{}
 	qs.Set("type", query.Kind)
 
-	// TODO(babakks): currently, the global search GUI does not support the
-	// advanced issue search syntax (even for the issues/PRs tab on the
-	// sidebar). When the GUI is updated, we can use feature detection, and, if
-	// available, use the advanced search syntax.
+	// TODO advancedSearchFuture
+	// Currently, the global search GUI does not support the advanced issue
+	// search syntax (even for the issues/PRs tab on the sidebar). When the GUI
+	// is updated, we can use feature detection, and, if available, use the
+	// advanced search syntax.
 	qs.Set("q", query.String())
 
 	if query.Order != "" {

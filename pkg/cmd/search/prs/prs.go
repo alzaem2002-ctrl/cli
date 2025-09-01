@@ -28,6 +28,8 @@ func NewCmdPrs(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *cobr
 	cmd := &cobra.Command{
 		Use:   "prs [<query>]",
 		Short: "Search for pull requests",
+		// TODO advancedIssueSearchCleanup
+		// Update the links and remove the mention at GHES 3.17 version.
 		Long: heredoc.Docf(`
 			Search for pull requests on GitHub.
 

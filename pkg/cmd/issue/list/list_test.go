@@ -190,6 +190,8 @@ func TestIssueList_disabledIssues(t *testing.T) {
 	}
 }
 
+// TODO advancedIssueSearchCleanup
+// Simplify this test to only a single test case once GHES 3.17 support ends.
 func TestIssueList_web(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -299,6 +301,8 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "milestone by number",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
@@ -339,6 +343,8 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "milestone by title",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
@@ -408,6 +414,8 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "@me with search",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
@@ -444,6 +452,8 @@ func Test_issueList(t *testing.T) {
 		{
 			name: "with labels",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				limit:    30,
 				repo:     ghrepo.New("OWNER", "REPO"),
@@ -615,6 +625,8 @@ func TestIssueList_Search_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	issuesAndTotalCount, err := issueList(
 		client,
+		// TODO advancedIssueSearchCleanup
+		// No need for feature detection once GHES 3.17 support ends.
 		fd.AdvancedIssueSearchSupportedAsOptIn(),
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{

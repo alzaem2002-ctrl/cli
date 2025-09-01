@@ -58,6 +58,8 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List issues in a repository",
+		// TODO advancedIssueSearchCleanup
+		// Update the links and remove the mention at GHES 3.17 version.
 		Long: heredoc.Doc(`
 			List issues in a GitHub repository. By default, this only lists open issues.
 
@@ -170,6 +172,11 @@ func listRun(opts *ListOptions) error {
 	isTerminal := opts.IO.IsStdoutTTY()
 
 	if opts.WebMode {
+		// TODO advancedIssueSearchCleanup
+		// We won't need feature detection when GHES 3.17 support ends, since
+		// the advanced issue search is the only available search backend for
+		// issues, and the GUI (i.e. Issues tab of repos) already supports the
+		// advanced syntax.
 		searchFeatures, err := opts.Detector.SearchFeatures()
 		if err != nil {
 			return err

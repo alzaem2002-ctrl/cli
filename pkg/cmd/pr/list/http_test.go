@@ -78,6 +78,8 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "with labels",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				repo:     ghrepo.New("OWNER", "REPO"),
 				limit:    30,
@@ -104,6 +106,8 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "with author",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				repo:     ghrepo.New("OWNER", "REPO"),
 				limit:    30,
@@ -130,6 +134,8 @@ func Test_ListPullRequests(t *testing.T) {
 		{
 			name: "with search",
 			args: args{
+				// TODO advancedIssueSearchCleanup
+				// No need for feature detection once GHES 3.17 support ends.
 				detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 				repo:     ghrepo.New("OWNER", "REPO"),
 				limit:    30,
@@ -171,6 +177,8 @@ func Test_ListPullRequests(t *testing.T) {
 	}
 }
 
+// TODO advancedIssueSearchCleanup
+// Remove this test once GHES 3.17 support ends.
 func TestSearchPullRequestsAndAdvancedSearch(t *testing.T) {
 	tests := []struct {
 		name           string

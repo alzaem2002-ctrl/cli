@@ -192,6 +192,8 @@ func TestPRList_filteringAssignee(t *testing.T) {
 			assert.Equal(t, `assignee:hubot base:develop is:merged label:"needs tests" repo:OWNER/REPO type:pr`, params["q"].(string))
 		}))
 
+	// TODO advancedIssueSearchCleanup
+	// No need for feature detection once GHES 3.17 support ends.
 	_, err := runCommand(http, fd.AdvancedIssueSearchSupportedAsOptIn(), true, `-s merged -l "needs tests" -a hubot -B develop`)
 	assert.Error(t, err)
 }
@@ -225,6 +227,8 @@ func TestPRList_filteringDraft(t *testing.T) {
 					assert.Equal(t, test.expectedQuery, params["q"].(string))
 				}))
 
+			// TODO advancedIssueSearchCleanup
+			// No need for feature detection once GHES 3.17 support ends.
 			_, err := runCommand(http, fd.AdvancedIssueSearchSupportedAsOptIn(), true, test.cli)
 			assert.Error(t, err)
 		})
@@ -270,6 +274,8 @@ func TestPRList_filteringAuthor(t *testing.T) {
 					assert.Equal(t, test.expectedQuery, params["q"].(string))
 				}))
 
+			// TODO advancedIssueSearchCleanup
+			// No need for feature detection once GHES 3.17 support ends.
 			_, err := runCommand(http, fd.AdvancedIssueSearchSupportedAsOptIn(), true, test.cli)
 			assert.Error(t, err)
 		})
@@ -443,6 +449,8 @@ func TestPRList_Search_withProjectItems(t *testing.T) {
 	client := &http.Client{Transport: reg}
 	prsAndTotalCount, err := listPullRequests(
 		client,
+		// TODO advancedIssueSearchCleanup
+		// No need for feature detection once GHES 3.17 support ends.
 		fd.AdvancedIssueSearchSupportedAsOptIn(),
 		ghrepo.New("OWNER", "REPO"),
 		prShared.FilterOptions{

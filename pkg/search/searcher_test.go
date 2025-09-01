@@ -1161,6 +1161,8 @@ func TestSearcherIssuesAdvancedSyntax(t *testing.T) {
 		wantErr    string
 	}{
 		{
+			// TODO advancedIssueSearchCleanup
+			// Remove this test case once GHES 3.17 support ends.
 			name:     "advanced issue search not supported",
 			detector: fd.AdvancedIssueSearchUnsupported(),
 			query:    query,
@@ -1170,6 +1172,8 @@ func TestSearcherIssuesAdvancedSyntax(t *testing.T) {
 			},
 		},
 		{
+			// TODO advancedIssueSearchCleanup
+			// Remove this test case once GHES 3.17 support ends.
 			name:     "advanced issue search supported as an opt-in feature",
 			detector: fd.AdvancedIssueSearchSupportedAsOptIn(),
 			query:    query,
@@ -1179,6 +1183,8 @@ func TestSearcherIssuesAdvancedSyntax(t *testing.T) {
 			},
 		},
 		{
+			// TODO advancedIssueSearchCleanup
+			// No need for feature detection once GHES 3.17 support ends.
 			name:     "advanced issue search supported as the only search backend",
 			detector: fd.AdvancedIssueSearchSupportedAsOnlyBackend(),
 			query:    query,

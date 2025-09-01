@@ -68,9 +68,9 @@ type SearchFeatures struct {
 	// advanced issue search syntax in the Issues tab of repositories.
 	AdvancedIssueSearchWebInIssuesTab bool
 
-	// TODO(babakks): when advanced issue search is supported in Pull Requests
-	// tab, or in global search we can introduce more fields to reflect the
-	// support status
+	// TODO advancedSearchFuture
+	// When advanced issue search is supported in Pull Requests tab, or in
+	// global search we can introduce more fields to reflect the support status.
 }
 
 // advancedIssueSearchNotSupported mimics GHE <3.18 where advanced issue search
@@ -273,6 +273,9 @@ const (
 )
 
 func (d *detector) SearchFeatures() (SearchFeatures, error) {
+	// TODO advancedIssueSearchCleanup
+	// Once GHES 3.17 support ends, we don't need this and, probably, the entire search feature detection.
+
 	// Regarding the release of advanced issue search (AIS, for short), there
 	// are three time spans/periods:
 	//
@@ -310,9 +313,10 @@ func (d *detector) SearchFeatures() (SearchFeatures, error) {
 			feature.AdvancedIssueSearchAPI = true
 			feature.AdvancedIssueSearchWebInIssuesTab = true
 
-			// TODO(babakks): when the advanced search syntax is supported in
-			// global search or Pull Requests tabs (in repositories), we can
-			// enable the corresponding fields.
+			// TODO advancedSearchFuture
+			// When the advanced search syntax is supported in global search or
+			// Pull Requests tabs (in repositories), we can add and enable the
+			// corresponding fields.
 		}
 	} else {
 		// As of August 2025, advanced issue search is available on github.com,
@@ -320,8 +324,9 @@ func (d *detector) SearchFeatures() (SearchFeatures, error) {
 		feature.AdvancedIssueSearchAPI = true
 		feature.AdvancedIssueSearchWebInIssuesTab = true
 
-		// TODO(babakks): when the advanced search syntax is supported in global
-		// search or Pull Requests tabs (in repositories), we can enable the
+		// TODO advancedSearchFuture
+		// When the advanced search syntax is supported in global search or
+		// Pull Requests tabs (in repositories), we can add and enable the
 		// corresponding fields.
 	}
 

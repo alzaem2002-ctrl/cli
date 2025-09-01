@@ -114,6 +114,10 @@ loop:
 }
 
 func searchIssues(client *api.Client, detector fd.Detector, repo ghrepo.Interface, filters prShared.FilterOptions, limit int) (*api.IssuesAndTotalCount, error) {
+	// TODO advancedIssueSearchCleanup
+	// We won't need feature detection when GHES 3.17 support ends, since
+	// the advanced issue search is the only available search backend for
+	// issues.
 	features, err := detector.SearchFeatures()
 	if err != nil {
 		return nil, err

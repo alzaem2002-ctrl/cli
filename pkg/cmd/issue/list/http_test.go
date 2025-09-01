@@ -167,6 +167,8 @@ func TestIssueList_pagination(t *testing.T) {
 	assert.Equal(t, []string{"user2"}, getAssignees(res.Issues[1]))
 }
 
+// TODO advancedIssueSearchCleanup
+// Remove this test once GHES 3.17 support ends.
 func TestSearchIssuesAndAdvancedSearch(t *testing.T) {
 	tests := []struct {
 		name           string

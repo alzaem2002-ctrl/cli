@@ -26,6 +26,8 @@ func NewCmdIssues(f *cmdutil.Factory, runF func(*shared.IssuesOptions) error) *c
 	cmd := &cobra.Command{
 		Use:   "issues [<query>]",
 		Short: "Search for issues",
+		// TODO advancedIssueSearchCleanup
+		// Update the links and remove the mention at GHES 3.17 version.
 		Long: heredoc.Docf(`
 			Search for issues on GitHub.
 
