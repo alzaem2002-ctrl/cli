@@ -231,7 +231,7 @@ func Test_listRun(t *testing.T) {
 				Browser: br,
 				CapiClient: func() (*capi.CAPIClient, error) {
 					if tt.web {
-						panic("CapiClient should not be invoked when --web is set")
+						require.FailNow(t, "CapiClient was called with --web")
 					}
 					return capiClient, nil
 				},
