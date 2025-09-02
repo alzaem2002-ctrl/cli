@@ -191,6 +191,15 @@ func Test_listRun(t *testing.T) {
 			wantStderr:     "Opening https://github.com/copilot/agents in your browser.\n",
 			wantBrowserURL: "https://github.com/copilot/agents",
 		},
+		{
+			name:           "web mode with repo still uses global URL, even when --repo is set",
+			tty:            true,
+			web:            true,
+			baseRepo:       ghrepo.New("OWNER", "REPO"),
+			wantOut:        "",
+			wantStderr:     "Opening https://github.com/copilot/agents in your browser.\n",
+			wantBrowserURL: "https://github.com/copilot/agents",
+		},
 	}
 
 	for _, tt := range tests {
