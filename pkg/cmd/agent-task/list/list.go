@@ -84,6 +84,10 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 
 func listRun(opts *ListOptions) error {
 	if opts.Web {
+		// Currently the web GUI does not have a page that supports filtering
+		// based on repo, so we just open the agents dashboard with no args.
+		// If that page is ever added in the future, we should route to that
+		// page instead of the global one when --repo is set.
 		const webURL = "https://github.com/copilot/agents"
 		if opts.IO.IsStdoutTTY() {
 			fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
