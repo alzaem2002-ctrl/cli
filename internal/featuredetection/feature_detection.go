@@ -269,6 +269,12 @@ func (d *detector) ProjectsV1() gh.ProjectsV1Support {
 }
 
 const (
+	// enterpriseAdvancedIssueSearchSupport is the minimum version of GHES that
+	// supports advanced issue search and gh should use it.
+	//
+	// Note that advanced issue search is also available on GHES 3.17, but it's
+	// at the preview stage and is not as mature as it is on github.com or later
+	// GHES version.
 	enterpriseAdvancedIssueSearchSupport = "3.18.0"
 )
 
