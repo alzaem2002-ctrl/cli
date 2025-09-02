@@ -77,9 +77,7 @@ func TestNewCmdList(t *testing.T) {
 }
 
 func Test_listRun(t *testing.T) {
-	sixHours, _ := time.ParseDuration("6h")
-	sixHoursAgo := time.Now().Add(-sixHours)
-	createdAt := sixHoursAgo.Format(time.RFC3339)
+	createdAt := time.Now().Add(-6 * time.Hour).Format(time.RFC3339) // 6h ago
 
 	tests := []struct {
 		name           string
