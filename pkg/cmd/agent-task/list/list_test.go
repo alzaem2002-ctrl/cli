@@ -46,6 +46,11 @@ func TestNewCmdList(t *testing.T) {
 			wantErr: "invalid limit: 0",
 		},
 		{
+			name:    "negative limit",
+			args:    "--limit -5",
+			wantErr: "invalid limit: -5",
+		},
+		{
 			name: "web flag",
 			args: "--web",
 			wantOpts: ListOptions{
