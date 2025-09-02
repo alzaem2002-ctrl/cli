@@ -14,6 +14,7 @@ const capiHost = "api.githubcopilot.com"
 // may be replaced with test doubles in unit tests.
 type CapiClient interface {
 	ListSessionsForViewer(ctx context.Context, limit int) ([]*Session, error)
+	ListSessionsForRepo(ctx context.Context, owner string, repo string, limit int) ([]*Session, error)
 }
 
 // CAPIClient is a client for interacting with the Copilot API

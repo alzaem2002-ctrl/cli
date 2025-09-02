@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cli/cli/v2/internal/gh"
+	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/shared"
@@ -23,6 +24,7 @@ type ListOptions struct {
 	Config     func() (gh.Config, error)
 	Limit      int
 	CapiClient func() (*capi.CAPIClient, error)
+	BaseRepo   func() (ghrepo.Interface, error)
 }
 
 // NewCmdList creates the list command
@@ -38,11 +40,19 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Short: "List agent tasks",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Support -R/--repo override
+			if f != nil {
+				opts.BaseRepo = f.BaseRepo
+			}
 			if runF != nil {
 				return runF(opts)
 			}
 			return listRun(opts)
 		},
+	}
+
+	if f != nil {
+		cmdutil.EnableRepoOverride(cmd, f)
 	}
 
 	opts.CapiClient = func() (*capi.CAPIClient, error) {
@@ -73,9 +83,24 @@ func listRun(opts *ListOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching agent tasks...")
 	defer opts.IO.StopProgressIndicator()
-	sessions, err := capiClient.ListSessionsForViewer(context.Background(), opts.Limit)
-	if err != nil {
-		return err
+	var sessions []*capi.Session
+	ctx := context.Background()
+
+	var repo ghrepo.Interface
+	if opts.BaseRepo != nil {
+		repo, _ = opts.BaseRepo()
+	}
+
+	if repo != nil && repo.RepoOwner() != "" && repo.RepoName() != "" {
+		sessions, err = capiClient.ListSessionsForRepo(ctx, repo.RepoOwner(), repo.RepoName(), opts.Limit)
+		if err != nil {
+			return err
+		}
+	} else {
+		sessions, err = capiClient.ListSessionsForViewer(ctx, opts.Limit)
+		if err != nil {
+			return err
+		}
 	}
 	opts.IO.StopProgressIndicator()
 
