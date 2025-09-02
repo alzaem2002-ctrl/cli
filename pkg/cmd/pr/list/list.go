@@ -58,17 +58,16 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Short: "List pull requests in a repository",
 		// TODO advancedIssueSearchCleanup
 		// Update the links and remove the mention at GHES 3.17 version.
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 			List pull requests in a GitHub repository. By default, this only lists open PRs.
 
-			When runs against %[1]sgithub.com%[1]s or GHE versions newer than 3.17.x,
-			the command performs search by using the advanced issue search syntax, which
-			is documented at:
+			When runs against %[1]sgithub.com%[1]s or GHE versions newer than 3.17.x, the command
+			performs search by using the advanced issue search syntax, which is documented at:
 			<https://github.blog/changelog/2025-03-06-github-issues-projects-api-support-for-issues-advanced-search-and-more>
 
 			The search query syntax is documented here:
 			<https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests>
-		`),
+		`, "`"),
 		Example: heredoc.Doc(`
 			# List PRs authored by you
 			$ gh pr list --author "@me"
