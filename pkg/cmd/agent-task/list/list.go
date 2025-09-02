@@ -44,6 +44,9 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 			if f != nil {
 				opts.BaseRepo = f.BaseRepo
 			}
+			if opts.Limit < 1 {
+				return cmdutil.FlagErrorf("invalid limit: %v", opts.Limit)
+			}
 			if runF != nil {
 				return runF(opts)
 			}
@@ -54,6 +57,8 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	if f != nil {
 		cmdutil.EnableRepoOverride(cmd, f)
 	}
+
+	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, fmt.Sprintf("Maximum number of agent tasks to fetch (default %d)", defaultLimit))
 
 	opts.CapiClient = func() (*capi.CAPIClient, error) {
 		cfg, err := opts.Config()

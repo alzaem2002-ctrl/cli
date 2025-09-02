@@ -3,6 +3,7 @@ package list
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +24,7 @@ func TestNewCmdList(t *testing.T) {
 		name     string
 		args     string
 		wantOpts ListOptions
+		wantErr  string
 	}{
 		{
 			name: "no arguments",
@@ -30,18 +32,35 @@ func TestNewCmdList(t *testing.T) {
 				Limit: defaultLimit,
 			},
 		},
+		{
+			name: "custom limit",
+			args: "--limit 15",
+			wantOpts: ListOptions{
+				Limit: 15,
+			},
+		},
+		{
+			name:    "invalid limit",
+			args:    "--limit 0",
+			wantErr: "invalid limit: 0",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &cmdutil.Factory{}
 			var gotOpts *ListOptions
-			cmd := NewCmdList(f, func(opts *ListOptions) error {
-				gotOpts = opts
-				return nil
-			})
-			cmd.ExecuteC()
-
+			cmd := NewCmdList(f, func(opts *ListOptions) error { gotOpts = opts; return nil })
+			if tt.args != "" {
+				cmd.SetArgs(strings.Split(tt.args, " "))
+			}
+			_, err := cmd.ExecuteC()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tt.wantOpts.Limit, gotOpts.Limit)
 		})
 	}
@@ -58,6 +77,7 @@ func Test_listRun(t *testing.T) {
 		stubs       func(*httpmock.Registry)
 		baseRepo    ghrepo.Interface
 		baseRepoErr error
+		limit       int
 		wantOut     string
 		wantErr     error
 	}{
@@ -66,6 +86,18 @@ func Test_listRun(t *testing.T) {
 			tty:     true,
 			stubs:   func(reg *httpmock.Registry) { registerEmptySessionsMock(reg) },
 			wantOut: "no agent tasks found\n",
+		},
+		{
+			name:  "limit truncates sessions",
+			tty:   true,
+			limit: 3,
+			stubs: func(reg *httpmock.Registry) { registerManySessionsMock(reg, createdAt) },
+			wantOut: heredoc.Doc(`
+			SESSION ID  PULL REQUEST  REPO        SESSION STATE  CREATED
+			s1          #101          OWNER/REPO  completed      about 6 hours ago
+			s2          #102          OWNER/REPO  failed         about 6 hours ago
+			s3          #103          OWNER/REPO  in_progress    about 6 hours ago
+			`),
 		},
 		{
 			name:  "single session (tty)",
@@ -157,7 +189,7 @@ func Test_listRun(t *testing.T) {
 			opts := &ListOptions{
 				IO:         ios,
 				Config:     func() (gh.Config, error) { return cfg, nil },
-				Limit:      30,
+				Limit:      tt.limit,
 				CapiClient: func() (*capi.CAPIClient, error) { return capiClient, nil },
 			}
 			if tt.baseRepo != nil || tt.baseRepoErr != nil {
