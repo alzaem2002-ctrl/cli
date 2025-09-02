@@ -126,8 +126,7 @@ func listRun(opts *ListOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	if len(sessions) == 0 {
-		fmt.Fprintln(opts.IO.Out, "no agent tasks found")
-		return nil
+		return cmdutil.NewNoResultsError("no agent tasks found")
 	}
 
 	cs := opts.IO.ColorScheme()

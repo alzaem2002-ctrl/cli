@@ -96,7 +96,7 @@ func Test_listRun(t *testing.T) {
 			name:    "no sessions",
 			tty:     true,
 			stubs:   func(reg *httpmock.Registry) { registerEmptySessionsMock(reg) },
-			wantOut: "no agent tasks found\n",
+			wantErr: cmdutil.NewNoResultsError("no agent tasks found"),
 		},
 		{
 			name:  "limit truncates sessions",
@@ -154,15 +154,14 @@ func Test_listRun(t *testing.T) {
 			tty:      true,
 			stubs:    func(reg *httpmock.Registry) { registerRepoEmptySessionsMock(reg, "OWNER", "REPO") },
 			baseRepo: ghrepo.New("OWNER", "REPO"),
-			wantOut:  "no agent tasks found\n",
+			wantErr:  cmdutil.NewNoResultsError("no agent tasks found"),
 		},
 		{
 			name:        "repo resolution error does not surface",
 			tty:         true,
 			baseRepoErr: errors.New("ambiguous repo"),
-			wantErr:     nil,
+			wantErr:     cmdutil.NewNoResultsError("no agent tasks found"),
 			stubs:       func(reg *httpmock.Registry) { registerEmptySessionsMock(reg) },
-			wantOut:     "no agent tasks found\n",
 		},
 		{
 			name:     "repo scoped many sessions (tty)",
@@ -238,11 +237,7 @@ func Test_listRun(t *testing.T) {
 			}
 			got := stdout.String()
 			require.Equal(t, tt.wantOut, got)
-			if tt.wantStderr != "" {
-				require.Equal(t, tt.wantStderr, stderr.String())
-			} else {
-				require.Equal(t, "", stderr.String())
-			}
+			require.Equal(t, tt.wantStderr, stderr.String())
 			if tt.web {
 				br.Verify(t, tt.wantBrowserURL)
 			}
