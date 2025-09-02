@@ -107,6 +107,8 @@ func listRun(opts *ListOptions) error {
 
 	var repo ghrepo.Interface
 	if opts.BaseRepo != nil {
+		// We swallow this error because when CWD is not a repo and
+		// the --repo flag is not set, we use the global/user session listing.
 		repo, _ = opts.BaseRepo()
 	}
 
