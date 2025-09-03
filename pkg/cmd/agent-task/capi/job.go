@@ -116,7 +116,9 @@ func (c *CAPIClient) GetJob(ctx context.Context, owner, repo, jobID string) (*Jo
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get job: %s", res.Status)
+		// Normalize to "<code> <text>" form
+		statusText := fmt.Sprintf("%d %s", res.StatusCode, http.StatusText(res.StatusCode))
+		return nil, fmt.Errorf("failed to get job: %s", statusText)
 	}
 	var j Job
 	if err := json.NewDecoder(res.Body).Decode(&j); err != nil {

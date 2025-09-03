@@ -57,8 +57,26 @@ func Test_createRun(t *testing.T) {
 		baseRepoErr      error
 		problemStatement string
 		wantStdout       string
+		wantStdErr       string
 		wantErr          string
 	}{
+		{
+			name:             "get job API failure surfaces error",
+			baseRepo:         ghrepo.New("OWNER", "REPO"),
+			problemStatement: "Do the thing",
+			stubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
+					httpmock.StatusStringResponse(201, createdJobTimeoutResponse),
+				)
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/swe/v1/jobs/OWNER/REPO/jobABC"), "api.githubcopilot.com"),
+					httpmock.StatusStringResponse(500, `{"error":{"message":"internal server error"}}`),
+				)
+			},
+			wantStdErr: "failed to get job: 500 Internal Server Error\n",
+			wantStdout: "job jobABC queued. View progress: https://github.com/copilot/agents\n",
+		},
 		{
 			name:             "success with immediate PR",
 			baseRepo:         ghrepo.New("OWNER", "REPO"),
@@ -96,7 +114,8 @@ func Test_createRun(t *testing.T) {
 					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
 					httpmock.StatusStringResponse(201, createdJobTimeoutResponse),
 				)
-				for range 3 {
+				// 4 attempts: initial + 3 retries
+				for range 4 {
 					reg.Register(
 						httpmock.WithHost(httpmock.REST("GET", "agents/swe/v1/jobs/OWNER/REPO/jobABC"), "api.githubcopilot.com"),
 						httpmock.StringResponse(`{"job_id":"jobABC"}`),
@@ -123,31 +142,12 @@ func Test_createRun(t *testing.T) {
 			},
 			wantErr: "failed to create job: some API error",
 		},
-		{
-			name:             "error fetching job during polling returns error and falls back to global agents page",
-			baseRepo:         ghrepo.New("OWNER", "REPO"),
-			problemStatement: "Do the thing",
-			stubs: func(reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
-					httpmock.StatusStringResponse(201, createdJobTimeoutResponse),
-				)
-				reg.Register(
-					httpmock.WithHost(httpmock.REST("GET", "agents/swe/v1/jobs/OWNER/REPO/jobABC"), "api.githubcopilot.com"),
-					httpmock.StringResponse(`{"job_id":"jobABC"}`),
-				)
-				reg.Register(
-					httpmock.WithHost(httpmock.REST("GET", "agents/swe/v1/jobs/OWNER/REPO/jobABC"), "api.githubcopilot.com"),
-					httpmock.StatusStringResponse(500, `{"error":{"message":"something went wrong"}}`),
-				)
-			},
-			wantStdout: "job jobABC queued. View progress: https://github.com/copilot/agents\n",
-		},
+		// Removed test case that previously expected fallback after polling error.
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ios, _, stdout, _ := iostreams.Test()
+			ios, _, stdout, stderr := iostreams.Test()
 			opts := &CreateOptions{
 				IO:               ios,
 				ProblemStatement: tt.problemStatement,
@@ -176,13 +176,16 @@ func Test_createRun(t *testing.T) {
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
-				require.Equal(t, err.Error(), tt.wantErr)
+				require.Equal(t, tt.wantErr, err.Error())
 			} else {
 				require.NoError(t, err)
 			}
 			if tt.wantStdout != "" {
 				require.Equal(t, tt.wantStdout, stdout.String())
 			}
+
+			require.Equal(t, tt.wantStdErr, stderr.String())
+
 			if tt.stubs != nil {
 				reg.Verify(t)
 			}

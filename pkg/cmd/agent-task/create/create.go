@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"time"
 
@@ -120,9 +119,12 @@ func createRun(opts *CreateOptions) error {
 		)
 	}
 
-	jobWithPR, err := fetchJobWithBackoff(ctx, client, repo, job.ID, opts.IO.ErrOut, opts.BackOff)
+	jobWithPR, err := fetchJobWithBackoff(ctx, client, repo, job.ID, opts.BackOff)
 	if err != nil {
-		return err
+		// If this does happen ever, we still want the user to get the
+		// fallback message and URL. So, we don't return with this error,
+		// but we do still want to print it.
+		fmt.Fprintf(opts.IO.ErrOut, "%v\n", err)
 	}
 
 	if jobWithPR != nil {
@@ -150,16 +152,16 @@ func agentSessionWebURL(repo ghrepo.Interface, j *capi.Job) string {
 // fetchJobWithBackoff polls the job resource until a PR number is present or the overall
 // timeout elapses. It returns the updated Job on success, (nil, nil) on timeout,
 // and (nil, error) only for non-retryable failures.
-func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrepo.Interface, jobID string, errOut io.Writer, bo backoff.BackOff) (*capi.Job, error) {
-	// sentinel error to signal retry without surfacing to caller
+func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrepo.Interface, jobID string, bo backoff.BackOff) (*capi.Job, error) {
+	// sentinel error to signal timeout
 	var errPRNotReady = errors.New("job not ready")
 
 	var result *capi.Job
 	retryErr := backoff.Retry(func() error {
-		j, getErr := client.GetJob(ctx, repo.RepoOwner(), repo.RepoName(), jobID)
-		if getErr != nil {
-			fmt.Fprintf(errOut, "warning: failed to get job status: %v\n", getErr)
-			return errPRNotReady
+		j, err := client.GetJob(ctx, repo.RepoOwner(), repo.RepoName(), jobID)
+		if err != nil {
+			// Do not retry on GetJob errors; surface immediately.
+			return backoff.Permanent(err)
 		}
 		if j.PullRequest != nil && j.PullRequest.Number > 0 {
 			result = j
@@ -170,7 +172,7 @@ func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrep
 
 	if retryErr != nil {
 		if errors.Is(retryErr, errPRNotReady) {
-			// Timed out or failed to fetch
+			// Timed out
 			return nil, nil
 		}
 		return nil, retryErr
