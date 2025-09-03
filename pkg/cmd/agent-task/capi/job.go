@@ -79,24 +79,16 @@ func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatemen
 		return nil, err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK { // accept 201 or 200
-		// Attempt to parse error body for message
-		var er struct {
-			Error struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		_ = json.NewDecoder(res.Body).Decode(&er)
-		msg := er.Error.Message
-		if msg == "" {
-			msg = res.Status
-		}
-		return nil, fmt.Errorf("failed to create job: %s", msg)
-	}
+
 	var j Job
 	if err := json.NewDecoder(res.Body).Decode(&j); err != nil {
 		return nil, fmt.Errorf("failed to decode create job response: %w", err)
 	}
+
+	if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK { // accept 201 or 200
+		return nil, fmt.Errorf("failed to create job: %s", j.ErrorInfo.Message)
+	}
+
 	return &j, nil
 }
 
