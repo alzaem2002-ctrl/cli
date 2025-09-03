@@ -137,7 +137,7 @@ func createRun(opts *CreateOptions) error {
 }
 
 func agentSessionWebURL(repo ghrepo.Interface, j *capi.Job) string {
-	if j == nil || j.PullRequest == nil {
+	if j.PullRequest == nil {
 		return ""
 	}
 	if j.SessionID == "" {
