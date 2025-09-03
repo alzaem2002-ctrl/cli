@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -59,7 +60,7 @@ func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatemen
 		return nil, errors.New("problem statement is required")
 	}
 
-	url := fmt.Sprintf("%s/%s/%s", jobsBasePathV1, owner, repo)
+	url := fmt.Sprintf("%s/%s/%s", jobsBasePathV1, url.PathEscape(owner), url.PathEscape(repo))
 	body := map[string]any{
 		"problem_statement": problemStatement,
 		"event_type":        defaultEventType,
