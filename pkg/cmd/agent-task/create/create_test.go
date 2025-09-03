@@ -180,10 +180,8 @@ func Test_createRun(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			if tt.wantStdout != "" {
-				require.Equal(t, tt.wantStdout, stdout.String())
-			}
 
+			require.Equal(t, tt.wantStdout, stdout.String())
 			require.Equal(t, tt.wantStdErr, stderr.String())
 
 			if tt.stubs != nil {
