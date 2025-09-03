@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	cmdCreate "github.com/cli/cli/v2/pkg/cmd/agent-task/create"
 	cmdList "github.com/cli/cli/v2/pkg/cmd/agent-task/list"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/go-gh/v2/pkg/auth"
@@ -29,6 +30,7 @@ func NewCmdAgentTask(f *cmdutil.Factory) *cobra.Command {
 
 	// register subcommands
 	cmd.AddCommand(cmdList.NewCmdList(f, nil))
+	cmd.AddCommand(cmdCreate.NewCmdCreate(f, nil))
 
 	return cmd
 }

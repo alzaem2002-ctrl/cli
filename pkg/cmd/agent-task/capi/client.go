@@ -15,6 +15,8 @@ const capiHost = "api.githubcopilot.com"
 type CapiClient interface {
 	ListSessionsForViewer(ctx context.Context, limit int) ([]*Session, error)
 	ListSessionsForRepo(ctx context.Context, owner string, repo string, limit int) ([]*Session, error)
+	CreateJob(ctx context.Context, owner, repo, problemStatement string) (*Job, error)
+	GetJob(ctx context.Context, owner, repo, jobID string) (*Job, error)
 }
 
 // CAPIClient is a client for interacting with the Copilot API
