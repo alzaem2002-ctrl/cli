@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -50,7 +49,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
 			} else if fromFileName != "" {
-				fileContent, err := os.ReadFile(fromFileName)
+				fileContent, err := cmdutil.ReadFile(fromFileName, opts.IO.In)
 				if err != nil {
 					return cmdutil.FlagErrorf("could not read task description file: %v", err)
 				}

@@ -3,6 +3,8 @@ package create
 import (
 	"net/http"
 	"os"
+	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
@@ -48,6 +50,12 @@ func TestNewCmdCreate_Args(t *testing.T) {
 			},
 		},
 		{
+			name:        "file content from stdin success",
+			args:        []string{"-F", "-"},
+			fileContent: "task from stdin",
+			wantOpts:    &CreateOptions{ProblemStatement: "task from stdin"},
+		},
+		{
 			name:        "mutually exclusive arg and file",
 			args:        []string{"Some task inline", "-F", "{{FILE}}"},
 			fileContent: "Some task",
@@ -68,23 +76,31 @@ func TestNewCmdCreate_Args(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Test file creation
-			var filePath string
+			ios, stdinBuf, _, _ := iostreams.Test()
+
+			// Provide file content either via stdin ( -F - ) or by creating a temp file
 			if tt.fileContent != "" {
-				dir := t.TempDir()
-				filePath = dir + "/task.md"
-				if err := os.WriteFile(filePath, []byte(tt.fileContent), 0o600); err != nil {
-					t.Fatalf("failed to write temp file: %v", err)
-				}
-				// substitute placeholder
-				for i, a := range tt.args {
-					if a == "{{FILE}}" {
-						tt.args[i] = filePath
+				isStdin := len(tt.args) == 2 && tt.args[0] == "-F" && tt.args[1] == "-"
+				hasFileToken := slices.Contains(tt.args, "{{FILE}}")
+
+				switch {
+				case isStdin:
+					stdinBuf.WriteString(tt.fileContent)
+				case hasFileToken:
+					dir := t.TempDir()
+					path := filepath.Join(dir, "task.md")
+					if err := os.WriteFile(path, []byte(tt.fileContent), 0o600); err != nil {
+						t.Fatalf("failed to write temp file: %v", err)
+					}
+					for i, a := range tt.args {
+						if a == "{{FILE}}" {
+							tt.args[i] = path
+						}
 					}
 				}
 			}
 
-			f := &cmdutil.Factory{}
+			f := &cmdutil.Factory{IOStreams: ios}
 			var gotOpts *CreateOptions
 			cmd := NewCmdCreate(f, func(o *CreateOptions) error {
 				gotOpts = o
