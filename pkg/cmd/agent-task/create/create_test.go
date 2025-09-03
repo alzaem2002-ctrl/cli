@@ -2,6 +2,7 @@ package create
 
 import (
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
@@ -17,13 +18,92 @@ import (
 
 // Test basic option parsing & repository requirement
 func TestNewCmdCreate_Args(t *testing.T) {
-	f := &cmdutil.Factory{}
-	cmd := NewCmdCreate(f, func(o *CreateOptions) error { return nil })
-	// no args should error via cobra MinimumNArgs before our runF
-	// TODO once we support more sources of problem statement input,
-	// this will change.
-	_, err := cmd.ExecuteC()
-	require.Error(t, err)
+	type tc struct {
+		name        string
+		args        []string
+		fileContent string         // if non-empty, create temp file and substitute {{FILE}} token in args
+		wantOpts    *CreateOptions // nil when expecting error
+		expectedErr string
+	}
+
+	tests := []tc{
+		{
+			name:        "no args nor file",
+			args:        []string{},
+			expectedErr: "a task description is required",
+		},
+		{
+			name: "arg only success",
+			args: []string{"task description from args"},
+			wantOpts: &CreateOptions{
+				ProblemStatement: "task description from args",
+			},
+		},
+		{
+			name:        "from-file success",
+			args:        []string{"-F", "{{FILE}}"},
+			fileContent: "task description from file",
+			wantOpts: &CreateOptions{
+				ProblemStatement: "task description from file",
+			},
+		},
+		{
+			name:        "mutually exclusive arg and file",
+			args:        []string{"Some task inline", "-F", "{{FILE}}"},
+			fileContent: "Some task",
+			expectedErr: "only one of -F or arg can be provided",
+		},
+		{
+			name:        "missing file path",
+			args:        []string{"-F", "does-not-exist.md"},
+			expectedErr: "could not read task description file: open does-not-exist.md: no such file or directory",
+		},
+		{
+			name:        "empty file",
+			args:        []string{"-F", "{{FILE}}"},
+			fileContent: "   \n\n",
+			expectedErr: "task description file is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test file creation
+			var filePath string
+			if tt.fileContent != "" {
+				dir := t.TempDir()
+				filePath = dir + "/task.md"
+				if err := os.WriteFile(filePath, []byte(tt.fileContent), 0o600); err != nil {
+					t.Fatalf("failed to write temp file: %v", err)
+				}
+				// substitute placeholder
+				for i, a := range tt.args {
+					if a == "{{FILE}}" {
+						tt.args[i] = filePath
+					}
+				}
+			}
+
+			f := &cmdutil.Factory{}
+			var gotOpts *CreateOptions
+			cmd := NewCmdCreate(f, func(o *CreateOptions) error {
+				gotOpts = o
+				return nil
+			})
+			cmd.SetArgs(tt.args)
+			_, err := cmd.ExecuteC()
+
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr, err.Error())
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantOpts != nil {
+				require.Equal(t, tt.wantOpts.ProblemStatement, gotOpts.ProblemStatement)
+			}
+		})
+	}
 }
 
 func Test_createRun(t *testing.T) {
