@@ -118,7 +118,7 @@ func Test_createRun(t *testing.T) {
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
-					httpmock.StatusStringResponse(400, `{"error":{"message":"some API error"}}`),
+					httpmock.StatusStringResponse(500, `{"error":{"message":"some API error"}}`),
 				)
 			},
 			wantErr: "failed to create job: some API error",
