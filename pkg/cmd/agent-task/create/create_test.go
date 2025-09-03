@@ -109,7 +109,7 @@ func Test_createRun(t *testing.T) {
 			name:             "missing repo returns error",
 			problemStatement: "task",
 			baseRepo:         ghrepo.New("", ""),
-			wantErr:          "error: a repository is required; re-run in a repository or supply one with --repo owner/name",
+			wantErr:          "a repository is required; re-run in a repository or supply one with --repo owner/name",
 		},
 		{
 			name:             "create task API failure returns error",
