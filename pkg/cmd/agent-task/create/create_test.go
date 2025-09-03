@@ -20,15 +20,13 @@ import (
 
 // Test basic option parsing & repository requirement
 func TestNewCmdCreate_Args(t *testing.T) {
-	type tc struct {
+	tests := []struct {
 		name        string
 		args        []string
 		fileContent string         // if non-empty, create temp file and substitute {{FILE}} token in args
 		wantOpts    *CreateOptions // nil when expecting error
 		expectedErr string
-	}
-
-	tests := []tc{
+	}{
 		{
 			name:        "no args nor file",
 			args:        []string{},
