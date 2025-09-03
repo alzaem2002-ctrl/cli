@@ -141,9 +141,9 @@ func createRun(opts *CreateOptions) error {
 	// Ensure we have a backoff strategy.
 	if opts.BackOff == nil {
 		opts.BackOff = backoff.NewExponentialBackOff(
-			backoff.WithMaxElapsedTime(4*time.Second),
+			backoff.WithMaxElapsedTime(10*time.Second),
 			backoff.WithInitialInterval(300*time.Millisecond),
-			backoff.WithMaxInterval(2*time.Second),
+			backoff.WithMaxInterval(10*time.Second),
 			backoff.WithMultiplier(1.5),
 		)
 	}
