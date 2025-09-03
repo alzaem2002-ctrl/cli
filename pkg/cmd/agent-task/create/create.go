@@ -32,7 +32,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		IO: f.IOStreams,
 	}
 	cmd := &cobra.Command{
-		Use:   "create <problem statement>",
+		Use:   "create \"<task description>\"",
 		Short: "Create an agent task (preview)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
