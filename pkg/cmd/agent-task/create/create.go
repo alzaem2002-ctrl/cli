@@ -14,6 +14,7 @@ import (
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
+	"github.com/cli/cli/v2/pkg/cmd/agent-task/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -46,6 +47,12 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				return err
 			}
 
+			// TODO: We'll support prompting for the problem statement if not provided
+			// and from file flags, later.
+			if len(args) == 0 {
+				return cmdutil.FlagErrorf("a task description is required")
+			}
+
 			// Populate ProblemStatement from either arg or file
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
@@ -66,7 +73,12 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			// Support -R/--repo override
 			if f != nil {
 				opts.BaseRepo = f.BaseRepo
+
+				if opts.CapiClient == nil {
+					opts.CapiClient = shared.CapiClientFunc(f)
+				}
 			}
+
 			if runF != nil {
 				return runF(opts)
 			}
@@ -92,19 +104,6 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
 	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
-
-	opts.CapiClient = func() (capi.CapiClient, error) {
-		cfg, err := f.Config()
-		if err != nil {
-			return nil, err
-		}
-		httpClient, err := f.HttpClient()
-		if err != nil {
-			return nil, err
-		}
-		authCfg := cfg.Authentication()
-		return capi.NewCAPIClient(httpClient, authCfg), nil
-	}
 
 	return cmd
 }

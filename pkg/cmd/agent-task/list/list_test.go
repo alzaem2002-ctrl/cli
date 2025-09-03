@@ -229,7 +229,7 @@ func Test_listRun(t *testing.T) {
 				Limit:   tt.limit,
 				Web:     tt.web,
 				Browser: br,
-				CapiClient: func() (*capi.CAPIClient, error) {
+				CapiClient: func() (capi.CapiClient, error) {
 					if tt.web {
 						require.FailNow(t, "CapiClient was called with --web")
 					}

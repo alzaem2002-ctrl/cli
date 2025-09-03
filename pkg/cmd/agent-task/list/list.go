@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cli/cli/v2/internal/browser"
-	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/internal/text"
@@ -23,9 +22,8 @@ const defaultLimit = 30
 // ListOptions are the options for the list command
 type ListOptions struct {
 	IO         *iostreams.IOStreams
-	Config     func() (gh.Config, error)
 	Limit      int
-	CapiClient func() (*capi.CAPIClient, error)
+	CapiClient func() (capi.CapiClient, error)
 	BaseRepo   func() (ghrepo.Interface, error)
 	Web        bool
 	Browser    browser.Browser
@@ -35,7 +33,6 @@ type ListOptions struct {
 func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
 		IO:      f.IOStreams,
-		Config:  f.Config,
 		Limit:   defaultLimit,
 		Browser: f.Browser,
 	}
@@ -46,8 +43,11 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Support -R/--repo override
-
 			opts.BaseRepo = f.BaseRepo
+
+			if opts.CapiClient == nil {
+				opts.CapiClient = shared.CapiClientFunc(f)
+			}
 
 			if opts.Limit < 1 {
 				return cmdutil.FlagErrorf("invalid limit: %v", opts.Limit)
@@ -65,19 +65,6 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, fmt.Sprintf("Maximum number of agent tasks to fetch (default %d)", defaultLimit))
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open agent tasks in the browser")
-
-	opts.CapiClient = func() (*capi.CAPIClient, error) {
-		cfg, err := opts.Config()
-		if err != nil {
-			return nil, err
-		}
-		httpClient, err := f.HttpClient()
-		if err != nil {
-			return nil, err
-		}
-		authCfg := cfg.Authentication()
-		return capi.NewCAPIClient(httpClient, authCfg), nil
-	}
 
 	return cmd
 }
