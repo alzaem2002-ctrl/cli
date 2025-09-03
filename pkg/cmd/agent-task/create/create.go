@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -141,9 +142,9 @@ func agentSessionWebURL(repo ghrepo.Interface, j *capi.Job) string {
 		return ""
 	}
 	if j.SessionID == "" {
-		return fmt.Sprintf("https://github.com/%s/%s/pull/%d", repo.RepoOwner(), repo.RepoName(), j.PullRequest.Number)
+		return fmt.Sprintf("https://github.com/%s/%s/pull/%d", url.PathEscape(repo.RepoOwner()), url.PathEscape(repo.RepoName()), j.PullRequest.Number)
 	}
-	return fmt.Sprintf("https://github.com/%s/%s/pull/%d/agent-sessions/%s", repo.RepoOwner(), repo.RepoName(), j.PullRequest.Number, j.SessionID)
+	return fmt.Sprintf("https://github.com/%s/%s/pull/%d/agent-sessions/%s", url.PathEscape(repo.RepoOwner()), url.PathEscape(repo.RepoName()), j.PullRequest.Number, url.PathEscape(j.SessionID))
 }
 
 // fetchJobWithBackoff polls the job resource until a PR number is present or the overall
