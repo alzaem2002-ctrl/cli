@@ -27,6 +27,7 @@ type CreateOptions struct {
 	Config           func() (gh.Config, error)
 	ProblemStatement string
 	BackOff          backoff.BackOff
+	BaseBranch       string
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
@@ -84,6 +85,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from file")
+	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the task")
 
 	opts.CapiClient = func() (capi.CapiClient, error) {
 		cfg, err := f.Config()
@@ -124,7 +126,7 @@ func createRun(opts *CreateOptions) error {
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Creating agent task in %s/%s...", repo.RepoOwner(), repo.RepoName()))
 	defer opts.IO.StopProgressIndicator()
 
-	job, err := client.CreateJob(ctx, repo.RepoOwner(), repo.RepoName(), opts.ProblemStatement)
+	job, err := client.CreateJob(ctx, repo.RepoOwner(), repo.RepoName(), opts.ProblemStatement, opts.BaseBranch)
 	if err != nil {
 		return err
 	}

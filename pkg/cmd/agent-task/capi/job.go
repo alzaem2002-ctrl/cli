@@ -38,8 +38,9 @@ type JobActor struct {
 }
 
 type JobPullRequest struct {
-	ID     int `json:"id"`
-	Number int `json:"number"`
+	ID      int    `json:"id"`
+	Number  int    `json:"number"`
+	BaseRef string `json:"base_ref,omitempty"`
 }
 
 type JobError struct {
@@ -53,7 +54,7 @@ const jobsBasePathV1 = baseCAPIURL + "/agents/swe/v1/jobs"
 // CreateJob queues a new job using the v1 Jobs API. It may or may not
 // return Pull Request information. If Pull Request information is required
 // following up by polling GetJob with the job ID is necessary.
-func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatement string) (*Job, error) {
+func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*Job, error) {
 	if owner == "" || repo == "" {
 		return nil, errors.New("owner and repo are required")
 	}
@@ -63,10 +64,17 @@ func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatemen
 
 	url := fmt.Sprintf("%s/%s/%s", jobsBasePathV1, url.PathEscape(owner), url.PathEscape(repo))
 
+	prOpts := JobPullRequest{}
+	if baseBranch != "" {
+		prOpts.BaseRef = "refs/heads/" + baseBranch
+	}
+
 	payload := &Job{
 		ProblemStatement: problemStatement,
 		EventType:        defaultEventType,
+		PullRequest:      &prOpts,
 	}
+
 	b, _ := json.Marshal(payload)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))

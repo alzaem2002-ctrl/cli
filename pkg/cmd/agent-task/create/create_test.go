@@ -151,10 +151,35 @@ func Test_createRun(t *testing.T) {
 		stubs            func(*httpmock.Registry)
 		baseRepoFunc     func() (ghrepo.Interface, error)
 		problemStatement string
+		baseBranch       string
 		wantStdout       string
 		wantStdErr       string
 		wantErr          string
 	}{
+		{
+			name:             "base branch included in create payload",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
+			baseBranch:       "feature",
+			stubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
+					httpmock.RESTPayload(201, createdJobSuccessWithPRResponse, func(payload map[string]interface{}) {
+						prRaw, ok := payload["pull_request"].(map[string]interface{})
+						if !ok {
+							require.FailNow(t, "expected pull_request object in payload")
+						}
+						if prRaw["base_ref"] != "refs/heads/feature" {
+							require.FailNow(t, "expected pull_request.base_ref to be 'refs/heads/feature'")
+						}
+						if payload["problem_statement"] != "Do the thing" {
+							require.FailNow(t, "unexpected problem_statement value")
+						}
+					}),
+				)
+			},
+			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
+		},
 		{
 			name:             "get job API failure surfaces error",
 			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
@@ -252,6 +277,7 @@ func Test_createRun(t *testing.T) {
 				IO:               ios,
 				ProblemStatement: tt.problemStatement,
 				BaseRepo:         tt.baseRepoFunc,
+				BaseBranch:       tt.baseBranch,
 			}
 
 			// A backoff with no internal between retries to keep tests fast,
