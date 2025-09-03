@@ -53,8 +53,7 @@ func Test_createRun(t *testing.T) {
 	tests := []struct {
 		name             string
 		stubs            func(*httpmock.Registry)
-		baseRepo         ghrepo.Interface
-		baseRepoErr      error
+		baseRepoFunc     func() (ghrepo.Interface, error)
 		problemStatement string
 		wantStdout       string
 		wantStdErr       string
@@ -62,7 +61,7 @@ func Test_createRun(t *testing.T) {
 	}{
 		{
 			name:             "get job API failure surfaces error",
-			baseRepo:         ghrepo.New("OWNER", "REPO"),
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
 			problemStatement: "Do the thing",
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
@@ -79,7 +78,7 @@ func Test_createRun(t *testing.T) {
 		},
 		{
 			name:             "success with immediate PR",
-			baseRepo:         ghrepo.New("OWNER", "REPO"),
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
 			problemStatement: "Do the thing",
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
@@ -91,7 +90,7 @@ func Test_createRun(t *testing.T) {
 		},
 		{
 			name:             "success with delayed PR after polling",
-			baseRepo:         ghrepo.New("OWNER", "REPO"),
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
 			problemStatement: "Do the thing",
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
@@ -107,7 +106,7 @@ func Test_createRun(t *testing.T) {
 		},
 		{
 			name:             "fallback after timeout returns link to global agents page",
-			baseRepo:         ghrepo.New("OWNER", "REPO"),
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
 			problemStatement: "Do the thing",
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
@@ -127,12 +126,12 @@ func Test_createRun(t *testing.T) {
 		{
 			name:             "missing repo returns error",
 			problemStatement: "task",
-			baseRepo:         ghrepo.New("", ""),
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return nil, nil },
 			wantErr:          "a repository is required; re-run in a repository or supply one with --repo owner/name",
 		},
 		{
 			name:             "create task API failure returns error",
-			baseRepo:         ghrepo.New("OWNER", "REPO"),
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
 			problemStatement: "do the thing",
 			stubs: func(reg *httpmock.Registry) {
 				reg.Register(
@@ -142,7 +141,12 @@ func Test_createRun(t *testing.T) {
 			},
 			wantErr: "failed to create job: some API error",
 		},
-		// Removed test case that previously expected fallback after polling error.
+		{
+			name:             "missing task description returns error",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "",
+			wantErr:          "a task description is required",
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,11 +155,7 @@ func Test_createRun(t *testing.T) {
 			opts := &CreateOptions{
 				IO:               ios,
 				ProblemStatement: tt.problemStatement,
-			}
-
-			if tt.baseRepo != nil || tt.baseRepoErr != nil {
-				br, bre := tt.baseRepo, tt.baseRepoErr
-				opts.BaseRepo = func() (ghrepo.Interface, error) { return br, bre }
+				BaseRepo:         tt.baseRepoFunc,
 			}
 
 			// A backoff with no internal between retries to keep tests fast,

@@ -39,7 +39,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			// TODO: We'll support prompting for the problem statement if not provided
 			// and from file flags, later.
 			if len(args) == 0 {
-				return cmdutil.FlagErrorf("a problem statement is required")
+				return cmdutil.FlagErrorf("a task description is required")
 			}
 
 			opts.ProblemStatement = args[0]
@@ -75,13 +75,13 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 func createRun(opts *CreateOptions) error {
 	if opts.ProblemStatement == "" {
-		return cmdutil.FlagErrorf("a problem statement is required")
+		return cmdutil.FlagErrorf("a task description is required")
 	}
 	if opts.BaseRepo == nil {
 		return errors.New("failed to resolve repository")
 	}
 	repo, err := opts.BaseRepo()
-	if err != nil || repo == nil || repo.RepoOwner() == "" || repo.RepoName() == "" {
+	if err != nil || repo == nil {
 		// Not printing the error that came back from BaseRepo() here because we want
 		// something clear, human friendly, and actionable.
 		return fmt.Errorf("a repository is required; re-run in a repository or supply one with --repo owner/name")
