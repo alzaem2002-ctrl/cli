@@ -15,15 +15,16 @@ const defaultEventType = "gh_cli"
 
 // Job represents a coding agent's task. Used to request a new session.
 type Job struct {
-	ID                string          `json:"job_id"`
-	SessionID         string          `json:"session_id"`
+	ID                string          `json:"job_id,omitempty"`
+	SessionID         string          `json:"session_id,omitempty"`
 	ProblemStatement  string          `json:"problem_statement,omitempty"`
+	EventType         string          `json:"event_type,omitempty"`
 	ContentFilterMode string          `json:"content_filter_mode,omitempty"`
 	Status            string          `json:"status,omitempty"`
 	Result            string          `json:"result,omitempty"`
 	Actor             *JobActor       `json:"actor,omitempty"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
+	CreatedAt         time.Time       `json:"created_at,omitempty"`
+	UpdatedAt         time.Time       `json:"updated_at,omitempty"`
 	PullRequest       *JobPullRequest `json:"pull_request,omitempty"`
 	WorkflowRun       *struct {
 		ID string `json:"id"`
@@ -61,11 +62,13 @@ func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatemen
 	}
 
 	url := fmt.Sprintf("%s/%s/%s", jobsBasePathV1, url.PathEscape(owner), url.PathEscape(repo))
-	body := map[string]any{
-		"problem_statement": problemStatement,
-		"event_type":        defaultEventType,
+
+	payload := &Job{
+		ProblemStatement: problemStatement,
+		EventType:        defaultEventType,
 	}
-	b, _ := json.Marshal(body)
+	b, _ := json.Marshal(payload)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
 	if err != nil {
 		return nil, err
