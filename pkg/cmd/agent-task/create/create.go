@@ -84,7 +84,7 @@ func createRun(opts *CreateOptions) error {
 	if err != nil || repo == nil || repo.RepoOwner() == "" || repo.RepoName() == "" {
 		// Not printing the error that came back from BaseRepo() here because we want
 		// something clear, human friendly, and actionable.
-		return fmt.Errorf("error: a repository is required; re-run in a repository or supply one with --repo owner/name")
+		return fmt.Errorf("a repository is required; re-run in a repository or supply one with --repo owner/name")
 	}
 
 	client, err := opts.CapiClient()
