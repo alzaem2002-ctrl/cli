@@ -102,7 +102,7 @@ func (c *CAPIClient) GetJob(ctx context.Context, owner, repo, jobID string) (*Jo
 	if owner == "" || repo == "" || jobID == "" {
 		return nil, errors.New("owner, repo, and jobID are required")
 	}
-	url := fmt.Sprintf("%s/%s/%s/%s", jobsBasePathV1, owner, repo, jobID)
+	url := fmt.Sprintf("%s/%s/%s/%s", jobsBasePathV1, url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(jobID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
