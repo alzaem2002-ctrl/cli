@@ -133,6 +133,12 @@ func listRun(opts *ListOptions) error {
 		return cmdutil.NewNoResultsError("no agent tasks found")
 	}
 
+	if err := opts.IO.StartPager(); err == nil {
+		defer opts.IO.StopPager()
+	} else {
+		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
+	}
+
 	cs := opts.IO.ColorScheme()
 	tp := tableprinter.New(opts.IO, tableprinter.WithHeader("Session ID", "Pull Request", "Repo", "Session State", "Created"))
 	for _, s := range sessions {
