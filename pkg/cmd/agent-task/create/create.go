@@ -33,7 +33,8 @@ type CreateOptions struct {
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO: f.IOStreams,
+		IO:         f.IOStreams,
+		CapiClient: shared.CapiClientFunc(f),
 	}
 
 	var fromFileName string
@@ -43,6 +44,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Short: "Create an agent task (preview)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Support -R/--repo override
+			opts.BaseRepo = f.BaseRepo
+
 			if err := cmdutil.MutuallyExclusive("only one of -F or arg can be provided", len(args) > 0, fromFileName != ""); err != nil {
 				return err
 			}
@@ -61,16 +65,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				}
 				opts.ProblemStatement = trimmed
 			}
+
 			if opts.ProblemStatement == "" {
 				return cmdutil.FlagErrorf("a task description is required")
-			}
-			// Support -R/--repo override
-			if f != nil {
-				opts.BaseRepo = f.BaseRepo
-
-				if opts.CapiClient == nil {
-					opts.CapiClient = shared.CapiClientFunc(f)
-				}
 			}
 
 			if runF != nil {
@@ -103,12 +100,6 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func createRun(opts *CreateOptions) error {
-	if opts.ProblemStatement == "" {
-		return cmdutil.FlagErrorf("a task description is required")
-	}
-	if opts.BaseRepo == nil {
-		return errors.New("failed to resolve repository")
-	}
 	repo, err := opts.BaseRepo()
 	if err != nil || repo == nil {
 		// Not printing the error that came back from BaseRepo() here because we want
