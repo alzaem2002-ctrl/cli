@@ -89,9 +89,8 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			$ gh agent-task create "fix errors" --base branch
 		`),
 	}
-	if f != nil {
-		cmdutil.EnableRepoOverride(cmd, f)
-	}
+
+	cmdutil.EnableRepoOverride(cmd, f)
 
 	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
 	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
