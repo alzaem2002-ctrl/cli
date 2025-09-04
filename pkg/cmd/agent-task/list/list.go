@@ -32,9 +32,10 @@ type ListOptions struct {
 // NewCmdList creates the list command
 func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:      f.IOStreams,
-		Limit:   defaultLimit,
-		Browser: f.Browser,
+		IO:         f.IOStreams,
+		CapiClient: shared.CapiClientFunc(f),
+		Limit:      defaultLimit,
+		Browser:    f.Browser,
 	}
 
 	cmd := &cobra.Command{
@@ -44,10 +45,6 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Support -R/--repo override
 			opts.BaseRepo = f.BaseRepo
-
-			if opts.CapiClient == nil {
-				opts.CapiClient = shared.CapiClientFunc(f)
-			}
 
 			if opts.Limit < 1 {
 				return cmdutil.FlagErrorf("invalid limit: %v", opts.Limit)
@@ -59,9 +56,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		},
 	}
 
-	if f != nil {
-		cmdutil.EnableRepoOverride(cmd, f)
-	}
+	cmdutil.EnableRepoOverride(cmd, f)
 
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, fmt.Sprintf("Maximum number of agent tasks to fetch (default %d)", defaultLimit))
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open agent tasks in the browser")
