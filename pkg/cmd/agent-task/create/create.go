@@ -47,12 +47,6 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				return err
 			}
 
-			// TODO: We'll support prompting for the problem statement if not provided
-			// and from file flags, later.
-			if len(args) == 0 {
-				return cmdutil.FlagErrorf("a task description is required")
-			}
-
 			// Populate ProblemStatement from either arg or file
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
