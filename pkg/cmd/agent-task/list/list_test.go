@@ -1,37 +1,45 @@
 package list
 
 import (
+	"context"
 	"errors"
-	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/browser"
-	"github.com/cli/cli/v2/internal/config"
-	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewCmdList(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     string
-		wantOpts ListOptions
-		wantErr  string
+		name         string
+		args         string
+		wantOpts     ListOptions
+		wantBaseRepo ghrepo.Interface
+		wantErr      string
 	}{
 		{
 			name: "no arguments",
 			wantOpts: ListOptions{
 				Limit: defaultLimit,
 			},
+		},
+		{
+			name: "base repo specified",
+			args: "--repo OWNER/REPO",
+			wantOpts: ListOptions{
+				Limit: defaultLimit,
+			},
+			wantBaseRepo: ghrepo.New("OWNER", "REPO"),
 		},
 		{
 			name: "custom limit",
@@ -62,11 +70,18 @@ func TestNewCmdList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := &cmdutil.Factory{}
+			ios, _, _, _ := iostreams.Test()
+			f := &cmdutil.Factory{
+				IOStreams: ios,
+			}
+
 			var gotOpts *ListOptions
 			cmd := NewCmdList(f, func(opts *ListOptions) error { gotOpts = opts; return nil })
+
 			if tt.args != "" {
-				cmd.SetArgs(strings.Split(tt.args, " "))
+				argv, err := shlex.Split(tt.args)
+				require.NoError(t, err)
+				cmd.SetArgs(argv)
 			}
 			_, err := cmd.ExecuteC()
 			if tt.wantErr != "" {
@@ -77,6 +92,12 @@ func TestNewCmdList(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOpts.Limit, gotOpts.Limit)
 			assert.Equal(t, tt.wantOpts.Web, gotOpts.Web)
+
+			if tt.wantBaseRepo != nil {
+				baseRepo, err := gotOpts.BaseRepo()
+				require.NoError(t, err)
+				assert.True(t, ghrepo.IsSame(tt.wantBaseRepo, baseRepo))
+			}
 		})
 	}
 }
