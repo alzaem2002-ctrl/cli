@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
@@ -25,24 +27,42 @@ type CreateOptions struct {
 	Config           func() (gh.Config, error)
 	ProblemStatement string
 	BackOff          backoff.BackOff
+	BaseBranch       string
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
 		IO: f.IOStreams,
 	}
+
+	var fromFileName string
+
 	cmd := &cobra.Command{
-		Use:   "create \"<task description>\"",
+		Use:   "create [<task description>] [flags]",
 		Short: "Create an agent task (preview)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: We'll support prompting for the problem statement if not provided
-			// and from file flags, later.
-			if len(args) == 0 {
-				return cmdutil.FlagErrorf("a task description is required")
+			if err := cmdutil.MutuallyExclusive("only one of -F or arg can be provided", len(args) > 0, fromFileName != ""); err != nil {
+				return err
 			}
 
-			opts.ProblemStatement = args[0]
+			// Populate ProblemStatement from either arg or file
+			if len(args) > 0 {
+				opts.ProblemStatement = args[0]
+			} else if fromFileName != "" {
+				fileContent, err := cmdutil.ReadFile(fromFileName, opts.IO.In)
+				if err != nil {
+					return cmdutil.FlagErrorf("could not read task description file: %v", err)
+				}
+				trimmed := strings.TrimSpace(string(fileContent))
+				if trimmed == "" {
+					return cmdutil.FlagErrorf("task description file is empty")
+				}
+				opts.ProblemStatement = trimmed
+			}
+			if opts.ProblemStatement == "" {
+				return cmdutil.FlagErrorf("a task description is required")
+			}
 			// Support -R/--repo override
 			if f != nil {
 				opts.BaseRepo = f.BaseRepo
@@ -52,10 +72,20 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			}
 			return createRun(opts)
 		},
+		Example: heredoc.Doc(`
+			# Create a task from an inline description
+			$ gh agent-task create "build me a new app"
+
+			# Create a task from a file
+			$ gh agent-task create -F task-desc.md
+		`),
 	}
 	if f != nil {
 		cmdutil.EnableRepoOverride(cmd, f)
 	}
+
+	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from file")
+	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the task")
 
 	opts.CapiClient = func() (capi.CapiClient, error) {
 		cfg, err := f.Config()
@@ -96,7 +126,7 @@ func createRun(opts *CreateOptions) error {
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Creating agent task in %s/%s...", repo.RepoOwner(), repo.RepoName()))
 	defer opts.IO.StopProgressIndicator()
 
-	job, err := client.CreateJob(ctx, repo.RepoOwner(), repo.RepoName(), opts.ProblemStatement)
+	job, err := client.CreateJob(ctx, repo.RepoOwner(), repo.RepoName(), opts.ProblemStatement, opts.BaseBranch)
 	if err != nil {
 		return err
 	}
@@ -112,9 +142,9 @@ func createRun(opts *CreateOptions) error {
 	// Ensure we have a backoff strategy.
 	if opts.BackOff == nil {
 		opts.BackOff = backoff.NewExponentialBackOff(
-			backoff.WithMaxElapsedTime(4*time.Second),
+			backoff.WithMaxElapsedTime(10*time.Second),
 			backoff.WithInitialInterval(300*time.Millisecond),
-			backoff.WithMaxInterval(2*time.Second),
+			backoff.WithMaxInterval(10*time.Second),
 			backoff.WithMultiplier(1.5),
 		)
 	}

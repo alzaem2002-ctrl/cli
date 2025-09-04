@@ -2,6 +2,9 @@ package create
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
@@ -17,13 +20,104 @@ import (
 
 // Test basic option parsing & repository requirement
 func TestNewCmdCreate_Args(t *testing.T) {
-	f := &cmdutil.Factory{}
-	cmd := NewCmdCreate(f, func(o *CreateOptions) error { return nil })
-	// no args should error via cobra MinimumNArgs before our runF
-	// TODO once we support more sources of problem statement input,
-	// this will change.
-	_, err := cmd.ExecuteC()
-	require.Error(t, err)
+	tests := []struct {
+		name        string
+		args        []string
+		fileContent string         // if non-empty, create temp file and substitute {{FILE}} token in args
+		wantOpts    *CreateOptions // nil when expecting error
+		expectedErr string
+	}{
+		{
+			name:        "no args nor file",
+			args:        []string{},
+			expectedErr: "a task description is required",
+		},
+		{
+			name: "arg only success",
+			args: []string{"task description from args"},
+			wantOpts: &CreateOptions{
+				ProblemStatement: "task description from args",
+			},
+		},
+		{
+			name:        "from-file success",
+			args:        []string{"-F", "{{FILE}}"},
+			fileContent: "task description from file",
+			wantOpts: &CreateOptions{
+				ProblemStatement: "task description from file",
+			},
+		},
+		{
+			name:        "file content from stdin success",
+			args:        []string{"-F", "-"},
+			fileContent: "task from stdin",
+			wantOpts:    &CreateOptions{ProblemStatement: "task from stdin"},
+		},
+		{
+			name:        "mutually exclusive arg and file",
+			args:        []string{"Some task inline", "-F", "{{FILE}}"},
+			fileContent: "Some task",
+			expectedErr: "only one of -F or arg can be provided",
+		},
+		{
+			name:        "missing file path",
+			args:        []string{"-F", "does-not-exist.md"},
+			expectedErr: "could not read task description file: open does-not-exist.md: no such file or directory",
+		},
+		{
+			name:        "empty file",
+			args:        []string{"-F", "{{FILE}}"},
+			fileContent: "   \n\n",
+			expectedErr: "task description file is empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ios, stdinBuf, _, _ := iostreams.Test()
+
+			// Provide file content either via stdin ( -F - ) or by creating a temp file
+			if tt.fileContent != "" {
+				isStdin := len(tt.args) == 2 && tt.args[0] == "-F" && tt.args[1] == "-"
+				hasFileToken := slices.Contains(tt.args, "{{FILE}}")
+
+				switch {
+				case isStdin:
+					stdinBuf.WriteString(tt.fileContent)
+				case hasFileToken:
+					dir := t.TempDir()
+					path := filepath.Join(dir, "task.md")
+					if err := os.WriteFile(path, []byte(tt.fileContent), 0o600); err != nil {
+						t.Fatalf("failed to write temp file: %v", err)
+					}
+					for i, a := range tt.args {
+						if a == "{{FILE}}" {
+							tt.args[i] = path
+						}
+					}
+				}
+			}
+
+			f := &cmdutil.Factory{IOStreams: ios}
+			var gotOpts *CreateOptions
+			cmd := NewCmdCreate(f, func(o *CreateOptions) error {
+				gotOpts = o
+				return nil
+			})
+			cmd.SetArgs(tt.args)
+			_, err := cmd.ExecuteC()
+
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr, err.Error())
+				return
+			}
+			require.NoError(t, err)
+			if tt.wantOpts != nil {
+				require.Equal(t, tt.wantOpts.ProblemStatement, gotOpts.ProblemStatement)
+			}
+		})
+	}
 }
 
 func Test_createRun(t *testing.T) {
@@ -55,10 +149,35 @@ func Test_createRun(t *testing.T) {
 		stubs            func(*httpmock.Registry)
 		baseRepoFunc     func() (ghrepo.Interface, error)
 		problemStatement string
+		baseBranch       string
 		wantStdout       string
 		wantStdErr       string
 		wantErr          string
 	}{
+		{
+			name:             "base branch included in create payload",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
+			baseBranch:       "feature",
+			stubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
+					httpmock.RESTPayload(201, createdJobSuccessWithPRResponse, func(payload map[string]interface{}) {
+						prRaw, ok := payload["pull_request"].(map[string]interface{})
+						if !ok {
+							require.FailNow(t, "expected pull_request object in payload")
+						}
+						if prRaw["base_ref"] != "refs/heads/feature" {
+							require.FailNow(t, "expected pull_request.base_ref to be 'refs/heads/feature'")
+						}
+						if payload["problem_statement"] != "Do the thing" {
+							require.FailNow(t, "unexpected problem_statement value")
+						}
+					}),
+				)
+			},
+			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
+		},
 		{
 			name:             "get job API failure surfaces error",
 			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
@@ -156,6 +275,7 @@ func Test_createRun(t *testing.T) {
 				IO:               ios,
 				ProblemStatement: tt.problemStatement,
 				BaseRepo:         tt.baseRepoFunc,
+				BaseBranch:       tt.baseBranch,
 			}
 
 			// A backoff with no internal between retries to keep tests fast,
