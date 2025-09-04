@@ -1,10 +1,11 @@
 package create
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"github.com/MakeNowJust/heredoc"
@@ -15,103 +16,109 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/require"
 )
 
-// Test basic option parsing & repository requirement
-func TestNewCmdCreate_Args(t *testing.T) {
+func TestNewCmdCreate(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tmpEmptyFile := filepath.Join(tmpDir, "empty-task-description.md")
+	err := os.WriteFile(tmpEmptyFile, []byte("  \n\n"), 0600)
+	require.NoError(t, err)
+
+	tmpFile := filepath.Join(tmpDir, "task-description.md")
+	err = os.WriteFile(tmpFile, []byte("task description from file"), 0600)
+	require.NoError(t, err)
+
 	tests := []struct {
-		name        string
-		args        []string
-		fileContent string         // if non-empty, create temp file and substitute {{FILE}} token in args
-		wantOpts    *CreateOptions // nil when expecting error
-		expectedErr string
+		name     string
+		args     string
+		stdin    string
+		wantOpts *CreateOptions // nil when expecting error
+		wantErr  string
 	}{
 		{
-			name:        "no args nor file",
-			args:        []string{},
-			expectedErr: "a task description is required",
+			name:    "no args nor file",
+			wantErr: "a task description is required",
 		},
 		{
 			name: "arg only success",
-			args: []string{"task description from args"},
+			args: "'task description from args'",
 			wantOpts: &CreateOptions{
 				ProblemStatement: "task description from args",
 			},
 		},
 		{
-			name:        "from-file success",
-			args:        []string{"-F", "{{FILE}}"},
-			fileContent: "task description from file",
+			name: "from-file success",
+			args: fmt.Sprintf("-F %s", tmpFile),
 			wantOpts: &CreateOptions{
 				ProblemStatement: "task description from file",
 			},
 		},
 		{
-			name:        "file content from stdin success",
-			args:        []string{"-F", "-"},
-			fileContent: "task from stdin",
-			wantOpts:    &CreateOptions{ProblemStatement: "task from stdin"},
+			name:  "file content from stdin success",
+			args:  "-F -",
+			stdin: "task description from stdin",
+			wantOpts: &CreateOptions{
+				ProblemStatement: "task description from stdin",
+			},
 		},
 		{
-			name:        "mutually exclusive arg and file",
-			args:        []string{"Some task inline", "-F", "{{FILE}}"},
-			fileContent: "Some task",
-			expectedErr: "only one of -F or arg can be provided",
+			name:    "mutually exclusive arg and file",
+			args:    "'some task inline' -F foo.md",
+			wantErr: "only one of -F or arg can be provided",
 		},
 		{
-			name:        "missing file path",
-			args:        []string{"-F", "does-not-exist.md"},
-			expectedErr: "could not read task description file: open does-not-exist.md: no such file or directory",
+			name:    "missing file path",
+			args:    "-F does-not-exist.md",
+			wantErr: "could not read task description file: open does-not-exist.md:",
 		},
 		{
-			name:        "empty file",
-			args:        []string{"-F", "{{FILE}}"},
-			fileContent: "   \n\n",
-			expectedErr: "task description file is empty",
+			name:    "empty file",
+			args:    fmt.Sprintf("-F %s", tmpEmptyFile),
+			wantErr: "task description file is empty",
+		},
+		{
+			name:    "empty from stdin",
+			args:    "-F -",
+			stdin:   "   \n\n",
+			wantErr: "task description file is empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ios, stdinBuf, _, _ := iostreams.Test()
-
-			// Provide file content either via stdin ( -F - ) or by creating a temp file
-			if tt.fileContent != "" {
-				isStdin := len(tt.args) == 2 && tt.args[0] == "-F" && tt.args[1] == "-"
-				hasFileToken := slices.Contains(tt.args, "{{FILE}}")
-
-				switch {
-				case isStdin:
-					stdinBuf.WriteString(tt.fileContent)
-				case hasFileToken:
-					dir := t.TempDir()
-					path := filepath.Join(dir, "task.md")
-					if err := os.WriteFile(path, []byte(tt.fileContent), 0o600); err != nil {
-						t.Fatalf("failed to write temp file: %v", err)
-					}
-					for i, a := range tt.args {
-						if a == "{{FILE}}" {
-							tt.args[i] = path
-						}
-					}
-				}
+			ios, stdin, _, _ := iostreams.Test()
+			f := &cmdutil.Factory{
+				IOStreams: ios,
 			}
 
-			f := &cmdutil.Factory{IOStreams: ios}
 			var gotOpts *CreateOptions
 			cmd := NewCmdCreate(f, func(o *CreateOptions) error {
 				gotOpts = o
 				return nil
 			})
-			cmd.SetArgs(tt.args)
-			_, err := cmd.ExecuteC()
 
-			if tt.expectedErr != "" {
-				require.Error(t, err)
-				require.Equal(t, tt.expectedErr, err.Error())
+			argv, err := shlex.Split(tt.args)
+			require.NoError(t, err)
+			cmd.SetArgs(argv)
+
+			cmd.SetIn(stdin)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+
+			if tt.stdin != "" {
+				stdin.WriteString(tt.stdin)
+			}
+
+			_, err = cmd.ExecuteC()
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
 				return
 			}
+
 			require.NoError(t, err)
 			if tt.wantOpts != nil {
 				require.Equal(t, tt.wantOpts.ProblemStatement, gotOpts.ProblemStatement)
