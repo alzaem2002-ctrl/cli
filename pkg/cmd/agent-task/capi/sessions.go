@@ -58,8 +58,23 @@ type sessionPullRequest struct {
 
 // Session is a hydrated in-flight agent task
 type Session struct {
-	session
-	PullRequest *api.PullRequest `json:"-"`
+	ID            string
+	Name          string
+	UserID        uint64
+	AgentID       int64
+	Logs          string
+	State         string
+	OwnerID       uint64
+	RepoID        uint64
+	ResourceType  string
+	ResourceID    int64
+	LastUpdatedAt time.Time
+	CreatedAt     time.Time
+	CompletedAt   time.Time
+	EventURL      string
+	EventType     string
+
+	PullRequest *api.PullRequest
 }
 
 // ListSessionsForViewer lists all agent sessions for the
@@ -235,10 +250,9 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 
 	newSessions := make([]*Session, 0, len(sessions))
 	for _, s := range sessions {
-		newSessions = append(newSessions, &Session{
-			session:     s,
-			PullRequest: prMap[strconv.FormatInt(s.ResourceID, 10)],
-		})
+		newSession := fromAPISession(s)
+		newSession.PullRequest = prMap[strconv.FormatInt(s.ResourceID, 10)]
+		newSessions = append(newSessions, newSession)
 	}
 
 	return newSessions, nil
@@ -260,4 +274,24 @@ func generatePullRequestNodeID(repoID, pullRequestID int64) string {
 	encoded := base64.RawURLEncoding.EncodeToString(buf.Bytes())
 
 	return "PR_" + encoded
+}
+
+func fromAPISession(s session) *Session {
+	return &Session{
+		ID:            s.ID,
+		Name:          s.Name,
+		UserID:        s.UserID,
+		AgentID:       s.AgentID,
+		Logs:          s.Logs,
+		State:         s.State,
+		OwnerID:       s.OwnerID,
+		RepoID:        s.RepoID,
+		ResourceType:  s.ResourceType,
+		ResourceID:    s.ResourceID,
+		LastUpdatedAt: s.LastUpdatedAt,
+		CreatedAt:     s.CreatedAt,
+		CompletedAt:   s.CompletedAt,
+		EventURL:      s.EventURL,
+		EventType:     s.EventType,
+	}
 }
