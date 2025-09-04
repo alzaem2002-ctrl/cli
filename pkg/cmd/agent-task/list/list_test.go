@@ -1,8 +1,10 @@
 package list
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -78,12 +80,15 @@ func TestNewCmdList(t *testing.T) {
 			var gotOpts *ListOptions
 			cmd := NewCmdList(f, func(opts *ListOptions) error { gotOpts = opts; return nil })
 
-			if tt.args != "" {
-				argv, err := shlex.Split(tt.args)
-				require.NoError(t, err)
-				cmd.SetArgs(argv)
-			}
-			_, err := cmd.ExecuteC()
+			argv, err := shlex.Split(tt.args)
+			require.NoError(t, err)
+			cmd.SetArgs(argv)
+
+			cmd.SetIn(&bytes.Buffer{})
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+
+			_, err = cmd.ExecuteC()
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
