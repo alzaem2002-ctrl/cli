@@ -78,14 +78,20 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			# Create a task from a file
 			$ gh agent-task create -F task-desc.md
+
+			# Create a task with problem statement from stdin
+			$ echo "build me a new app" | gh agent-task create -F -
+
+			# Select a different base branch for the PR
+			$ gh agent-task create "fix errors" --base branch
 		`),
 	}
 	if f != nil {
 		cmdutil.EnableRepoOverride(cmd, f)
 	}
 
-	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from file")
-	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the task")
+	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
 
 	opts.CapiClient = func() (capi.CapiClient, error) {
 		cfg, err := f.Config()
@@ -139,7 +145,6 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	// Otherwise, poll using exponential backoff until we either observe a PR or hit the overall timeout.
-	// Ensure we have a backoff strategy.
 	if opts.BackOff == nil {
 		opts.BackOff = backoff.NewExponentialBackOff(
 			backoff.WithMaxElapsedTime(10*time.Second),
