@@ -46,3 +46,17 @@ func SessionStateString(state string) string {
 		return state
 	}
 }
+
+type ColorFunc func(string) string
+
+func SessionSymbol(cs *iostreams.ColorScheme, state string) string {
+	noColor := func(s string) string { return s }
+	switch state {
+	case "completed":
+		return cs.SuccessIconWithColor(noColor)
+	case "failed", "timed_out", "cancelled":
+		return cs.FailureIconWithColor(noColor)
+	default:
+		return "-"
+	}
+}
