@@ -50,7 +50,7 @@ func TestNewCmdCreate(t *testing.T) {
 		},
 		{
 			name: "from-file success",
-			args: fmt.Sprintf("-F %s", tmpFile),
+			args: fmt.Sprintf("-F '%s'", tmpFile),
 			wantOpts: &CreateOptions{
 				ProblemStatement: "task description from file",
 			},
@@ -75,7 +75,7 @@ func TestNewCmdCreate(t *testing.T) {
 		},
 		{
 			name:    "empty file",
-			args:    fmt.Sprintf("-F %s", tmpEmptyFile),
+			args:    fmt.Sprintf("-F '%s'", tmpEmptyFile),
 			wantErr: "task description file is empty",
 		},
 		{
