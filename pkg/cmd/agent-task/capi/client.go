@@ -7,6 +7,8 @@ import (
 	"github.com/cli/cli/v2/internal/gh"
 )
 
+//go:generate moq -rm -out client_mock.go . CapiClient
+
 const baseCAPIURL = "https://api.githubcopilot.com"
 const capiHost = "api.githubcopilot.com"
 

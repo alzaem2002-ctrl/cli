@@ -16,7 +16,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-const defaultSessionsPerPage = 50
+var defaultSessionsPerPage = 50
 
 // session is an in-flight agent task
 type session struct {
@@ -58,27 +58,45 @@ type sessionPullRequest struct {
 
 // Session is a hydrated in-flight agent task
 type Session struct {
-	session
-	PullRequest *api.PullRequest `json:"-"`
+	ID            string
+	Name          string
+	UserID        uint64
+	AgentID       int64
+	Logs          string
+	State         string
+	OwnerID       uint64
+	RepoID        uint64
+	ResourceType  string
+	ResourceID    int64
+	LastUpdatedAt time.Time
+	CreatedAt     time.Time
+	CompletedAt   time.Time
+	EventURL      string
+	EventType     string
+
+	PullRequest *api.PullRequest
 }
 
 // ListSessionsForViewer lists all agent sessions for the
 // authenticated user up to limit.
 func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*Session, error) {
+	if limit == 0 {
+		return nil, nil
+	}
+
 	url := baseCAPIURL + "/agents/sessions"
+	pageSize := defaultSessionsPerPage
 
-	var sessions []session
-	page := 1
-	perPage := defaultSessionsPerPage
+	sessions := make([]session, 0, limit+pageSize)
 
-	for {
+	for page := 1; ; page++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 		if err != nil {
 			return nil, err
 		}
 
 		q := req.URL.Query()
-		q.Set("page_size", strconv.Itoa(perPage))
+		q.Set("page_size", strconv.Itoa(pageSize))
 		q.Set("page_number", strconv.Itoa(page))
 		req.URL.RawQuery = q.Encode()
 
@@ -96,11 +114,11 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
 		}
-		if len(response.Sessions) == 0 || len(sessions) >= limit {
+
+		sessions = append(sessions, response.Sessions...)
+		if len(response.Sessions) < pageSize || len(sessions) >= limit {
 			break
 		}
-		sessions = append(sessions, response.Sessions...)
-		page++
 	}
 
 	// Drop any above the limit
@@ -111,7 +129,7 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 	// Hydrate the result with pull request data.
 	result, err := c.hydrateSessionPullRequests(sessions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
 	}
 
 	return result, nil
@@ -123,20 +141,23 @@ func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo
 		return nil, fmt.Errorf("owner and repo are required")
 	}
 
+	if limit == 0 {
+		return nil, nil
+	}
+
 	url := fmt.Sprintf("%s/agents/sessions/nwo/%s/%s", baseCAPIURL, url.PathEscape(owner), url.PathEscape(repo))
+	pageSize := defaultSessionsPerPage
 
-	var sessions []session
-	page := 1
-	perPage := defaultSessionsPerPage
+	sessions := make([]session, 0, limit+pageSize)
 
-	for {
+	for page := 1; ; page++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 		if err != nil {
 			return nil, err
 		}
 
 		q := req.URL.Query()
-		q.Set("page_size", strconv.Itoa(perPage))
+		q.Set("page_size", strconv.Itoa(pageSize))
 		q.Set("page_number", strconv.Itoa(page))
 		req.URL.RawQuery = q.Encode()
 
@@ -154,11 +175,11 @@ func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo
 		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
 		}
-		if len(response.Sessions) == 0 || len(sessions) >= limit {
+
+		sessions = append(sessions, response.Sessions...)
+		if len(response.Sessions) < pageSize || len(sessions) >= limit {
 			break
 		}
-		sessions = append(sessions, response.Sessions...)
-		page++
 	}
 
 	// Drop any above the limit
@@ -169,7 +190,7 @@ func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo
 	// Hydrate the result with pull request data.
 	result, err := c.hydrateSessionPullRequests(sessions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
 	}
 	return result, nil
 }
@@ -194,10 +215,12 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 
 	var resp struct {
 		Nodes []struct {
+			TypeName    string             `graphql:"__typename"`
 			PullRequest sessionPullRequest `graphql:"... on PullRequest"`
 		} `graphql:"nodes(ids: $ids)"`
 	}
 
+	// TODO handle pagination
 	host, _ := c.authCfg.DefaultHost()
 	err := apiClient.Query(host, "FetchPRsForAgentTaskSessions", &resp, map[string]any{
 		"ids": prNodeIds,
@@ -227,10 +250,9 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 
 	newSessions := make([]*Session, 0, len(sessions))
 	for _, s := range sessions {
-		newSessions = append(newSessions, &Session{
-			session:     s,
-			PullRequest: prMap[strconv.FormatInt(s.ResourceID, 10)],
-		})
+		newSession := fromAPISession(s)
+		newSession.PullRequest = prMap[strconv.FormatInt(s.ResourceID, 10)]
+		newSessions = append(newSessions, newSession)
 	}
 
 	return newSessions, nil
@@ -252,4 +274,24 @@ func generatePullRequestNodeID(repoID, pullRequestID int64) string {
 	encoded := base64.RawURLEncoding.EncodeToString(buf.Bytes())
 
 	return "PR_" + encoded
+}
+
+func fromAPISession(s session) *Session {
+	return &Session{
+		ID:            s.ID,
+		Name:          s.Name,
+		UserID:        s.UserID,
+		AgentID:       s.AgentID,
+		Logs:          s.Logs,
+		State:         s.State,
+		OwnerID:       s.OwnerID,
+		RepoID:        s.RepoID,
+		ResourceType:  s.ResourceType,
+		ResourceID:    s.ResourceID,
+		LastUpdatedAt: s.LastUpdatedAt,
+		CreatedAt:     s.CreatedAt,
+		CompletedAt:   s.CompletedAt,
+		EventURL:      s.EventURL,
+		EventType:     s.EventType,
+	}
 }

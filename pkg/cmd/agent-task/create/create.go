@@ -14,6 +14,7 @@ import (
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
+	"github.com/cli/cli/v2/pkg/cmd/agent-task/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -32,7 +33,8 @@ type CreateOptions struct {
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO: f.IOStreams,
+		IO:         f.IOStreams,
+		CapiClient: shared.CapiClientFunc(f),
 	}
 
 	var fromFileName string
@@ -42,6 +44,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Short: "Create an agent task (preview)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Support -R/--repo override
+			opts.BaseRepo = f.BaseRepo
+
 			if err := cmdutil.MutuallyExclusive("only one of -F or arg can be provided", len(args) > 0, fromFileName != ""); err != nil {
 				return err
 			}
@@ -60,13 +65,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				}
 				opts.ProblemStatement = trimmed
 			}
+
 			if opts.ProblemStatement == "" {
 				return cmdutil.FlagErrorf("a task description is required")
 			}
-			// Support -R/--repo override
-			if f != nil {
-				opts.BaseRepo = f.BaseRepo
-			}
+
 			if runF != nil {
 				return runF(opts)
 			}
@@ -86,36 +89,16 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			$ gh agent-task create "fix errors" --base branch
 		`),
 	}
-	if f != nil {
-		cmdutil.EnableRepoOverride(cmd, f)
-	}
+
+	cmdutil.EnableRepoOverride(cmd, f)
 
 	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
 	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
-
-	opts.CapiClient = func() (capi.CapiClient, error) {
-		cfg, err := f.Config()
-		if err != nil {
-			return nil, err
-		}
-		httpClient, err := f.HttpClient()
-		if err != nil {
-			return nil, err
-		}
-		authCfg := cfg.Authentication()
-		return capi.NewCAPIClient(httpClient, authCfg), nil
-	}
 
 	return cmd
 }
 
 func createRun(opts *CreateOptions) error {
-	if opts.ProblemStatement == "" {
-		return cmdutil.FlagErrorf("a task description is required")
-	}
-	if opts.BaseRepo == nil {
-		return errors.New("failed to resolve repository")
-	}
 	repo, err := opts.BaseRepo()
 	if err != nil || repo == nil {
 		// Not printing the error that came back from BaseRepo() here because we want
