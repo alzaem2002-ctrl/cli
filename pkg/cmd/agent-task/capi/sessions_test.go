@@ -875,3 +875,210 @@ func TestListSessionsForRepo(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSessionRequiresID(t *testing.T) {
+	client := &CAPIClient{}
+
+	_, err := client.GetSession(context.Background(), "")
+	assert.EqualError(t, err, "missing session ID")
+}
+
+func TestGetSession(t *testing.T) {
+	sampleDateString := "2025-08-29T00:00:00Z"
+	sampleDate, err := time.Parse(time.RFC3339, sampleDateString)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		httpStubs func(*testing.T, *httpmock.Registry)
+		wantErr   string
+		wantErrIs error
+		wantOut   *Session
+	}{
+		{
+			name: "session not found",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/sessions/some-uuid"), "api.githubcopilot.com"),
+					httpmock.StatusStringResponse(404, "{}"),
+				)
+			},
+			wantErrIs: ErrSessionNotFound,
+			wantErr:   "not found",
+		},
+		{
+			name: "API error",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/sessions/some-uuid"), "api.githubcopilot.com"),
+					httpmock.StatusStringResponse(500, "some error"),
+				)
+			},
+			wantErr: "failed to get session:",
+		},
+		{
+			name: "invalid JSON response",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/sessions/some-uuid"), "api.githubcopilot.com"),
+					httpmock.StatusStringResponse(200, ""),
+				)
+			},
+			wantErr: "failed to decode session response: EOF",
+		},
+		{
+			name: "success",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/sessions/some-uuid"), "api.githubcopilot.com"),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"id": "some-uuid",
+							"name": "Build artifacts",
+							"user_id": 1,
+							"agent_id": 2,
+							"logs": "",
+							"state": "completed",
+							"owner_id": 10,
+							"repo_id": 1000,
+							"resource_type": "pull",
+							"resource_id": 2000,
+							"created_at": "%[1]s"
+						}`,
+						sampleDateString,
+					)),
+				)
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "PullRequest",
+										"id": "PR_node",
+										"fullDatabaseId": "2000",
+										"number": 42,
+										"title": "Improve docs",
+										"state": "OPEN",
+										"isDraft": true,
+										"url": "https://github.com/OWNER/REPO/pull/42",
+										"body": "",
+										"createdAt": "%[1]s",
+										"updatedAt": "%[1]s",
+										"repository": {
+											"nameWithOwner": "OWNER/REPO"
+										}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: &Session{
+				ID:           "some-uuid",
+				Name:         "Build artifacts",
+				UserID:       1,
+				AgentID:      2,
+				Logs:         "",
+				State:        "completed",
+				OwnerID:      10,
+				RepoID:       1000,
+				ResourceType: "pull",
+				ResourceID:   2000,
+				CreatedAt:    sampleDate,
+				PullRequest: &api.PullRequest{
+					ID:             "PR_node",
+					FullDatabaseID: "2000",
+					Number:         42,
+					Title:          "Improve docs",
+					State:          "OPEN",
+					IsDraft:        true,
+					URL:            "https://github.com/OWNER/REPO/pull/42",
+					Body:           "",
+					CreatedAt:      sampleDate,
+					UpdatedAt:      sampleDate,
+					Repository: &api.PRRepository{
+						NameWithOwner: "OWNER/REPO",
+					},
+				},
+				User: &api.GitHubUser{
+					Login:      "octocat",
+					Name:       "Octocat",
+					DatabaseID: 1,
+				},
+			},
+		},
+		{
+			name: "API error at hydration",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/sessions/some-uuid"), "api.githubcopilot.com"),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"id": "some-uuid",
+							"name": "Build artifacts",
+							"user_id": 1,
+							"agent_id": 2,
+							"logs": "",
+							"state": "completed",
+							"owner_id": 10,
+							"repo_id": 1000,
+							"resource_type": "pull",
+							"resource_id": 2000,
+							"created_at": "%[1]s"
+						}`,
+						sampleDateString,
+					)),
+				)
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.StatusStringResponse(500, `{}`),
+				)
+			},
+			wantErr: `failed to fetch session resources: non-200 OK status code:`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := &httpmock.Registry{}
+			if tt.httpStubs != nil {
+				tt.httpStubs(t, reg)
+			}
+			defer reg.Verify(t)
+
+			httpClient := &http.Client{Transport: reg}
+
+			cfg := config.NewBlankConfig()
+			capiClient := NewCAPIClient(httpClient, cfg.Authentication())
+
+			session, err := capiClient.GetSession(context.Background(), "some-uuid")
+
+			if tt.wantErrIs != nil {
+				require.ErrorIs(t, err, tt.wantErrIs)
+			}
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, session)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantOut, session)
+		})
+	}
+}
