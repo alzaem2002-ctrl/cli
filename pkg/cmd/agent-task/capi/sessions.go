@@ -239,6 +239,66 @@ func (c *CAPIClient) GetSession(ctx context.Context, id string) (*Session, error
 	return sessions[0], nil
 }
 
+// ListSessionsByResourceID retrieves sessions associated with the given resource type and ID.
+func (c *CAPIClient) ListSessionsByResourceID(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error) {
+	if resourceType == "" || resourceID == 0 {
+		return nil, fmt.Errorf("missing resource type/ID")
+	}
+
+	if limit == 0 {
+		return nil, nil
+	}
+
+	url := fmt.Sprintf("%s/agents/sessions/resource/%s/%d", baseCAPIURL, url.PathEscape(resourceType), resourceID)
+	pageSize := defaultSessionsPerPage
+
+	sessions := make([]session, 0, limit+pageSize)
+
+	for page := 1; ; page++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+		if err != nil {
+			return nil, err
+		}
+
+		q := req.URL.Query()
+		q.Set("page_size", strconv.Itoa(pageSize))
+		q.Set("page_number", strconv.Itoa(page))
+		req.URL.RawQuery = q.Encode()
+
+		res, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to list sessions: %s", res.Status)
+		}
+		var response struct {
+			Sessions []session `json:"sessions"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
+		}
+
+		sessions = append(sessions, response.Sessions...)
+		if len(response.Sessions) < pageSize || len(sessions) >= limit {
+			break
+		}
+	}
+
+	// Drop any above the limit
+	if len(sessions) > limit {
+		sessions = sessions[:limit]
+	}
+
+	// Hydrate the result with pull request data.
+	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
+	}
+	return result, nil
+}
+
 // hydrateSessionPullRequestsAndUsers hydrates pull request and user information in sessions
 func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*Session, error) {
 	if len(sessions) == 0 {
