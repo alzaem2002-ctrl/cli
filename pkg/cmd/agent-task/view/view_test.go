@@ -10,6 +10,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
+	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -20,20 +21,49 @@ import (
 
 func TestNewCmdList(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     string
-		wantOpts ViewOptions
-		wantErr  string
+		name         string
+		tty          bool
+		args         string
+		wantOpts     ViewOptions
+		wantBaseRepo ghrepo.Interface
+		wantErr      string
 	}{
 		{
-			name:    "no arguments",
-			wantErr: "a session ID is required",
+			name:     "no arg tty",
+			tty:      true,
+			args:     "",
+			wantOpts: ViewOptions{},
 		},
 		{
-			name: "session ID arg",
-			args: "some-uuid",
+			name: "session ID arg tty",
+			tty:  true,
+			args: "00000000-0000-0000-0000-000000000000",
 			wantOpts: ViewOptions{
-				SelectorArg: "some-uuid",
+				SelectorArg: "00000000-0000-0000-0000-000000000000",
+				SessionID:   "00000000-0000-0000-0000-000000000000",
+			},
+		},
+		{
+			name: "non-session ID arg tty",
+			tty:  true,
+			args: "some-arg",
+			wantOpts: ViewOptions{
+				SelectorArg: "some-arg",
+			},
+		},
+		{
+			name:    "session ID required if non-tty",
+			tty:     false,
+			args:    "some-arg",
+			wantErr: "session ID is required when not running interactively",
+		},
+		{
+			name:         "repo override",
+			tty:          true,
+			args:         "some-arg -R OWNER/REPO",
+			wantBaseRepo: ghrepo.New("OWNER", "REPO"),
+			wantOpts: ViewOptions{
+				SelectorArg: "some-arg",
 			},
 		},
 	}
@@ -41,6 +71,10 @@ func TestNewCmdList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ios, _, _, _ := iostreams.Test()
+			ios.SetStdinTTY(tt.tty)
+			ios.SetStdoutTTY(tt.tty)
+			ios.SetStderrTTY(tt.tty)
+
 			f := &cmdutil.Factory{
 				IOStreams: ios,
 			}
