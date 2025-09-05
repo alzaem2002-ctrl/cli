@@ -23,3 +23,26 @@ func ColorFuncForSessionState(s capi.Session, cs *iostreams.ColorScheme) func(st
 
 	return stateColor
 }
+
+func SessionStateString(state string) string {
+	switch state {
+	case "queued":
+		return "Queued"
+	case "in_progress":
+		return "In Progress"
+	case "completed":
+		return "Completed"
+	case "failed":
+		return "Failed"
+	case "idle":
+		return "Idle"
+	case "waiting_for_user":
+		return "Waiting for User"
+	case "timed_out":
+		return "Timed Out"
+	case "cancelled":
+		return "Cancelled"
+	default:
+		return state
+	}
+}

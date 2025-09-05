@@ -7,6 +7,7 @@ import (
 
 	cmdCreate "github.com/cli/cli/v2/pkg/cmd/agent-task/create"
 	cmdList "github.com/cli/cli/v2/pkg/cmd/agent-task/list"
+	cmdView "github.com/cli/cli/v2/pkg/cmd/agent-task/view"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/go-gh/v2/pkg/auth"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ func NewCmdAgentTask(f *cmdutil.Factory) *cobra.Command {
 	// register subcommands
 	cmd.AddCommand(cmdList.NewCmdList(f, nil))
 	cmd.AddCommand(cmdCreate.NewCmdCreate(f, nil))
+	cmd.AddCommand(cmdView.NewCmdView(f, nil))
 
 	return cmd
 }
