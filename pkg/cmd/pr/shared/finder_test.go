@@ -11,6 +11,7 @@ import (
 	"github.com/cli/cli/v2/git"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/httpmock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,6 +75,80 @@ func TestParseURL(t *testing.T) {
 			require.Equal(t, tt.wantNum, num)
 			require.NotNil(t, repo)
 			require.True(t, ghrepo.IsSame(tt.wantRepo, repo))
+		})
+	}
+}
+
+func TestParseFullReference(t *testing.T) {
+	tests := []struct {
+		name       string
+		arg        string
+		wantRepo   ghrepo.Interface
+		wantNumber int
+		wantErr    string
+	}{
+		{
+			name:    "number",
+			arg:     "123",
+			wantErr: `invalid reference: "123"`,
+		},
+		{
+			name:    "number with hash",
+			arg:     "#123",
+			wantErr: `invalid reference: "#123"`,
+		},
+		{
+			name:       "full form",
+			arg:        "OWNER/REPO#123",
+			wantNumber: 123,
+			wantRepo:   ghrepo.New("OWNER", "REPO"),
+		},
+		{
+			name:    "empty",
+			wantErr: "empty reference",
+		},
+		{
+			name:    "invalid full form, without hash",
+			arg:     "OWNER/REPO123",
+			wantErr: `invalid reference: "OWNER/REPO123"`,
+		},
+		{
+			name:    "invalid full form, empty owner and repo",
+			arg:     "/#123",
+			wantErr: `invalid reference: "/#123"`,
+		},
+		{
+			name:    "invalid full form, without owner",
+			arg:     "REPO#123",
+			wantErr: `invalid reference: "REPO#123"`,
+		},
+		{
+			name:    "invalid full form, without repo",
+			arg:     "OWNER/#123",
+			wantErr: `invalid reference: "OWNER/#123"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, number, err := ParseFullReference(tt.arg)
+
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				assert.Nil(t, repo)
+				assert.Zero(t, number)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantNumber, number)
+
+			if tt.wantRepo != nil {
+				require.NotNil(t, repo)
+				assert.True(t, ghrepo.IsSame(tt.wantRepo, repo))
+			} else {
+				assert.Nil(t, repo)
+			}
 		})
 	}
 }
