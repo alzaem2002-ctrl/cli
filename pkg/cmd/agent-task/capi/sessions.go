@@ -22,7 +22,7 @@ var defaultSessionsPerPage = 50
 type session struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
-	UserID        uint64    `json:"user_id"`
+	UserID        int64     `json:"user_id"`
 	AgentID       int64     `json:"agent_id"`
 	Logs          string    `json:"logs"`
 	State         string    `json:"state"`
@@ -60,7 +60,7 @@ type sessionPullRequest struct {
 type Session struct {
 	ID            string
 	Name          string
-	UserID        uint64
+	UserID        int64
 	AgentID       int64
 	Logs          string
 	State         string
@@ -75,6 +75,7 @@ type Session struct {
 	EventType     string
 
 	PullRequest *api.PullRequest
+	User        *api.GitHubUser
 }
 
 // ListSessionsForViewer lists all agent sessions for the
@@ -127,7 +128,7 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 	}
 
 	// Hydrate the result with pull request data.
-	result, err := c.hydrateSessionPullRequests(sessions)
+	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
 	}
@@ -188,42 +189,50 @@ func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo
 	}
 
 	// Hydrate the result with pull request data.
-	result, err := c.hydrateSessionPullRequests(sessions)
+	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
 	}
 	return result, nil
 }
 
-// hydrateSessionPullRequests hydrates pull request information in sessions
-func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session, error) {
+// hydrateSessionPullRequestsAndUsers hydrates pull request and user information in sessions
+func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*Session, error) {
 	if len(sessions) == 0 {
 		return nil, nil
 	}
 
 	prNodeIds := make([]string, 0, len(sessions))
-
+	userNodeIds := make([]string, 0, len(sessions))
 	for _, session := range sessions {
 		prNodeID := generatePullRequestNodeID(int64(session.RepoID), session.ResourceID)
-		if slices.Contains(prNodeIds, prNodeID) {
-			continue
+		if !slices.Contains(prNodeIds, prNodeID) {
+			prNodeIds = append(prNodeIds, prNodeID)
 		}
-		prNodeIds = append(prNodeIds, prNodeID)
-	}
 
+		userNodeId := generateUserNodeID(session.UserID)
+		if !slices.Contains(userNodeIds, userNodeId) {
+			userNodeIds = append(userNodeIds, userNodeId)
+		}
+	}
 	apiClient := api.NewClientFromHTTP(c.httpClient)
 
 	var resp struct {
 		Nodes []struct {
 			TypeName    string             `graphql:"__typename"`
 			PullRequest sessionPullRequest `graphql:"... on PullRequest"`
+			User        api.GitHubUser     `graphql:"... on User"`
 		} `graphql:"nodes(ids: $ids)"`
 	}
 
+	ids := make([]string, 0, len(prNodeIds)+len(userNodeIds))
+	ids = append(ids, prNodeIds...)
+	ids = append(ids, userNodeIds...)
+
 	// TODO handle pagination
 	host, _ := c.authCfg.DefaultHost()
-	err := apiClient.Query(host, "FetchPRsForAgentTaskSessions", &resp, map[string]any{
-		"ids": prNodeIds,
+	err := apiClient.Query(host, "FetchPRsAndUsersForAgentTaskSessions", &resp, map[string]any{
+		"ids": ids,
 	})
 
 	if err != nil {
@@ -231,20 +240,26 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 	}
 
 	prMap := make(map[string]*api.PullRequest, len(prNodeIds))
+	userMap := make(map[int64]*api.GitHubUser, len(userNodeIds))
 	for _, node := range resp.Nodes {
-		prMap[node.PullRequest.FullDatabaseID] = &api.PullRequest{
-			ID:             node.PullRequest.ID,
-			FullDatabaseID: node.PullRequest.FullDatabaseID,
-			Number:         node.PullRequest.Number,
-			Title:          node.PullRequest.Title,
-			State:          node.PullRequest.State,
-			URL:            node.PullRequest.URL,
-			Body:           node.PullRequest.Body,
-			CreatedAt:      node.PullRequest.CreatedAt,
-			UpdatedAt:      node.PullRequest.UpdatedAt,
-			ClosedAt:       node.PullRequest.ClosedAt,
-			MergedAt:       node.PullRequest.MergedAt,
-			Repository:     node.PullRequest.Repository,
+		switch node.TypeName {
+		case "User":
+			userMap[node.User.DatabaseID] = &node.User
+		case "PullRequest":
+			prMap[node.PullRequest.FullDatabaseID] = &api.PullRequest{
+				ID:             node.PullRequest.ID,
+				FullDatabaseID: node.PullRequest.FullDatabaseID,
+				Number:         node.PullRequest.Number,
+				Title:          node.PullRequest.Title,
+				State:          node.PullRequest.State,
+				URL:            node.PullRequest.URL,
+				Body:           node.PullRequest.Body,
+				CreatedAt:      node.PullRequest.CreatedAt,
+				UpdatedAt:      node.PullRequest.UpdatedAt,
+				ClosedAt:       node.PullRequest.ClosedAt,
+				MergedAt:       node.PullRequest.MergedAt,
+				Repository:     node.PullRequest.Repository,
+			}
 		}
 	}
 
@@ -252,6 +267,7 @@ func (c *CAPIClient) hydrateSessionPullRequests(sessions []session) ([]*Session,
 	for _, s := range sessions {
 		newSession := fromAPISession(s)
 		newSession.PullRequest = prMap[strconv.FormatInt(s.ResourceID, 10)]
+		newSession.User = userMap[s.UserID]
 		newSessions = append(newSessions, newSession)
 	}
 
@@ -274,6 +290,22 @@ func generatePullRequestNodeID(repoID, pullRequestID int64) string {
 	encoded := base64.RawURLEncoding.EncodeToString(buf.Bytes())
 
 	return "PR_" + encoded
+}
+
+func generateUserNodeID(userID int64) string {
+	buf := bytes.Buffer{}
+	parts := []int64{0, userID}
+
+	encoder := msgpack.NewEncoder(&buf)
+	encoder.UseCompactInts(true)
+
+	if err := encoder.Encode(parts); err != nil {
+		panic(err)
+	}
+
+	encoded := base64.RawURLEncoding.EncodeToString(buf.Bytes())
+
+	return "U_" + encoded
 }
 
 func fromAPISession(s session) *Session {

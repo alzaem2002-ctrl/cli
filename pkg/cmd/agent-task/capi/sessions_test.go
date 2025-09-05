@@ -86,7 +86,7 @@ func TestListSessionsForViewer(t *testing.T) {
 				)
 				// GraphQL hydration
 				reg.Register(
-					httpmock.GraphQL(`query FetchPRsForAgentTaskSessions\b`),
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
 					httpmock.GraphQLQuery(heredoc.Docf(`
 						{
 							"data": {
@@ -105,13 +105,19 @@ func TestListSessionsForViewer(t *testing.T) {
 										"repository": {
 											"nameWithOwner": "OWNER/REPO"
 										}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
 									}
 								]
 							}
 						}`,
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
-						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A"}, vars["ids"])
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "U_kgAB"}, vars["ids"])
 					}),
 				)
 			},
@@ -142,6 +148,11 @@ func TestListSessionsForViewer(t *testing.T) {
 						Repository: &api.PRRepository{
 							NameWithOwner: "OWNER/REPO",
 						},
+					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
 					},
 				},
 			},
@@ -213,7 +224,7 @@ func TestListSessionsForViewer(t *testing.T) {
 				)
 				// GraphQL hydration
 				reg.Register(
-					httpmock.GraphQL(`query FetchPRsForAgentTaskSessions\b`),
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
 					httpmock.GraphQLQuery(heredoc.Docf(`
 						{
 							"data": {
@@ -247,13 +258,19 @@ func TestListSessionsForViewer(t *testing.T) {
 										"repository": {
 											"nameWithOwner": "OWNER/REPO"
 										}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
 									}
 								]
 							}
 						}`,
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
-						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "PR_kwDNA-jNB9E"}, vars["ids"])
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "PR_kwDNA-jNB9E", "U_kgAB"}, vars["ids"])
 					}),
 				)
 			},
@@ -284,6 +301,11 @@ func TestListSessionsForViewer(t *testing.T) {
 							NameWithOwner: "OWNER/REPO",
 						},
 					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
+					},
 				},
 				{
 					ID:           "sess2",
@@ -310,6 +332,11 @@ func TestListSessionsForViewer(t *testing.T) {
 						Repository: &api.PRRepository{
 							NameWithOwner: "OWNER/REPO",
 						},
+					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
 					},
 				},
 			},
@@ -365,7 +392,7 @@ func TestListSessionsForViewer(t *testing.T) {
 				)
 				// GraphQL hydration
 				reg.Register(
-					httpmock.GraphQL(`query FetchPRsForAgentTaskSessions\b`),
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
 					httpmock.StatusStringResponse(500, `{}`),
 				)
 			},
@@ -489,7 +516,7 @@ func TestListSessionsForRepo(t *testing.T) {
 				)
 				// GraphQL hydration
 				reg.Register(
-					httpmock.GraphQL(`query FetchPRsForAgentTaskSessions\b`),
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
 					httpmock.GraphQLQuery(heredoc.Docf(`
 						{
 							"data": {
@@ -508,13 +535,19 @@ func TestListSessionsForRepo(t *testing.T) {
 										"repository": {
 											"nameWithOwner": "OWNER/REPO"
 										}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
 									}
 								]
 							}
 						}`,
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
-						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A"}, vars["ids"])
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "U_kgAB"}, vars["ids"])
 					}),
 				)
 			},
@@ -544,6 +577,11 @@ func TestListSessionsForRepo(t *testing.T) {
 						Repository: &api.PRRepository{
 							NameWithOwner: "OWNER/REPO",
 						},
+					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
 					},
 				},
 			},
@@ -615,7 +653,7 @@ func TestListSessionsForRepo(t *testing.T) {
 				)
 				// GraphQL hydration
 				reg.Register(
-					httpmock.GraphQL(`query FetchPRsForAgentTaskSessions\b`),
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
 					httpmock.GraphQLQuery(heredoc.Docf(`
 						{
 							"data": {
@@ -649,13 +687,19 @@ func TestListSessionsForRepo(t *testing.T) {
 										"repository": {
 											"nameWithOwner": "OWNER/REPO"
 										}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
 									}
 								]
 							}
 						}`,
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
-						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "PR_kwDNA-jNB9E"}, vars["ids"])
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "PR_kwDNA-jNB9E", "U_kgAB"}, vars["ids"])
 					}),
 				)
 			},
@@ -686,6 +730,11 @@ func TestListSessionsForRepo(t *testing.T) {
 							NameWithOwner: "OWNER/REPO",
 						},
 					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
+					},
 				},
 				{
 					ID:           "sess2",
@@ -712,6 +761,11 @@ func TestListSessionsForRepo(t *testing.T) {
 						Repository: &api.PRRepository{
 							NameWithOwner: "OWNER/REPO",
 						},
+					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
 					},
 				},
 			},
@@ -767,7 +821,7 @@ func TestListSessionsForRepo(t *testing.T) {
 				)
 				// GraphQL hydration
 				reg.Register(
-					httpmock.GraphQL(`query FetchPRsForAgentTaskSessions\b`),
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
 					httpmock.StatusStringResponse(500, `{}`),
 				)
 			},
