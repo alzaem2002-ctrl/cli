@@ -27,6 +27,9 @@ var _ CapiClient = &CapiClientMock{}
 //			GetSessionFunc: func(ctx context.Context, id string) (*Session, error) {
 //				panic("mock out the GetSession method")
 //			},
+//			ListSessionsByResourceIDFunc: func(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error) {
+//				panic("mock out the ListSessionsByResourceID method")
+//			},
 //			ListSessionsForRepoFunc: func(ctx context.Context, owner string, repo string, limit int) ([]*Session, error) {
 //				panic("mock out the ListSessionsForRepo method")
 //			},
@@ -48,6 +51,9 @@ type CapiClientMock struct {
 
 	// GetSessionFunc mocks the GetSession method.
 	GetSessionFunc func(ctx context.Context, id string) (*Session, error)
+
+	// ListSessionsByResourceIDFunc mocks the ListSessionsByResourceID method.
+	ListSessionsByResourceIDFunc func(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error)
 
 	// ListSessionsForRepoFunc mocks the ListSessionsForRepo method.
 	ListSessionsForRepoFunc func(ctx context.Context, owner string, repo string, limit int) ([]*Session, error)
@@ -88,6 +94,17 @@ type CapiClientMock struct {
 			// ID is the id argument value.
 			ID string
 		}
+		// ListSessionsByResourceID holds details about calls to the ListSessionsByResourceID method.
+		ListSessionsByResourceID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ResourceType is the resourceType argument value.
+			ResourceType string
+			// ResourceID is the resourceID argument value.
+			ResourceID int64
+			// Limit is the limit argument value.
+			Limit int
+		}
 		// ListSessionsForRepo holds details about calls to the ListSessionsForRepo method.
 		ListSessionsForRepo []struct {
 			// Ctx is the ctx argument value.
@@ -107,11 +124,12 @@ type CapiClientMock struct {
 			Limit int
 		}
 	}
-	lockCreateJob             sync.RWMutex
-	lockGetJob                sync.RWMutex
-	lockGetSession            sync.RWMutex
-	lockListSessionsForRepo   sync.RWMutex
-	lockListSessionsForViewer sync.RWMutex
+	lockCreateJob                sync.RWMutex
+	lockGetJob                   sync.RWMutex
+	lockGetSession               sync.RWMutex
+	lockListSessionsByResourceID sync.RWMutex
+	lockListSessionsForRepo      sync.RWMutex
+	lockListSessionsForViewer    sync.RWMutex
 }
 
 // CreateJob calls CreateJobFunc.
@@ -239,6 +257,50 @@ func (mock *CapiClientMock) GetSessionCalls() []struct {
 	mock.lockGetSession.RLock()
 	calls = mock.calls.GetSession
 	mock.lockGetSession.RUnlock()
+	return calls
+}
+
+// ListSessionsByResourceID calls ListSessionsByResourceIDFunc.
+func (mock *CapiClientMock) ListSessionsByResourceID(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error) {
+	if mock.ListSessionsByResourceIDFunc == nil {
+		panic("CapiClientMock.ListSessionsByResourceIDFunc: method is nil but CapiClient.ListSessionsByResourceID was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		ResourceType string
+		ResourceID   int64
+		Limit        int
+	}{
+		Ctx:          ctx,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		Limit:        limit,
+	}
+	mock.lockListSessionsByResourceID.Lock()
+	mock.calls.ListSessionsByResourceID = append(mock.calls.ListSessionsByResourceID, callInfo)
+	mock.lockListSessionsByResourceID.Unlock()
+	return mock.ListSessionsByResourceIDFunc(ctx, resourceType, resourceID, limit)
+}
+
+// ListSessionsByResourceIDCalls gets all the calls that were made to ListSessionsByResourceID.
+// Check the length with:
+//
+//	len(mockedCapiClient.ListSessionsByResourceIDCalls())
+func (mock *CapiClientMock) ListSessionsByResourceIDCalls() []struct {
+	Ctx          context.Context
+	ResourceType string
+	ResourceID   int64
+	Limit        int
+} {
+	var calls []struct {
+		Ctx          context.Context
+		ResourceType string
+		ResourceID   int64
+		Limit        int
+	}
+	mock.lockListSessionsByResourceID.RLock()
+	calls = mock.calls.ListSessionsByResourceID
+	mock.lockListSessionsByResourceID.RUnlock()
 	return calls
 }
 
