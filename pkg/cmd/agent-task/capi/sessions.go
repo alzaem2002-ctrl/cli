@@ -47,6 +47,7 @@ type sessionPullRequest struct {
 	State          string
 	URL            string
 	Body           string
+	IsDraft        bool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -252,6 +253,7 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 				Number:         node.PullRequest.Number,
 				Title:          node.PullRequest.Title,
 				State:          node.PullRequest.State,
+				IsDraft:        node.PullRequest.IsDraft,
 				URL:            node.PullRequest.URL,
 				Body:           node.PullRequest.Body,
 				CreatedAt:      node.PullRequest.CreatedAt,
