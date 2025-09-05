@@ -328,6 +328,31 @@ func ParseURL(prURL string) (ghrepo.Interface, int, error) {
 	return repo, prNumber, nil
 }
 
+var fullReferenceRE = regexp.MustCompile(`^(?:([^/]+)/([^/]+))#(\d+)$`)
+
+// ParseFullReference parses a short issue/pull request reference of the form
+// "owner/repo#number", where owner, repo and number are all required.
+func ParseFullReference(s string) (ghrepo.Interface, int, error) {
+	if s == "" {
+		return nil, 0, errors.New("empty reference")
+	}
+
+	m := fullReferenceRE.FindStringSubmatch(s)
+	if m == nil {
+		return nil, 0, fmt.Errorf("invalid reference: %q", s)
+	}
+
+	number, err := strconv.Atoi(m[3])
+	if err != nil {
+		return nil, 0, fmt.Errorf("invalid reference: %q", number)
+	}
+
+	owner := m[1]
+	repo := m[2]
+
+	return ghrepo.New(owner, repo), number, nil
+}
+
 func findByNumber(httpClient *http.Client, repo ghrepo.Interface, number int, fields []string) (*api.PullRequest, error) {
 	type response struct {
 		Repository struct {
