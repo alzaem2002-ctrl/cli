@@ -14,7 +14,6 @@ import (
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmdutil"
-	"github.com/cli/cli/v2/pkg/httpmock"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
@@ -114,7 +113,6 @@ func Test_listRun(t *testing.T) {
 	tests := []struct {
 		name           string
 		tty            bool
-		stubs          func(*httpmock.Registry)
 		capiStubs      func(*testing.T, *capi.CapiClientMock)
 		baseRepo       ghrepo.Interface
 		baseRepoErr    error
