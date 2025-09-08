@@ -108,6 +108,16 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 			out: `label:"quote qualifier"`,
 		},
 		{
+			name: "unused qualifiers should not appear in query",
+			query: Query{
+				Keywords: []string{"keyword"},
+				Qualifiers: Qualifiers{
+					Label: []string{"foo", "bar"},
+				},
+			},
+			out: `keyword label:bar label:foo`,
+		},
+		{
 			name: "special qualifiers when used once",
 			query: Query{
 				Keywords: []string{"keyword"},
@@ -134,6 +144,9 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 			out: `keyword (in:body OR in:comments OR in:title) in:foo (is:blocked OR is:blocking) (is:closed OR is:open) (is:issue OR is:pr) (is:locked OR is:unlocked) (is:merged OR is:unmerged) (is:private OR is:public) is:foo (repo:foo/bar OR repo:foo/baz) (user:janedoe OR user:johndoe)`,
 		},
 		{
+			// Since this is a general purpose package, we can't assume with know all
+			// use cases of special qualifiers. So, here we ensure unknown values are
+			// not OR-ed by default.
 			name: "special qualifiers without special values",
 			query: Query{
 				Keywords: []string{"keyword"},
@@ -158,16 +171,6 @@ func TestAdvancedIssueSearchString(t *testing.T) {
 				},
 			},
 			out: `keyword in:bar in:foo is:bar is:foo label:bar label:foo license:bar license:foo no:bar no:foo topic:bar topic:foo`,
-		},
-		{
-			name: "unused special qualifiers should be missing from the query",
-			query: Query{
-				Keywords: []string{"keyword"},
-				Qualifiers: Qualifiers{
-					Label: []string{"foo", "bar"},
-				},
-			},
-			out: `keyword label:bar label:foo`,
 		},
 	}
 	for _, tt := range tests {
