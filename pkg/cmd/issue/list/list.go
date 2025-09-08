@@ -63,12 +63,12 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Long: heredoc.Docf(`
 			List issues in a GitHub repository. By default, this only lists open issues.
 
-			When runs against %[1]sgithub.com%[1]s or GHE versions newer than 3.17.x, the command
-			performs search by using the advanced issue search syntax, which is documented at:
-			<https://github.blog/changelog/2025-03-06-github-issues-projects-api-support-for-issues-advanced-search-and-more>
-
 			The search query syntax is documented here:
 			<https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests>
+
+			On supported GitHub hosts, advanced issue search syntax can be used in the
+			%[1]s--search%[1]s query. For more information about advanced issue search, see:
+			<https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/filtering-and-searching-issues-and-pull-requests#building-advanced-filters-for-issues>
 		`, "`"),
 		Example: heredoc.Doc(`
 			$ gh issue list --label "bug" --label "help wanted"
