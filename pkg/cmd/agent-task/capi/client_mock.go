@@ -24,6 +24,9 @@ var _ CapiClient = &CapiClientMock{}
 //			GetJobFunc: func(ctx context.Context, owner string, repo string, jobID string) (*Job, error) {
 //				panic("mock out the GetJob method")
 //			},
+//			GetPullRequestDatabaseIDFunc: func(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+//				panic("mock out the GetPullRequestDatabaseID method")
+//			},
 //			GetSessionFunc: func(ctx context.Context, id string) (*Session, error) {
 //				panic("mock out the GetSession method")
 //			},
@@ -48,6 +51,9 @@ type CapiClientMock struct {
 
 	// GetJobFunc mocks the GetJob method.
 	GetJobFunc func(ctx context.Context, owner string, repo string, jobID string) (*Job, error)
+
+	// GetPullRequestDatabaseIDFunc mocks the GetPullRequestDatabaseID method.
+	GetPullRequestDatabaseIDFunc func(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error)
 
 	// GetSessionFunc mocks the GetSession method.
 	GetSessionFunc func(ctx context.Context, id string) (*Session, error)
@@ -86,6 +92,19 @@ type CapiClientMock struct {
 			Repo string
 			// JobID is the jobID argument value.
 			JobID string
+		}
+		// GetPullRequestDatabaseID holds details about calls to the GetPullRequestDatabaseID method.
+		GetPullRequestDatabaseID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Hostname is the hostname argument value.
+			Hostname string
+			// Owner is the owner argument value.
+			Owner string
+			// Repo is the repo argument value.
+			Repo string
+			// Number is the number argument value.
+			Number int
 		}
 		// GetSession holds details about calls to the GetSession method.
 		GetSession []struct {
@@ -126,6 +145,7 @@ type CapiClientMock struct {
 	}
 	lockCreateJob                sync.RWMutex
 	lockGetJob                   sync.RWMutex
+	lockGetPullRequestDatabaseID sync.RWMutex
 	lockGetSession               sync.RWMutex
 	lockListSessionsByResourceID sync.RWMutex
 	lockListSessionsForRepo      sync.RWMutex
@@ -221,6 +241,54 @@ func (mock *CapiClientMock) GetJobCalls() []struct {
 	mock.lockGetJob.RLock()
 	calls = mock.calls.GetJob
 	mock.lockGetJob.RUnlock()
+	return calls
+}
+
+// GetPullRequestDatabaseID calls GetPullRequestDatabaseIDFunc.
+func (mock *CapiClientMock) GetPullRequestDatabaseID(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+	if mock.GetPullRequestDatabaseIDFunc == nil {
+		panic("CapiClientMock.GetPullRequestDatabaseIDFunc: method is nil but CapiClient.GetPullRequestDatabaseID was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Hostname string
+		Owner    string
+		Repo     string
+		Number   int
+	}{
+		Ctx:      ctx,
+		Hostname: hostname,
+		Owner:    owner,
+		Repo:     repo,
+		Number:   number,
+	}
+	mock.lockGetPullRequestDatabaseID.Lock()
+	mock.calls.GetPullRequestDatabaseID = append(mock.calls.GetPullRequestDatabaseID, callInfo)
+	mock.lockGetPullRequestDatabaseID.Unlock()
+	return mock.GetPullRequestDatabaseIDFunc(ctx, hostname, owner, repo, number)
+}
+
+// GetPullRequestDatabaseIDCalls gets all the calls that were made to GetPullRequestDatabaseID.
+// Check the length with:
+//
+//	len(mockedCapiClient.GetPullRequestDatabaseIDCalls())
+func (mock *CapiClientMock) GetPullRequestDatabaseIDCalls() []struct {
+	Ctx      context.Context
+	Hostname string
+	Owner    string
+	Repo     string
+	Number   int
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Hostname string
+		Owner    string
+		Repo     string
+		Number   int
+	}
+	mock.lockGetPullRequestDatabaseID.RLock()
+	calls = mock.calls.GetPullRequestDatabaseID
+	mock.lockGetPullRequestDatabaseID.RUnlock()
 	return calls
 }
 
