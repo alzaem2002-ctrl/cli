@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultLimit = 60
+const defaultLimit = 40
 
 type ViewOptions struct {
 	IO         *iostreams.IOStreams
