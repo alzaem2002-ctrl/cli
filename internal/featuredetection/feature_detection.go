@@ -285,13 +285,13 @@ func (d *detector) SearchFeatures() (SearchFeatures, error) {
 	// Regarding the release of advanced issue search (AIS, for short), there
 	// are three time spans/periods:
 	//
-	// 1. Pre-deprecation (< 4 Sep): where both legacy search and AIS are available
+	// 1. Pre-deprecation: where both legacy search and AIS are available
 	//    - GraphQL: `ISSUE` and `ISSUE_ADVANCED` search types in GraphQL behave differently
 	//    - REST:    `advance_search=true` query parameter can be used to switch to AIS
-	// 2. Deprecation (>= 4 Sep): only AIS available
+	// 2. Deprecation: only AIS available
 	//    - GraphQL: `ISSUE` and `ISSUE_ADVANCED` search types in GraphQL behave the same (AIS)
 	//    - REST:    `advance_search` query parameter has no effect (AIS)
-	// 3. Cleanup (>= TBD): only AIS available
+	// 3. Cleanup: only AIS available
 	//    - GraphQL: `ISSUE` search type in GraphQL is the only available option (AIS)
 	//    - REST:    `advance_search` query parameter has no effect (AIS)
 	//
