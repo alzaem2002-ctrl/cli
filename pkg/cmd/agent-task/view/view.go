@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/prompter"
@@ -20,7 +19,6 @@ import (
 	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
-	"github.com/shurcooL/githubv4"
 	"github.com/spf13/cobra"
 )
 
@@ -117,25 +115,21 @@ func viewRun(opts *ViewOptions) error {
 			// so we need to check if the selector arg is a reference and fetch the PR
 			// directly.
 			if repo, num, err := prShared.ParseFullReference(opts.SelectorArg); err == nil {
-				// We need to check the base repo to get the hostname.
+				// Since the selector was a reference (i.e. without hostname data), we need to
+				// check the base repo to get the hostname.
 				baseRepo, err := opts.BaseRepo()
 				if err != nil {
 					return err
 				}
 
 				hostname := baseRepo.RepoHost()
-				if repo.RepoHost() != hostname {
-					return fmt.Errorf("agent tasks are not supported on this host: %s", repo.RepoHost())
+				if hostname != ghinstance.Default() {
+					return fmt.Errorf("agent tasks are not supported on this host: %s", hostname)
 				}
 
-				client, err := opts.HttpClient()
+				resourceID, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
 				if err != nil {
-					return err
-				}
-
-				resourceID, err = getPullRequestDatabaseID(ctx, client, hostname, repo, num)
-				if err != nil {
-					return fmt.Errorf("failed to get pull request: %w", err)
+					return fmt.Errorf("failed to fetch pull request: %w", err)
 				}
 			}
 		}
@@ -234,31 +228,4 @@ func viewRun(opts *ViewOptions) error {
 	}
 
 	return nil
-}
-
-func getPullRequestDatabaseID(ctx context.Context, httpClient *http.Client, hostname string, repo ghrepo.Interface, number int) (int64, error) {
-	var resp struct {
-		Repository struct {
-			PullRequest struct {
-				FullDatabaseID string `graphql:"fullDatabaseId"`
-			} `graphql:"pullRequest(number: $number)"`
-		} `graphql:"repository(owner: $owner, name: $repo)"`
-	}
-
-	variables := map[string]interface{}{
-		"owner":  githubv4.String(repo.RepoOwner()),
-		"repo":   githubv4.String(repo.RepoName()),
-		"number": githubv4.Int(number),
-	}
-
-	apiClient := api.NewClientFromHTTP(httpClient)
-	if err := apiClient.Query(hostname, "GetPullRequestFullDatabaseID", &resp, variables); err != nil {
-		return 0, err
-	}
-
-	databaseID, err := strconv.ParseInt(resp.Repository.PullRequest.FullDatabaseID, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return databaseID, nil
 }
