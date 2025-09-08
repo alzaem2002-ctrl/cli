@@ -64,9 +64,6 @@ type SearchFeatures struct {
 	// issue search as an opt-in feature, which has to be explicitly enabled in
 	// API calls.
 	AdvancedIssueSearchAPIOptIn bool
-	// AdvancedIssueSearchWebInIssuesTab indicates whether the host supports
-	// advanced issue search syntax in the Issues tab of repositories.
-	AdvancedIssueSearchWebInIssuesTab bool
 
 	// TODO advancedSearchFuture
 	// When advanced issue search is supported in Pull Requests tab, or in
@@ -84,18 +81,16 @@ var advancedIssueSearchNotSupported = SearchFeatures{
 // the full cleanup of temp types (i.e. ISSUE_ADVANCED search type is still
 // present on the schema).
 var advancedIssueSearchSupportedAsOptIn = SearchFeatures{
-	AdvancedIssueSearchAPI:            true,
-	AdvancedIssueSearchAPIOptIn:       true,
-	AdvancedIssueSearchWebInIssuesTab: true,
+	AdvancedIssueSearchAPI:      true,
+	AdvancedIssueSearchAPIOptIn: true,
 }
 
 // advancedIssueSearchSupportedAsOnlyBackend mimics github.com and GHE >=3.18
 // after the full cleanup of temp types (i.e. ISSUE_ADVANCED search type is
 // removed from the schema).
 var advancedIssueSearchSupportedAsOnlyBackend = SearchFeatures{
-	AdvancedIssueSearchAPI:            true,
-	AdvancedIssueSearchAPIOptIn:       false,
-	AdvancedIssueSearchWebInIssuesTab: true,
+	AdvancedIssueSearchAPI:      true,
+	AdvancedIssueSearchAPIOptIn: false,
 }
 
 type detector struct {
@@ -317,7 +312,6 @@ func (d *detector) SearchFeatures() (SearchFeatures, error) {
 			// As of August 2025, advanced issue search is going to be available
 			// on GHES 3.18+, including Issues tabs in repositories.
 			feature.AdvancedIssueSearchAPI = true
-			feature.AdvancedIssueSearchWebInIssuesTab = true
 
 			// TODO advancedSearchFuture
 			// When the advanced search syntax is supported in global search or
@@ -328,7 +322,6 @@ func (d *detector) SearchFeatures() (SearchFeatures, error) {
 		// As of August 2025, advanced issue search is available on github.com,
 		// including Issues tabs in repositories.
 		feature.AdvancedIssueSearchAPI = true
-		feature.AdvancedIssueSearchWebInIssuesTab = true
 
 		// TODO advancedSearchFuture
 		// When the advanced search syntax is supported in global search or

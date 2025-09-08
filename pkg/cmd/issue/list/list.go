@@ -181,10 +181,11 @@ func listRun(opts *ListOptions) error {
 			return err
 		}
 
-		advancedSyntaxSupported := searchFeatures.AdvancedIssueSearchAPI && searchFeatures.AdvancedIssueSearchWebInIssuesTab
-
 		issueListURL := ghrepo.GenerateRepoURL(baseRepo, "issues")
-		openURL, err := prShared.ListURLWithQuery(issueListURL, filterOptions, advancedSyntaxSupported)
+
+		// Note that if the advanced issue search API is available, the syntax is
+		// also supported in the Issues tab.
+		openURL, err := prShared.ListURLWithQuery(issueListURL, filterOptions, searchFeatures.AdvancedIssueSearchAPI)
 		if err != nil {
 			return err
 		}
