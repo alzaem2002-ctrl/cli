@@ -101,7 +101,7 @@ type Qualifiers struct {
 //
 // At the moment, the advanced search syntax is only available for searching
 // issues, and it's called advanced issue search.
-func (q Query) String() string {
+func (q Query) StandardSearchString() string {
 	qualifiers := formatQualifiers(q.Qualifiers, nil)
 	keywords := formatKeywords(q.Keywords)
 	all := append(keywords, qualifiers...)

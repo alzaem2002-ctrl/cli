@@ -220,7 +220,7 @@ func (s searcher) search(query Query, result interface{}) (*http.Response, error
 		}
 
 		if !features.AdvancedIssueSearchAPI {
-			qs.Set("q", query.String())
+			qs.Set("q", query.StandardSearchString())
 		} else {
 			qs.Set("q", query.AdvancedIssueSearchString())
 
@@ -230,7 +230,7 @@ func (s searcher) search(query Query, result interface{}) (*http.Response, error
 			}
 		}
 	} else {
-		qs.Set("q", query.String())
+		qs.Set("q", query.StandardSearchString())
 	}
 
 	if query.Order != "" {
@@ -278,7 +278,7 @@ func (s searcher) URL(query Query) string {
 	// search syntax (even for the issues/PRs tab on the sidebar). When the GUI
 	// is updated, we can use feature detection, and, if available, use the
 	// advanced search syntax.
-	qs.Set("q", query.String())
+	qs.Set("q", query.StandardSearchString())
 
 	if query.Order != "" {
 		qs.Set(orderKey, query.Order)

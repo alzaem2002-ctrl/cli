@@ -228,7 +228,7 @@ func SearchQueryBuild(options FilterOptions, advancedIssueSearchSyntax bool) str
 	if advancedIssueSearchSyntax {
 		q = query.AdvancedIssueSearchString()
 	} else {
-		q = query.String()
+		q = query.StandardSearchString()
 	}
 
 	if options.Search != "" {

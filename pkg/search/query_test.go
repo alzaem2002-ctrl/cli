@@ -8,7 +8,7 @@ import (
 
 var trueBool = true
 
-func TestQueryString(t *testing.T) {
+func TestStandardSearchString(t *testing.T) {
 	tests := []struct {
 		name  string
 		query Query
@@ -73,7 +73,7 @@ func TestQueryString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.out, tt.query.String())
+			assert.Equal(t, tt.out, tt.query.StandardSearchString())
 		})
 	}
 }
