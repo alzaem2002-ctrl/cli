@@ -1521,3 +1521,73 @@ func TestGetSession(t *testing.T) {
 		})
 	}
 }
+func TestGetPullRequestDatabaseID(t *testing.T) {
+	tests := []struct {
+		name      string
+		httpStubs func(*testing.T, *httpmock.Registry)
+		wantErr   string
+		wantOut   int64
+	}{
+		{
+			name: "graphql error",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.GraphQL(`query GetPullRequestFullDatabaseID\b`), "api.github.com"),
+					httpmock.StringResponse(`{"data":{}, "errors": [{"message": "some gql error"}]}`),
+				)
+			},
+			wantErr: "some gql error",
+		},
+		{
+			// This never happens in practice and it's just to cover more code path
+			name: "non-int database ID",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.GraphQL(`query GetPullRequestFullDatabaseID\b`), "api.github.com"),
+					httpmock.StringResponse(`{"data": {"repository": {"pullRequest": {"fullDatabaseId": "non-int"}}}}`),
+				)
+			},
+			wantErr: `strconv.ParseInt: parsing "non-int": invalid syntax`,
+		},
+		{
+			name: "success",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.GraphQL(`query GetPullRequestFullDatabaseID\b`), "api.github.com"),
+					httpmock.GraphQLQuery(`{"data": {"repository": {"pullRequest": {"fullDatabaseId": "999"}}}}`, func(s string, m map[string]interface{}) {
+						assert.Equal(t, "OWNER", m["owner"])
+						assert.Equal(t, "REPO", m["repo"])
+						assert.Equal(t, float64(42), m["number"])
+					}),
+				)
+			},
+			wantOut: 999,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := &httpmock.Registry{}
+			if tt.httpStubs != nil {
+				tt.httpStubs(t, reg)
+			}
+			defer reg.Verify(t)
+
+			httpClient := &http.Client{Transport: reg}
+
+			cfg := config.NewBlankConfig()
+			capiClient := NewCAPIClient(httpClient, cfg.Authentication())
+
+			databaseID, err := capiClient.GetPullRequestDatabaseID(context.Background(), "github.com", "OWNER", "REPO", 42)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Zero(t, databaseID)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantOut, databaseID)
+		})
+	}
+}
