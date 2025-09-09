@@ -132,7 +132,6 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 		sessions = sessions[:limit]
 	}
 
-	// Hydrate the result with pull request data.
 	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
@@ -193,7 +192,6 @@ func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo
 		sessions = sessions[:limit]
 	}
 
-	// Hydrate the result with pull request data.
 	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
@@ -292,7 +290,6 @@ func (c *CAPIClient) ListSessionsByResourceID(ctx context.Context, resourceType 
 		sessions = sessions[:limit]
 	}
 
-	// Hydrate the result with pull request data.
 	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
