@@ -152,7 +152,8 @@ func Test_listRun(t *testing.T) {
 				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
-							ID:           "s1",
+							ID:           "id1",
+							Name:         "s1",
 							State:        "completed",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -167,8 +168,8 @@ func Test_listRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				SESSION ID  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1          #101          OWNER/REPO  completed      about 6 hours ago
+				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
+				s1            #101          OWNER/REPO  completed      about 6 hours ago
 			`),
 		},
 		{
@@ -178,7 +179,8 @@ func Test_listRun(t *testing.T) {
 				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
-							ID:           "s1",
+							ID:           "id1",
+							Name:         "s1",
 							State:        "completed",
 							ResourceType: "pull",
 							CreatedAt:    sampleDate,
@@ -201,7 +203,8 @@ func Test_listRun(t *testing.T) {
 				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
-							ID:           "s1",
+							ID:           "id1",
+							Name:         "s1",
 							State:        "completed",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -213,7 +216,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s2",
+							ID:           "id2",
+							Name:         "s2",
 							State:        "failed",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -225,7 +229,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s3",
+							ID:           "id3",
+							Name:         "s3",
 							State:        "in_progress",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -237,7 +242,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s4",
+							ID:           "id4",
+							Name:         "s4",
 							State:        "queued",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -249,7 +255,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s5",
+							ID:           "id5",
+							Name:         "s5",
 							State:        "canceled",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -261,7 +268,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s6",
+							ID:           "id6",
+							Name:         "s6",
 							State:        "mystery",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -276,13 +284,13 @@ func Test_listRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				SESSION ID  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1          #101          OWNER/REPO  completed      about 6 hours ago
-				s2          #102          OWNER/REPO  failed         about 6 hours ago
-				s3          #103          OWNER/REPO  in_progress    about 6 hours ago
-				s4          #104          OWNER/REPO  queued         about 6 hours ago
-				s5          #105          OWNER/REPO  canceled       about 6 hours ago
-				s6          #106          OWNER/REPO  mystery        about 6 hours ago
+				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
+				s1            #101          OWNER/REPO  completed      about 6 hours ago
+				s2            #102          OWNER/REPO  failed         about 6 hours ago
+				s3            #103          OWNER/REPO  in_progress    about 6 hours ago
+				s4            #104          OWNER/REPO  queued         about 6 hours ago
+				s5            #105          OWNER/REPO  canceled       about 6 hours ago
+				s6            #106          OWNER/REPO  mystery        about 6 hours ago
 			`),
 		},
 		{
@@ -319,7 +327,8 @@ func Test_listRun(t *testing.T) {
 				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
-							ID:           "s1",
+							ID:           "id1",
+							Name:         "s1",
 							State:        "completed",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -334,8 +343,8 @@ func Test_listRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				SESSION ID  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1          #101          OWNER/REPO  completed      about 6 hours ago
+				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
+				s1            #101          OWNER/REPO  completed      about 6 hours ago
 			`),
 		},
 		{
@@ -346,7 +355,8 @@ func Test_listRun(t *testing.T) {
 				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
-							ID:           "s1",
+							ID:           "id1",
+							Name:         "s1",
 							State:        "completed",
 							ResourceType: "pull",
 							CreatedAt:    sampleDate,
@@ -370,7 +380,8 @@ func Test_listRun(t *testing.T) {
 				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
-							ID:           "s1",
+							ID:           "id1",
+							Name:         "s1",
 							State:        "completed",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -382,7 +393,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s2",
+							ID:           "id2",
+							Name:         "s2",
 							State:        "failed",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -394,7 +406,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s3",
+							ID:           "id3",
+							Name:         "s3",
 							State:        "in_progress",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -406,7 +419,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s4",
+							ID:           "id4",
+							Name:         "s4",
 							State:        "queued",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -418,7 +432,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s5",
+							ID:           "id5",
+							Name:         "s5",
 							State:        "canceled",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -430,7 +445,8 @@ func Test_listRun(t *testing.T) {
 							},
 						},
 						{
-							ID:           "s6",
+							ID:           "id6",
+							Name:         "s6",
 							State:        "mystery",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
@@ -445,13 +461,13 @@ func Test_listRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				SESSION ID  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1          #101          OWNER/REPO  completed      about 6 hours ago
-				s2          #102          OWNER/REPO  failed         about 6 hours ago
-				s3          #103          OWNER/REPO  in_progress    about 6 hours ago
-				s4          #104          OWNER/REPO  queued         about 6 hours ago
-				s5          #105          OWNER/REPO  canceled       about 6 hours ago
-				s6          #106          OWNER/REPO  mystery        about 6 hours ago
+				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
+				s1            #101          OWNER/REPO  completed      about 6 hours ago
+				s2            #102          OWNER/REPO  failed         about 6 hours ago
+				s3            #103          OWNER/REPO  in_progress    about 6 hours ago
+				s4            #104          OWNER/REPO  queued         about 6 hours ago
+				s5            #105          OWNER/REPO  canceled       about 6 hours ago
+				s6            #106          OWNER/REPO  mystery        about 6 hours ago
 			`),
 		},
 		{
