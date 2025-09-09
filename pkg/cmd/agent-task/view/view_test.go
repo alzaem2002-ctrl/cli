@@ -191,6 +191,7 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
+			// The user data should always be there, but we need to cover the code path.
 			name: "with session id, success, without user data (tty)",
 			tty:  true,
 			opts: ViewOptions{
@@ -224,6 +225,7 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
+			// This can happen when the session is just created and a PR is not yet available for it.
 			name: "with session id, success, without pr data (tty)",
 			tty:  true,
 			opts: ViewOptions{
@@ -249,6 +251,7 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
+			// The user data should always be there, but we need to cover the code path.
 			name: "with session id, success, without pr nor user data (tty)",
 			tty:  true,
 			opts: ViewOptions{
