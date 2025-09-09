@@ -185,7 +185,7 @@ func viewRun(opts *ViewOptions) error {
 			}
 
 			opts.IO.StopProgressIndicator()
-			selected, err := opts.Prompter.Select("Select a session", options[0], options)
+			selected, err := opts.Prompter.Select("Select a session", "", options)
 			if err != nil {
 				return err
 			}
