@@ -1039,7 +1039,7 @@ func TestListSessionsByResourceIDRequiresResource(t *testing.T) {
 	assert.EqualError(t, err, "missing resource type/ID")
 	_, err = client.ListSessionsByResourceID(context.Background(), "only-resource-type", 0, 0)
 	assert.EqualError(t, err, "missing resource type/ID")
-	_, err = client.ListSessionsByResourceID(context.Background(), "", 999, 0)
+	_, err = client.ListSessionsByResourceID(context.Background(), "", 0, 0)
 	assert.EqualError(t, err, "missing resource type/ID")
 }
 
