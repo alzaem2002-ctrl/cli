@@ -110,11 +110,8 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	// Prompt for ProblemStatement if not provided non-interactively
-	if opts.ProblemStatement == "" && opts.IO.CanPrompt() {
-		if opts.Prompter == nil {
-			return cmdutil.FlagErrorf("interactive prompting is not available")
-		}
-		desc, err := opts.Prompter.MarkdownEditor("Enter the task description", "", false)
+	if opts.Prompter != nil && opts.IO.CanPrompt() {
+		desc, err := opts.Prompter.MarkdownEditor("Enter the task description", opts.ProblemStatement, false)
 		if err != nil {
 			return err
 		}
