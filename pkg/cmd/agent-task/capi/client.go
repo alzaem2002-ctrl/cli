@@ -19,6 +19,7 @@ type CapiClient interface {
 	ListSessionsForRepo(ctx context.Context, owner string, repo string, limit int) ([]*Session, error)
 	CreateJob(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*Job, error)
 	GetJob(ctx context.Context, owner, repo, jobID string) (*Job, error)
+	GetSession(ctx context.Context, id string) (*Session, error)
 }
 
 // CAPIClient is a client for interacting with the Copilot API
