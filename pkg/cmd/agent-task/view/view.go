@@ -206,7 +206,7 @@ func viewRun(opts *ViewOptions) error {
 			cs.ColorFromString(prShared.ColorForPRState(*session.PullRequest))(fmt.Sprintf("#%d", session.PullRequest.Number)),
 		)
 	} else {
-		// Should never happen, but we need to cover the path
+		// This can happen when the session is just created and a PR is not yet available for it
 		fmt.Fprintf(out, "%s\n", shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)))
 	}
 
