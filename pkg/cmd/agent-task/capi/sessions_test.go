@@ -160,6 +160,84 @@ func TestListSessionsForViewer(t *testing.T) {
 			},
 		},
 		{
+			// This happens at the early moments of a session lifecycle, before a PR is created and associated with it.
+			name:  "single session, no pull request resource",
+			limit: 10,
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(
+						httpmock.QueryMatcher("GET", "agents/sessions", url.Values{
+							"page_number": {"1"},
+							"page_size":   {"50"},
+						}),
+						"api.githubcopilot.com",
+					),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"sessions": [
+								{
+									"id": "sess1",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "completed",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "",
+									"resource_id": 0,
+									"created_at": "%[1]s"
+								}
+							]
+						}`,
+						sampleDateString,
+					)),
+				)
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						assert.Equal(t, []interface{}{"U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: []*Session{
+				{
+
+					ID:           "sess1",
+					Name:         "Build artifacts",
+					UserID:       1,
+					AgentID:      2,
+					Logs:         "",
+					State:        "completed",
+					OwnerID:      10,
+					RepoID:       1000,
+					ResourceType: "",
+					ResourceID:   0,
+					CreatedAt:    sampleDate,
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
+					},
+				},
+			},
+		},
+		{
 			name:    "multiple sessions, paginated",
 			perPage: 1, // to enforce pagination
 			limit:   2,
@@ -586,6 +664,84 @@ func TestListSessionsForRepo(t *testing.T) {
 							NameWithOwner: "OWNER/REPO",
 						},
 					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
+					},
+				},
+			},
+		},
+		{
+			// This happens at the early moments of a session lifecycle, before a PR is created and associated with it.
+			name:  "single session, no pull request resource",
+			limit: 10,
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(
+						httpmock.QueryMatcher("GET", "agents/sessions/nwo/OWNER/REPO", url.Values{
+							"page_number": {"1"},
+							"page_size":   {"50"},
+						}),
+						"api.githubcopilot.com",
+					),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"sessions": [
+								{
+									"id": "sess1",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "completed",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "",
+									"resource_id": 0,
+									"created_at": "%[1]s"
+								}
+							]
+						}`,
+						sampleDateString,
+					)),
+				)
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						assert.Equal(t, []interface{}{"U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: []*Session{
+				{
+
+					ID:           "sess1",
+					Name:         "Build artifacts",
+					UserID:       1,
+					AgentID:      2,
+					Logs:         "",
+					State:        "completed",
+					OwnerID:      10,
+					RepoID:       1000,
+					ResourceType: "",
+					ResourceID:   0,
+					CreatedAt:    sampleDate,
 					User: &api.GitHubUser{
 						Login:      "octocat",
 						Name:       "Octocat",
@@ -1452,6 +1608,70 @@ func TestGetSession(t *testing.T) {
 						NameWithOwner: "OWNER/REPO",
 					},
 				},
+				User: &api.GitHubUser{
+					Login:      "octocat",
+					Name:       "Octocat",
+					DatabaseID: 1,
+				},
+			},
+		},
+		{
+			// This happens at the early moments of a session lifecycle, before a PR is created and associated with it.
+			name: "success, but no pull request resource",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("GET", "agents/sessions/some-uuid"), "api.githubcopilot.com"),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"id": "some-uuid",
+							"name": "Build artifacts",
+							"user_id": 1,
+							"agent_id": 2,
+							"logs": "",
+							"state": "completed",
+							"owner_id": 10,
+							"repo_id": 1000,
+							"resource_type": "",
+							"resource_id": 0,
+							"created_at": "%[1]s"
+						}`,
+						sampleDateString,
+					)),
+				)
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						assert.Equal(t, []interface{}{"U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: &Session{
+				ID:           "some-uuid",
+				Name:         "Build artifacts",
+				UserID:       1,
+				AgentID:      2,
+				Logs:         "",
+				State:        "completed",
+				OwnerID:      10,
+				RepoID:       1000,
+				ResourceType: "",
+				ResourceID:   0,
+				CreatedAt:    sampleDate,
 				User: &api.GitHubUser{
 					Login:      "octocat",
 					Name:       "Octocat",

@@ -309,9 +309,11 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 	prNodeIds := make([]string, 0, len(sessions))
 	userNodeIds := make([]string, 0, len(sessions))
 	for _, session := range sessions {
-		prNodeID := generatePullRequestNodeID(int64(session.RepoID), session.ResourceID)
-		if !slices.Contains(prNodeIds, prNodeID) {
-			prNodeIds = append(prNodeIds, prNodeID)
+		if session.ResourceType == "pull" {
+			prNodeID := generatePullRequestNodeID(int64(session.RepoID), session.ResourceID)
+			if !slices.Contains(prNodeIds, prNodeID) {
+				prNodeIds = append(prNodeIds, prNodeID)
+			}
 		}
 
 		userNodeId := generateUserNodeID(session.UserID)
