@@ -13,6 +13,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/internal/gh"
 	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
@@ -29,12 +30,14 @@ type CreateOptions struct {
 	ProblemStatement string
 	BackOff          backoff.BackOff
 	BaseBranch       string
+	Prompter         prompter.Prompter
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
 		IO:         f.IOStreams,
 		CapiClient: shared.CapiClientFunc(f),
+		Prompter:   f.Prompter,
 	}
 
 	var fromFileName string
@@ -51,7 +54,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				return err
 			}
 
-			// Populate ProblemStatement from either arg or file
+			// Gather arg inputs for ProblemStatement
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
 			} else if fromFileName != "" {
@@ -66,10 +69,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				opts.ProblemStatement = trimmed
 			}
 
-			if opts.ProblemStatement == "" {
-				return cmdutil.FlagErrorf("a task description is required")
-			}
-
+			opts.Config = f.Config
 			if runF != nil {
 				return runF(opts)
 			}
@@ -84,6 +84,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			# Create a task with problem statement from stdin
 			$ echo "build me a new app" | gh agent-task create -F -
+
+			# Create a task with an editor prompt (interactive)
+			$ gh agent-task create
 
 			# Select a different base branch for the PR
 			$ gh agent-task create "fix errors" --base branch
@@ -104,6 +107,26 @@ func createRun(opts *CreateOptions) error {
 		// Not printing the error that came back from BaseRepo() here because we want
 		// something clear, human friendly, and actionable.
 		return fmt.Errorf("a repository is required; re-run in a repository or supply one with --repo owner/name")
+	}
+
+	// Prompt for ProblemStatement if not provided non-interactively
+	if opts.ProblemStatement == "" && opts.IO.CanPrompt() {
+		if opts.Prompter == nil {
+			return cmdutil.FlagErrorf("interactive prompting is not available")
+		}
+		desc, err := opts.Prompter.MarkdownEditor("Enter the task description", "", false)
+		if err != nil {
+			return err
+		}
+		trimmed := strings.TrimSpace(desc)
+		if trimmed == "" {
+			return cmdutil.FlagErrorf("a task description is required")
+		}
+		opts.ProblemStatement = trimmed
+	}
+
+	if opts.ProblemStatement == "" {
+		return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
 	}
 
 	client, err := opts.CapiClient()
