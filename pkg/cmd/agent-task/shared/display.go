@@ -24,6 +24,7 @@ func ColorFuncForSessionState(s capi.Session, cs *iostreams.ColorScheme) func(st
 	return stateColor
 }
 
+// SessionStateString returns the humane/capitalised form of the given session state.
 func SessionStateString(state string) string {
 	switch state {
 	case "queued":
