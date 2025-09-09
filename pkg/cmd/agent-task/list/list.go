@@ -122,7 +122,7 @@ func listRun(opts *ListOptions) error {
 	}
 
 	cs := opts.IO.ColorScheme()
-	tp := tableprinter.New(opts.IO, tableprinter.WithHeader("Session ID", "Pull Request", "Repo", "Session State", "Created"))
+	tp := tableprinter.New(opts.IO, tableprinter.WithHeader("Session Name", "Pull Request", "Repo", "Session State", "Created"))
 	for _, s := range sessions {
 		if s.ResourceType != "pull" || s.PullRequest == nil || s.PullRequest.Repository == nil {
 			// Skip these sessions in case they happen, for now.
@@ -132,8 +132,8 @@ func listRun(opts *ListOptions) error {
 		pr := fmt.Sprintf("#%d", s.PullRequest.Number)
 		repo := s.PullRequest.Repository.NameWithOwner
 
-		// ID
-		tp.AddField(s.ID)
+		// Name
+		tp.AddField(s.Name)
 		if tp.IsTTY() {
 			tp.AddField(pr, tableprinter.WithColor(cs.ColorFromString(prShared.ColorForPRState(*s.PullRequest))))
 		} else {
