@@ -24,6 +24,7 @@ func ColorFuncForSessionState(s capi.Session, cs *iostreams.ColorScheme) func(st
 	return stateColor
 }
 
+// SessionStateString returns the humane/capitalised form of the given session state.
 func SessionStateString(state string) string {
 	switch state {
 	case "queued":
@@ -44,5 +45,19 @@ func SessionStateString(state string) string {
 		return "Cancelled"
 	default:
 		return state
+	}
+}
+
+type ColorFunc func(string) string
+
+func SessionSymbol(cs *iostreams.ColorScheme, state string) string {
+	noColor := func(s string) string { return s }
+	switch state {
+	case "completed":
+		return cs.SuccessIconWithColor(noColor)
+	case "failed", "timed_out", "cancelled":
+		return cs.FailureIconWithColor(noColor)
+	default:
+		return "-"
 	}
 }

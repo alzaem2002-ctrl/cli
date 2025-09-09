@@ -10,7 +10,10 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
+	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
+	prShared "github.com/cli/cli/v2/pkg/cmd/pr/shared"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/google/shlex"
@@ -20,20 +23,49 @@ import (
 
 func TestNewCmdList(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     string
-		wantOpts ViewOptions
-		wantErr  string
+		name         string
+		tty          bool
+		args         string
+		wantOpts     ViewOptions
+		wantBaseRepo ghrepo.Interface
+		wantErr      string
 	}{
 		{
-			name:    "no arguments",
-			wantErr: "a session ID is required",
+			name:     "no arg tty",
+			tty:      true,
+			args:     "",
+			wantOpts: ViewOptions{},
 		},
 		{
-			name: "session ID arg",
-			args: "some-uuid",
+			name: "session ID arg tty",
+			tty:  true,
+			args: "00000000-0000-0000-0000-000000000000",
 			wantOpts: ViewOptions{
-				SelectorArg: "some-uuid",
+				SelectorArg: "00000000-0000-0000-0000-000000000000",
+				SessionID:   "00000000-0000-0000-0000-000000000000",
+			},
+		},
+		{
+			name: "non-session ID arg tty",
+			tty:  true,
+			args: "some-arg",
+			wantOpts: ViewOptions{
+				SelectorArg: "some-arg",
+			},
+		},
+		{
+			name:    "session ID required if non-tty",
+			tty:     false,
+			args:    "some-arg",
+			wantErr: "session ID is required when not running interactively",
+		},
+		{
+			name:         "repo override",
+			tty:          true,
+			args:         "some-arg -R OWNER/REPO",
+			wantBaseRepo: ghrepo.New("OWNER", "REPO"),
+			wantOpts: ViewOptions{
+				SelectorArg: "some-arg",
 			},
 		},
 	}
@@ -41,6 +73,10 @@ func TestNewCmdList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ios, _, _, _ := iostreams.Test()
+			ios.SetStdinTTY(tt.tty)
+			ios.SetStdoutTTY(tt.tty)
+			ios.SetStderrTTY(tt.tty)
+
 			f := &cmdutil.Factory{
 				IOStreams: ios,
 			}
@@ -65,6 +101,13 @@ func TestNewCmdList(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOpts.SelectorArg, gotOpts.SelectorArg)
+			assert.Equal(t, tt.wantOpts.SessionID, gotOpts.SessionID)
+
+			if tt.wantBaseRepo != nil {
+				baseRepo, err := gotOpts.BaseRepo()
+				require.NoError(t, err)
+				assert.True(t, ghrepo.IsSame(tt.wantBaseRepo, baseRepo))
+			}
 		})
 	}
 }
@@ -74,19 +117,23 @@ func Test_viewRun(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		selectorArg string
 		tty         bool
+		opts        ViewOptions
+		promptStubs func(*testing.T, *prompter.MockPrompter)
 		capiStubs   func(*testing.T, *capi.CapiClientMock)
 		wantOut     string
 		wantErr     error
 		wantStderr  string
 	}{
 		{
-			name:        "not found (tty)",
-			tty:         true,
-			selectorArg: "some-session-id",
+			name: "with session id, not found (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
+				m.GetSessionFunc = func(_ context.Context, _ string) (*capi.Session, error) {
 					return nil, capi.ErrSessionNotFound
 				}
 			},
@@ -94,43 +141,29 @@ func Test_viewRun(t *testing.T) {
 			wantErr:    cmdutil.SilentError,
 		},
 		{
-			name:        "not found (nontty)",
-			selectorArg: "some-session-id",
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
-					return nil, capi.ErrSessionNotFound
-				}
+			name: "with session id, api error (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
 			},
-			wantStderr: "session not found\n",
-			wantErr:    cmdutil.SilentError,
-		},
-		{
-			name:        "API error (tty)",
-			tty:         true,
-			selectorArg: "some-session-id",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
+				m.GetSessionFunc = func(_ context.Context, _ string) (*capi.Session, error) {
 					return nil, errors.New("some error")
 				}
 			},
 			wantErr: errors.New("some error"),
 		},
 		{
-			name:        "API error (nontty)",
-			selectorArg: "some-session-id",
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
-					return nil, errors.New("some error")
-				}
+			name: "with session id, success, with pr and user data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
 			},
-			wantErr: errors.New("some error"),
-		},
-		{
-			name:        "success, with PR and user data (tty)",
-			tty:         true,
-			selectorArg: "some-session-id",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
 						ID:        "some-session-id",
 						State:     "completed",
@@ -152,17 +185,22 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Completed • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
-				
+
 				View this session on GitHub:
 				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
 			`),
 		},
 		{
-			name:        "success, without user data (tty)",
-			tty:         true,
-			selectorArg: "some-session-id",
+			// The user data should always be there, but we need to cover the code path.
+			name: "with session id, success, without user data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
 						ID:        "some-session-id",
 						State:     "completed",
@@ -181,17 +219,22 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Completed • fix something • OWNER/REPO#101
 				Started about 6 hours ago
-				
+
 				View this session on GitHub:
 				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
 			`),
 		},
 		{
-			name:        "success, without PR data (tty)",
-			tty:         true,
-			selectorArg: "some-session-id",
+			// This can happen when the session is just created and a PR is not yet available for it.
+			name: "with session id, success, without pr data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
 						ID:        "some-session-id",
 						State:     "completed",
@@ -208,11 +251,16 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
-			name:        "success, without PR nor user data (tty)",
-			tty:         true,
-			selectorArg: "some-session-id",
+			// The user data should always be there, but we need to cover the code path.
+			name: "with session id, success, without pr nor user data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetSessionFunc = func(ctx context.Context, selector string) (*capi.Session, error) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
 						ID:        "some-session-id",
 						State:     "completed",
@@ -223,6 +271,267 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Completed
 				Started about 6 hours ago
+			`),
+		},
+		{
+			name: "with pr number, api error (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "pr-number",
+				Finder: prShared.NewMockFinder(
+					"pr-number",
+					&api.PullRequest{FullDatabaseID: "999999"},
+					ghrepo.New("OWNER", "REPO"),
+				),
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, _ string, _ int64, _ int) ([]*capi.Session, error) {
+					return nil, errors.New("some error")
+				}
+			},
+			wantErr: errors.New("failed to list sessions for pull request: some error"),
+		},
+		{
+			name: "with pr reference, unsupported hostname (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "OWNER/REPO#999",
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.NewWithHost("OWNER", "REPO", "foo.com"), nil
+				},
+			},
+			wantErr: errors.New("agent tasks are not supported on this host: foo.com"),
+		},
+		{
+			name: "with pr reference, api error when fetching pr database ID (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "OWNER/REPO#999",
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, _ string, _ string, _ string, _ int) (int64, error) {
+					return 0, errors.New("some error")
+				}
+			},
+			wantErr: errors.New("failed to fetch pull request: some error"),
+		},
+		{
+			name: "with pr reference, api error when fetching session (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "OWNER/REPO#999",
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, _ string, _ string, _ string, _ int) (int64, error) {
+					return 999999, nil
+				}
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, _ string, _ int64, _ int) ([]*capi.Session, error) {
+					return nil, errors.New("some error")
+				}
+			},
+			wantErr: errors.New("failed to list sessions for pull request: some error"),
+		},
+		{
+			name: "with pr number, success, single session with pr and user data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "pr-number",
+				Finder: prShared.NewMockFinder(
+					"pr-number",
+					&api.PullRequest{FullDatabaseID: "999999"},
+					ghrepo.New("OWNER", "REPO"),
+				),
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
+					assert.Equal(t, "pull", resourceType)
+					assert.Equal(t, int64(999999), resourceID)
+					assert.Equal(t, defaultLimit, limit)
+					return []*capi.Session{
+						{
+							ID:        "some-session-id",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							User: &api.GitHubUser{
+								Login: "octocat",
+							},
+						},
+					}, nil
+				}
+			},
+			wantOut: heredoc.Doc(`
+				Completed • fix something • OWNER/REPO#101
+				Started on behalf of octocat about 6 hours ago
+
+				View this session on GitHub:
+				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
+			`),
+		},
+		{
+			name: "with pr number, success, multiple sessions with pr and user data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "pr-number",
+				Finder: prShared.NewMockFinder(
+					"pr-number",
+					&api.PullRequest{FullDatabaseID: "999999"},
+					ghrepo.New("OWNER", "REPO"),
+				),
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
+					assert.Equal(t, "pull", resourceType)
+					assert.Equal(t, int64(999999), resourceID)
+					assert.Equal(t, defaultLimit, limit)
+					return []*capi.Session{
+						{
+							ID:        "some-session-id",
+							Name:      "session one",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							User: &api.GitHubUser{
+								Login: "octocat",
+							},
+						},
+						{
+							ID:        "some-other-session-id",
+							Name:      "session two",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something else",
+								Number: 102,
+								URL:    "https://github.com/OWNER/REPO/pull/102",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							User: &api.GitHubUser{
+								Login: "octocat",
+							},
+						},
+					}, nil
+				}
+			},
+			promptStubs: func(t *testing.T, pm *prompter.MockPrompter) {
+				pm.RegisterSelect(
+					"Select a session",
+					[]string{
+						"✓ session one • about 6 hours ago",
+						"✓ session two • about 6 hours ago",
+					},
+					func(_, _ string, opts []string) (int, error) {
+						return prompter.IndexFor(opts, "✓ session one • about 6 hours ago")
+					},
+				)
+			},
+			wantOut: heredoc.Doc(`
+				Completed • fix something • OWNER/REPO#101
+				Started on behalf of octocat about 6 hours ago
+
+				View this session on GitHub:
+				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
+			`),
+		},
+		{
+			name: "with pr reference, success, multiple sessions with pr and user data (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "OWNER/REPO#999",
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+					assert.Equal(t, "github.com", hostname)
+					assert.Equal(t, "OWNER", owner)
+					assert.Equal(t, "REPO", repo)
+					assert.Equal(t, 999, number)
+					return 999999, nil
+				}
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
+					assert.Equal(t, "pull", resourceType)
+					assert.Equal(t, int64(999999), resourceID)
+					assert.Equal(t, defaultLimit, limit)
+					return []*capi.Session{
+						{
+							ID:        "some-session-id",
+							Name:      "session one",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							User: &api.GitHubUser{
+								Login: "octocat",
+							},
+						},
+						{
+							ID:        "some-other-session-id",
+							Name:      "session two",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something else",
+								Number: 102,
+								URL:    "https://github.com/OWNER/REPO/pull/102",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							User: &api.GitHubUser{
+								Login: "octocat",
+							},
+						},
+					}, nil
+				}
+			},
+			promptStubs: func(t *testing.T, pm *prompter.MockPrompter) {
+				pm.RegisterSelect(
+					"Select a session",
+					[]string{
+						"✓ session one • about 6 hours ago",
+						"✓ session two • about 6 hours ago",
+					},
+					func(_, _ string, opts []string) (int, error) {
+						return prompter.IndexFor(opts, "✓ session one • about 6 hours ago")
+					},
+				)
+			},
+			wantOut: heredoc.Doc(`
+				Completed • fix something • OWNER/REPO#101
+				Started on behalf of octocat about 6 hours ago
+
+				View this session on GitHub:
+				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
 			`),
 		},
 	}
@@ -234,18 +543,22 @@ func Test_viewRun(t *testing.T) {
 				tt.capiStubs(t, capiClientMock)
 			}
 
+			prompter := prompter.NewMockPrompter(t)
+			if tt.promptStubs != nil {
+				tt.promptStubs(t, prompter)
+			}
+
 			ios, _, stdout, stderr := iostreams.Test()
 			ios.SetStdoutTTY(tt.tty)
 
-			opts := &ViewOptions{
-				IO: ios,
-				CapiClient: func() (capi.CapiClient, error) {
-					return capiClientMock, nil
-				},
-				SelectorArg: tt.selectorArg,
+			opts := tt.opts
+			opts.IO = ios
+			opts.Prompter = prompter
+			opts.CapiClient = func() (capi.CapiClient, error) {
+				return capiClientMock, nil
 			}
 
-			err := viewRun(opts)
+			err := viewRun(&opts)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				require.EqualError(t, err, tt.wantErr.Error())
