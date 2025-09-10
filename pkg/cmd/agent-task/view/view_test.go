@@ -47,6 +47,15 @@ func TestNewCmdList(t *testing.T) {
 			},
 		},
 		{
+			name: "PR agent-session URL arg tty",
+			tty:  true,
+			args: "https://github.com/OWNER/REPO/pull/101/agent-sessions/00000000-0000-0000-0000-000000000000",
+			wantOpts: ViewOptions{
+				SelectorArg: "https://github.com/OWNER/REPO/pull/101/agent-sessions/00000000-0000-0000-0000-000000000000",
+				SessionID:   "00000000-0000-0000-0000-000000000000",
+			},
+		},
+		{
 			name: "non-session ID arg tty",
 			tty:  true,
 			args: "some-arg",
