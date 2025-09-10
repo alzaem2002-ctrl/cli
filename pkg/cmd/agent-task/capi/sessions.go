@@ -18,6 +18,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
+const AgentsHomeURL = "https://github.com/copilot/agents"
+
 var defaultSessionsPerPage = 50
 
 var ErrSessionNotFound = errors.New("not found")

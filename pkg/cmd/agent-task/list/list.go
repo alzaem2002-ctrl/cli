@@ -70,7 +70,7 @@ func listRun(opts *ListOptions) error {
 		// based on repo, so we just open the agents dashboard with no args.
 		// If that page is ever added in the future, we should route to that
 		// page instead of the global one when --repo is set.
-		const webURL = "https://github.com/copilot/agents"
+		webURL := capi.AgentsHomeURL
 		if opts.IO.IsStdoutTTY() {
 			fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
 		}
