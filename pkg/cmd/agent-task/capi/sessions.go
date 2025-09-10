@@ -378,12 +378,13 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 	return newSessions, nil
 }
 
-// GetPullRequestDatabaseID retrieves the database ID of a pull request given its number in a repository.
-func (c *CAPIClient) GetPullRequestDatabaseID(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+// GetPullRequestDatabaseID retrieves the database ID and URL of a pull request given its number in a repository.
+func (c *CAPIClient) GetPullRequestDatabaseID(ctx context.Context, hostname string, owner string, repo string, number int) (int64, string, error) {
 	var resp struct {
 		Repository struct {
 			PullRequest struct {
 				FullDatabaseID string `graphql:"fullDatabaseId"`
+				URL            string `graphql:"url"`
 			} `graphql:"pullRequest(number: $number)"`
 		} `graphql:"repository(owner: $owner, name: $repo)"`
 	}
@@ -396,14 +397,14 @@ func (c *CAPIClient) GetPullRequestDatabaseID(ctx context.Context, hostname stri
 
 	apiClient := api.NewClientFromHTTP(c.httpClient)
 	if err := apiClient.Query(hostname, "GetPullRequestFullDatabaseID", &resp, variables); err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	databaseID, err := strconv.ParseInt(resp.Repository.PullRequest.FullDatabaseID, 10, 64)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
-	return databaseID, nil
+	return databaseID, resp.Repository.PullRequest.URL, nil
 }
 
 // generatePullRequestNodeID converts an int64 databaseID and repoID to a GraphQL Node ID format

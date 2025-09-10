@@ -109,6 +109,7 @@ func viewRun(opts *ViewOptions) error {
 		}
 	} else {
 		var resourceID int64
+		var prURL string
 
 		if opts.SelectorArg != "" {
 			// Finder does not support the PR/issue reference format (e.g. owner/repo#123)
@@ -127,7 +128,7 @@ func viewRun(opts *ViewOptions) error {
 					return fmt.Errorf("agent tasks are not supported on this host: %s", hostname)
 				}
 
-				resourceID, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
+				resourceID, prURL, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
 				if err != nil {
 					return fmt.Errorf("failed to fetch pull request: %w", err)
 				}
@@ -155,6 +156,7 @@ func viewRun(opts *ViewOptions) error {
 			}
 
 			resourceID = databaseID
+			prURL = pr.URL
 		}
 
 		// TODO(babakks): currently we just fetch a pre-defined number of

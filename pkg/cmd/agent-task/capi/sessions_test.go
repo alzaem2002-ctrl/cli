@@ -1743,10 +1743,11 @@ func TestGetSession(t *testing.T) {
 }
 func TestGetPullRequestDatabaseID(t *testing.T) {
 	tests := []struct {
-		name      string
-		httpStubs func(*testing.T, *httpmock.Registry)
-		wantErr   string
-		wantOut   int64
+		name           string
+		httpStubs      func(*testing.T, *httpmock.Registry)
+		wantErr        string
+		wantDatabaseID int64
+		wantURL        string
 	}{
 		{
 			name: "graphql error",
@@ -1764,24 +1765,26 @@ func TestGetPullRequestDatabaseID(t *testing.T) {
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(httpmock.GraphQL(`query GetPullRequestFullDatabaseID\b`), "api.github.com"),
-					httpmock.StringResponse(`{"data": {"repository": {"pullRequest": {"fullDatabaseId": "non-int"}}}}`),
+					httpmock.StringResponse(`{"data": {"repository": {"pullRequest": {"fullDatabaseId": "non-int", "url": "some-url"}}}}`),
 				)
 			},
 			wantErr: `strconv.ParseInt: parsing "non-int": invalid syntax`,
+			wantURL: "some-url",
 		},
 		{
 			name: "success",
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(httpmock.GraphQL(`query GetPullRequestFullDatabaseID\b`), "api.github.com"),
-					httpmock.GraphQLQuery(`{"data": {"repository": {"pullRequest": {"fullDatabaseId": "999"}}}}`, func(s string, m map[string]interface{}) {
+					httpmock.GraphQLQuery(`{"data": {"repository": {"pullRequest": {"fullDatabaseId": "999", "url": "some-url"}}}}`, func(s string, m map[string]interface{}) {
 						assert.Equal(t, "OWNER", m["owner"])
 						assert.Equal(t, "REPO", m["repo"])
 						assert.Equal(t, float64(42), m["number"])
 					}),
 				)
 			},
-			wantOut: 999,
+			wantDatabaseID: 999,
+			wantURL:        "some-url",
 		},
 	}
 
@@ -1798,7 +1801,7 @@ func TestGetPullRequestDatabaseID(t *testing.T) {
 			cfg := config.NewBlankConfig()
 			capiClient := NewCAPIClient(httpClient, cfg.Authentication())
 
-			databaseID, err := capiClient.GetPullRequestDatabaseID(context.Background(), "github.com", "OWNER", "REPO", 42)
+			databaseID, url, err := capiClient.GetPullRequestDatabaseID(context.Background(), "github.com", "OWNER", "REPO", 42)
 
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
@@ -1807,7 +1810,8 @@ func TestGetPullRequestDatabaseID(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tt.wantOut, databaseID)
+			require.Equal(t, tt.wantDatabaseID, databaseID)
+			require.Equal(t, tt.wantURL, url)
 		})
 	}
 }
