@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/prompter"
@@ -31,10 +32,12 @@ type ViewOptions struct {
 	HttpClient func() (*http.Client, error)
 	Finder     prShared.PRFinder
 	Prompter   prompter.Prompter
+	Browser    browser.Browser
 
 	SelectorArg string
 	PRNumber    int
 	SessionID   string
+	Web         bool
 }
 
 func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Command {
@@ -43,6 +46,7 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 		HttpClient: f.HttpClient,
 		CapiClient: shared.CapiClientFunc(f),
 		Prompter:   f.Prompter,
+		Browser:    f.Browser,
 	}
 
 	cmd := &cobra.Command{
@@ -80,6 +84,8 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 
 	cmdutil.EnableRepoOverride(cmd, f)
 
+	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open agent task in the browser")
+
 	return cmd
 }
 
@@ -98,15 +104,32 @@ func viewRun(opts *ViewOptions) error {
 	var session *capi.Session
 
 	if opts.SessionID != "" {
-		if sess, err := capiClient.GetSession(ctx, opts.SessionID); err != nil {
+		sess, err := capiClient.GetSession(ctx, opts.SessionID)
+		if err != nil {
 			if errors.Is(err, capi.ErrSessionNotFound) {
 				fmt.Fprintln(opts.IO.ErrOut, "session not found")
 				return cmdutil.SilentError
 			}
 			return err
-		} else {
-			session = sess
 		}
+
+		if opts.Web {
+			var webURL string
+			if sess.PullRequest != nil {
+				webURL = fmt.Sprintf("%s/agent-sessions/%s", sess.PullRequest.URL, url.PathEscape(sess.ID))
+			} else {
+				// Currently the web Copilot Agents home GUI does not support focusing
+				// on a given session, so we should just navigate to the home page.
+				webURL = capi.AgentsHomeURL
+			}
+
+			if opts.IO.IsStdoutTTY() {
+				fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
+			}
+			return opts.Browser.Browse(webURL)
+		}
+
+		session = sess
 	} else {
 		var resourceID int64
 		var prURL string
@@ -171,6 +194,21 @@ func viewRun(opts *ViewOptions) error {
 		if len(sessions) == 0 {
 			fmt.Fprintln(opts.IO.ErrOut, "no session found for pull request")
 			return cmdutil.SilentError
+		}
+
+		if opts.Web {
+			// Note that, we needed to make sure the PR exists and it has at least one session
+			// associated with it, other wise the `/agent-sessions` page would display the 404
+			// error.
+
+			// We don't need to navigate to a specific session; if there's only one session
+			// then the GUI will automatically show it, otherwise the user can select from the
+			// list. This is to avoid unnecessary prompting.
+			webURL := prURL + "/agent-sessions"
+			if opts.IO.IsStdoutTTY() {
+				fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
+			}
+			return opts.Browser.Browse(webURL)
 		}
 
 		session = sessions[0]
