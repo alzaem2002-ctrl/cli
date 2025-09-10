@@ -44,6 +44,13 @@ func TestParseURL(t *testing.T) {
 			wantRest: "/foo/bar",
 		},
 		{
+			name:     "valid HTTP URL with .patch as rest",
+			arg:      "http://example.com/owner/repo/pull/123.patch",
+			wantRepo: ghrepo.NewWithHost("owner", "repo", "example.com"),
+			wantNum:  123,
+			wantRest: ".patch",
+		},
+		{
 			name:     "valid HTTP URL with a trailing slash",
 			arg:      "http://example.com/owner/repo/pull/123/",
 			wantRepo: ghrepo.NewWithHost("owner", "repo", "example.com"),
@@ -83,11 +90,6 @@ func TestParseURL(t *testing.T) {
 			name:    "invalid PR number",
 			arg:     "https://github.com/owner/repo/pull/foo",
 			wantErr: "not a pull request URL: https://github.com/owner/repo/pull/foo",
-		},
-		{
-			name:    "invalid PR number, non-numeric suffix",
-			arg:     "https://github.com/owner/repo/pull/123foo",
-			wantErr: "not a pull request URL: https://github.com/owner/repo/pull/123foo",
 		},
 	}
 
