@@ -113,6 +113,8 @@ func viewRun(opts *ViewOptions) error {
 			return err
 		}
 
+		opts.IO.StopProgressIndicator()
+
 		if opts.Web {
 			var webURL string
 			if sess.PullRequest != nil {
@@ -196,6 +198,8 @@ func viewRun(opts *ViewOptions) error {
 			return cmdutil.SilentError
 		}
 
+		opts.IO.StopProgressIndicator()
+
 		if opts.Web {
 			// Note that, we needed to make sure the PR exists and it has at least one session
 			// associated with it, other wise the `/agent-sessions` page would display the 404
@@ -224,7 +228,6 @@ func viewRun(opts *ViewOptions) error {
 				))
 			}
 
-			opts.IO.StopProgressIndicator()
 			selected, err := opts.Prompter.Select("Select a session", "", options)
 			if err != nil {
 				return err
@@ -233,8 +236,6 @@ func viewRun(opts *ViewOptions) error {
 			session = sessions[selected]
 		}
 	}
-
-	opts.IO.StopProgressIndicator()
 
 	out := opts.IO.Out
 
