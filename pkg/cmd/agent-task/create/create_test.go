@@ -12,6 +12,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/cli/cli/v2/internal/ghrepo"
+	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -38,8 +39,7 @@ func TestNewCmdCreate(t *testing.T) {
 		wantErr  string
 	}{
 		{
-			name:    "no args nor file",
-			wantErr: "a task description is required",
+			name: "no args nor file returns no error (prompting path)",
 		},
 		{
 			name: "arg only success",
@@ -157,13 +157,16 @@ func Test_createRun(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		capiStubs    func(*testing.T, *capi.CapiClientMock)
-		baseRepoFunc func() (ghrepo.Interface, error)
-		baseBranch   string
-		wantStdout   string
-		wantStdErr   string
-		wantErr      string
+		name             string
+		capiStubs        func(*testing.T, *capi.CapiClientMock)
+		baseRepoFunc     func() (ghrepo.Interface, error)
+		baseBranch       string
+		isTTY            bool
+		prompterMock     *prompter.PrompterMock
+		problemStatement string
+		wantStdout       string
+		wantStdErr       string
+		wantErr          string
 	}{
 		{
 			name:         "missing repo returns error",
@@ -171,9 +174,47 @@ func Test_createRun(t *testing.T) {
 			wantErr:      "a repository is required; re-run in a repository or supply one with --repo owner/name",
 		},
 		{
-			name:         "base branch included in create payload",
-			baseRepoFunc: func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
-			baseBranch:   "feature",
+			name:             "non-interactive empty description returns error",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "",
+			wantErr:          "a task description or -F is required when running non-interactively",
+		},
+		{
+			name:             "interactive prompt success",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			isTTY:            true,
+			problemStatement: "",
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
+					require.Equal(t, "From editor", problemStatement)
+					return &createdJobSuccessWithPR, nil
+				}
+			},
+			prompterMock: &prompter.PrompterMock{
+				MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
+					require.Equal(t, "Enter the task description", prompt)
+					return "From editor", nil
+				},
+			},
+			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
+		},
+		{
+			name:             "interactive prompt empty returns error",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			isTTY:            true,
+			problemStatement: "",
+			prompterMock: &prompter.PrompterMock{
+				MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
+					return "   ", nil
+				},
+			},
+			wantErr: "a task description is required",
+		},
+		{
+			name:             "base branch included in create payload",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			baseBranch:       "feature",
+			problemStatement: "Do the thing",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
@@ -192,8 +233,9 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
 		},
 		{
-			name:         "create task API failure returns error",
-			baseRepoFunc: func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			name:             "create task API failure returns error",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
@@ -206,8 +248,9 @@ func Test_createRun(t *testing.T) {
 			wantErr: "some error",
 		},
 		{
-			name:         "get job API failure surfaces error",
-			baseRepoFunc: func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			name:             "get job API failure surfaces error",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
@@ -224,8 +267,9 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "job job123 queued. View progress: https://github.com/copilot/agents\n",
 		},
 		{
-			name:         "success with immediate PR",
-			baseRepoFunc: func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			name:             "success with immediate PR",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
@@ -238,8 +282,9 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
 		},
 		{
-			name:         "success with delayed PR after polling",
-			baseRepoFunc: func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			name:             "success with delayed PR after polling",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
@@ -258,8 +303,9 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
 		},
 		{
-			name:         "fallback after timeout returns link to global agents page",
-			baseRepoFunc: func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			name:             "fallback after timeout returns link to global agents page",
+			baseRepoFunc:     func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+			problemStatement: "Do the thing",
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
@@ -289,17 +335,24 @@ func Test_createRun(t *testing.T) {
 			}
 
 			ios, _, stdout, stderr := iostreams.Test()
+			if tt.isTTY {
+				ios.SetStdinTTY(true)
+				ios.SetStderrTTY(true)
+				ios.SetStdoutTTY(true)
+			}
+
 			opts := &CreateOptions{
 				IO:               ios,
-				ProblemStatement: "Do the thing",
+				ProblemStatement: tt.problemStatement,
 				BaseRepo:         tt.baseRepoFunc,
 				BaseBranch:       tt.baseBranch,
+				Prompter:         tt.prompterMock,
 				CapiClient: func() (capi.CapiClient, error) {
 					return capiClientMock, nil
 				},
 			}
 
-			// A backoff with no internal between retries to keep tests fast,
+			// A backoff with no interval between retries to keep tests fast,
 			// and also a max number of retries so we don't infinitely poll.
 			opts.BackOff = backoff.WithMaxRetries(&backoff.ZeroBackOff{}, 3)
 
