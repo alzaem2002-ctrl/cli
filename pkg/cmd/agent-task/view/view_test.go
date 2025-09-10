@@ -356,9 +356,9 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr number, api error (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
+					"101",
 					&api.PullRequest{
 						FullDatabaseID: "999999",
 						URL:            "https://github.com/OWNER/REPO/pull/101",
@@ -377,7 +377,7 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr reference, unsupported hostname (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.NewWithHost("OWNER", "REPO", "foo.com"), nil
 				},
@@ -388,7 +388,7 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr reference, api error when fetching pr database ID (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.New("OWNER", "REPO"), nil
 				},
@@ -404,7 +404,7 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr reference, api error when fetching session (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.New("OWNER", "REPO"), nil
 				},
@@ -420,12 +420,12 @@ func Test_viewRun(t *testing.T) {
 			wantErr: errors.New("failed to list sessions for pull request: some error"),
 		},
 		{
-			name: "with pr number, success, single session with pr and user data (tty)",
+			name: "with pr number, success, single session (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
+					"101",
 					&api.PullRequest{
 						FullDatabaseID: "999999",
 						URL:            "https://github.com/OWNER/REPO/pull/101",
@@ -467,12 +467,12 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
-			name: "with pr number, success, multiple sessions with pr and user data (tty)",
+			name: "with pr number, success, multiple sessions (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
+					"101",
 					&api.PullRequest{
 						FullDatabaseID: "999999",
 						URL:            "https://github.com/OWNER/REPO/pull/101",
@@ -544,7 +544,7 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
-			name: "with pr reference, success, multiple sessions with pr and user data (tty)",
+			name: "with pr reference, success, multiple sessions (tty)",
 			tty:  true,
 			opts: ViewOptions{
 				SelectorArg: "OWNER/REPO#101",
@@ -626,9 +626,9 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr number, api error, web mode (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
+					"101",
 					&api.PullRequest{
 						FullDatabaseID: "999999",
 						URL:            "https://github.com/OWNER/REPO/pull/101",
@@ -645,12 +645,12 @@ func Test_viewRun(t *testing.T) {
 			wantErr: errors.New("failed to list sessions for pull request: some error"),
 		},
 		{
-			name: "with pr number, single session with pr data, web mode (tty)",
+			name: "with pr number, single session, web mode (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
+					"101",
 					&api.PullRequest{
 						FullDatabaseID: "999999",
 						URL:            "https://github.com/OWNER/REPO/pull/101",
@@ -686,12 +686,12 @@ func Test_viewRun(t *testing.T) {
 			wantStderr:     "Opening https://github.com/OWNER/REPO/pull/101/agent-sessions in your browser.\n",
 		},
 		{
-			name: "with pr number, multiple session with pr data, web mode (tty)",
+			name: "with pr number, multiple sessions, web mode (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
+					"101",
 					&api.PullRequest{
 						FullDatabaseID: "999999",
 						URL:            "https://github.com/OWNER/REPO/pull/101",
@@ -743,7 +743,7 @@ func Test_viewRun(t *testing.T) {
 			wantStderr:     "Opening https://github.com/OWNER/REPO/pull/101/agent-sessions in your browser.\n",
 		},
 		{
-			name: "with pr reference, multiple sessions with pr and user data, web mode (tty)",
+			name: "with pr reference, multiple sessions, web mode (tty)",
 			tty:  true,
 			opts: ViewOptions{
 				SelectorArg: "OWNER/REPO#101",
@@ -778,9 +778,7 @@ func Test_viewRun(t *testing.T) {
 									NameWithOwner: "OWNER/REPO",
 								},
 							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+							// User data is irrelevant in this case
 						},
 						{
 							ID:        "some-other-session-id",
@@ -795,9 +793,7 @@ func Test_viewRun(t *testing.T) {
 									NameWithOwner: "OWNER/REPO",
 								},
 							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+							// User data is irrelevant in this case
 						},
 					}, nil
 				}
