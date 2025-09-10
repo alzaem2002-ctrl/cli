@@ -109,21 +109,21 @@ func createRun(opts *CreateOptions) error {
 		return fmt.Errorf("a repository is required; re-run in a repository or supply one with --repo owner/name")
 	}
 
-	// Prompt for ProblemStatement if not provided non-interactively
-	if opts.Prompter != nil && opts.IO.CanPrompt() {
+	if opts.ProblemStatement == "" {
+		if !opts.IO.CanPrompt() {
+			return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
+		}
+
 		desc, err := opts.Prompter.MarkdownEditor("Enter the task description", opts.ProblemStatement, false)
 		if err != nil {
 			return err
 		}
+
 		trimmed := strings.TrimSpace(desc)
 		if trimmed == "" {
 			return cmdutil.FlagErrorf("a task description is required")
 		}
 		opts.ProblemStatement = trimmed
-	}
-
-	if opts.ProblemStatement == "" {
-		return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
 	}
 
 	client, err := opts.CapiClient()
