@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/prompter"
@@ -31,10 +32,12 @@ type ViewOptions struct {
 	HttpClient func() (*http.Client, error)
 	Finder     prShared.PRFinder
 	Prompter   prompter.Prompter
+	Browser    browser.Browser
 
 	SelectorArg string
 	PRNumber    int
 	SessionID   string
+	Web         bool
 }
 
 func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Command {
@@ -43,13 +46,30 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 		HttpClient: f.HttpClient,
 		CapiClient: shared.CapiClientFunc(f),
 		Prompter:   f.Prompter,
+		Browser:    f.Browser,
 	}
 
 	cmd := &cobra.Command{
 		Use:   "view [<session-id> | <pr-number> | <pr-url> | <pr-branch>]",
-		Short: "View an agent task session",
+		Short: "View an agent task session (preview)",
 		Long: heredoc.Doc(`
 			View an agent task session.
+		`),
+		Example: heredoc.Doc(`
+			# View an agent task by session ID
+			$ gh agent-task view e2fa49d2-f164-4a56-ab99-498090b8fcdf
+
+			# View an agent task by pull request number in current repo
+			$ gh agent-task view 12345
+
+			# View an agent task by pull request number
+			$ gh agent-task view --repo OWNER/REPO 12345
+
+			# View an agent task by pull request reference
+			$ gh agent-task view OWNER/REPO#12345
+
+			# View a pull request agents tasks in the browser
+			$ gh agent-task view 12345 --web
 		`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -80,6 +100,8 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 
 	cmdutil.EnableRepoOverride(cmd, f)
 
+	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open agent task in the browser")
+
 	return cmd
 }
 
@@ -98,17 +120,37 @@ func viewRun(opts *ViewOptions) error {
 	var session *capi.Session
 
 	if opts.SessionID != "" {
-		if sess, err := capiClient.GetSession(ctx, opts.SessionID); err != nil {
+		sess, err := capiClient.GetSession(ctx, opts.SessionID)
+		if err != nil {
 			if errors.Is(err, capi.ErrSessionNotFound) {
 				fmt.Fprintln(opts.IO.ErrOut, "session not found")
 				return cmdutil.SilentError
 			}
 			return err
-		} else {
-			session = sess
 		}
+
+		opts.IO.StopProgressIndicator()
+
+		if opts.Web {
+			var webURL string
+			if sess.PullRequest != nil {
+				webURL = fmt.Sprintf("%s/agent-sessions/%s", sess.PullRequest.URL, url.PathEscape(sess.ID))
+			} else {
+				// Currently the web Copilot Agents home GUI does not support focusing
+				// on a given session, so we should just navigate to the home page.
+				webURL = capi.AgentsHomeURL
+			}
+
+			if opts.IO.IsStdoutTTY() {
+				fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
+			}
+			return opts.Browser.Browse(webURL)
+		}
+
+		session = sess
 	} else {
 		var resourceID int64
+		var prURL string
 
 		if opts.SelectorArg != "" {
 			// Finder does not support the PR/issue reference format (e.g. owner/repo#123)
@@ -127,7 +169,7 @@ func viewRun(opts *ViewOptions) error {
 					return fmt.Errorf("agent tasks are not supported on this host: %s", hostname)
 				}
 
-				resourceID, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
+				resourceID, prURL, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
 				if err != nil {
 					return fmt.Errorf("failed to fetch pull request: %w", err)
 				}
@@ -155,6 +197,7 @@ func viewRun(opts *ViewOptions) error {
 			}
 
 			resourceID = databaseID
+			prURL = pr.URL
 		}
 
 		// TODO(babakks): currently we just fetch a pre-defined number of
@@ -171,6 +214,23 @@ func viewRun(opts *ViewOptions) error {
 			return cmdutil.SilentError
 		}
 
+		opts.IO.StopProgressIndicator()
+
+		if opts.Web {
+			// Note that, we needed to make sure the PR exists and it has at least one session
+			// associated with it, other wise the `/agent-sessions` page would display the 404
+			// error.
+
+			// We don't need to navigate to a specific session; if there's only one session
+			// then the GUI will automatically show it, otherwise the user can select from the
+			// list. This is to avoid unnecessary prompting.
+			webURL := prURL + "/agent-sessions"
+			if opts.IO.IsStdoutTTY() {
+				fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
+			}
+			return opts.Browser.Browse(webURL)
+		}
+
 		session = sessions[0]
 		if len(sessions) > 1 {
 			now := time.Now()
@@ -184,7 +244,6 @@ func viewRun(opts *ViewOptions) error {
 				))
 			}
 
-			opts.IO.StopProgressIndicator()
 			selected, err := opts.Prompter.Select("Select a session", "", options)
 			if err != nil {
 				return err
@@ -193,8 +252,6 @@ func viewRun(opts *ViewOptions) error {
 			session = sessions[selected]
 		}
 	}
-
-	opts.IO.StopProgressIndicator()
 
 	out := opts.IO.Out
 

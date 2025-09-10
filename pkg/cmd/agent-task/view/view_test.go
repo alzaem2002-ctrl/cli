@@ -10,6 +10,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
+	"github.com/cli/cli/v2/internal/browser"
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/prompter"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
@@ -68,6 +69,15 @@ func TestNewCmdList(t *testing.T) {
 				SelectorArg: "some-arg",
 			},
 		},
+		{
+			name: "web mode",
+			tty:  true,
+			args: "some-arg -w",
+			wantOpts: ViewOptions{
+				SelectorArg: "some-arg",
+				Web:         true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -116,14 +126,15 @@ func Test_viewRun(t *testing.T) {
 	sampleDate := time.Now().Add(-6 * time.Hour) // 6h ago
 
 	tests := []struct {
-		name        string
-		tty         bool
-		opts        ViewOptions
-		promptStubs func(*testing.T, *prompter.MockPrompter)
-		capiStubs   func(*testing.T, *capi.CapiClientMock)
-		wantOut     string
-		wantErr     error
-		wantStderr  string
+		name           string
+		tty            bool
+		opts           ViewOptions
+		promptStubs    func(*testing.T, *prompter.MockPrompter)
+		capiStubs      func(*testing.T, *capi.CapiClientMock)
+		wantOut        string
+		wantErr        error
+		wantStderr     string
+		wantBrowserURL string
 	}{
 		{
 			name: "with session id, not found (tty)",
@@ -274,13 +285,84 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
+			name: "with session id, not found, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+				Web:         true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetSessionFunc = func(_ context.Context, _ string) (*capi.Session, error) {
+					return nil, capi.ErrSessionNotFound
+				}
+			},
+			wantStderr: "session not found\n",
+			wantErr:    cmdutil.SilentError,
+		},
+		{
+			name: "with session id, without pr data, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+				Web:         true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:        "some-session-id",
+						State:     "completed",
+						CreatedAt: sampleDate,
+						// User data is irrelevant in this case
+					}, nil
+				}
+			},
+			wantBrowserURL: "https://github.com/copilot/agents",
+			wantStderr:     "Opening https://github.com/copilot/agents in your browser.\n",
+		},
+		{
+			name: "with session id, with pr data, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+				Web:         true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:        "some-session-id",
+						State:     "completed",
+						CreatedAt: sampleDate,
+						PullRequest: &api.PullRequest{
+							Title:  "fix something",
+							Number: 101,
+							URL:    "https://github.com/OWNER/REPO/pull/101",
+							Repository: &api.PRRepository{
+								NameWithOwner: "OWNER/REPO",
+							},
+						},
+						// User data is irrelevant in this case
+					}, nil
+				}
+			},
+			wantBrowserURL: "https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id",
+			wantStderr:     "Opening https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id in your browser.\n",
+		},
+		{
 			name: "with pr number, api error (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
-					&api.PullRequest{FullDatabaseID: "999999"},
+					"101",
+					&api.PullRequest{
+						FullDatabaseID: "999999",
+						URL:            "https://github.com/OWNER/REPO/pull/101",
+					},
 					ghrepo.New("OWNER", "REPO"),
 				),
 			},
@@ -295,7 +377,7 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr reference, unsupported hostname (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.NewWithHost("OWNER", "REPO", "foo.com"), nil
 				},
@@ -306,14 +388,14 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr reference, api error when fetching pr database ID (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.New("OWNER", "REPO"), nil
 				},
 			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, _ string, _ string, _ string, _ int) (int64, error) {
-					return 0, errors.New("some error")
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, _ string, _ string, _ string, _ int) (int64, string, error) {
+					return 0, "", errors.New("some error")
 				}
 			},
 			wantErr: errors.New("failed to fetch pull request: some error"),
@@ -322,14 +404,14 @@ func Test_viewRun(t *testing.T) {
 			name: "with pr reference, api error when fetching session (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.New("OWNER", "REPO"), nil
 				},
 			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, _ string, _ string, _ string, _ int) (int64, error) {
-					return 999999, nil
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, _ string, _ string, _ string, _ int) (int64, string, error) {
+					return 999999, "some-url", nil
 				}
 				m.ListSessionsByResourceIDFunc = func(_ context.Context, _ string, _ int64, _ int) ([]*capi.Session, error) {
 					return nil, errors.New("some error")
@@ -338,13 +420,16 @@ func Test_viewRun(t *testing.T) {
 			wantErr: errors.New("failed to list sessions for pull request: some error"),
 		},
 		{
-			name: "with pr number, success, single session with pr and user data (tty)",
+			name: "with pr number, success, single session (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
-					&api.PullRequest{FullDatabaseID: "999999"},
+					"101",
+					&api.PullRequest{
+						FullDatabaseID: "999999",
+						URL:            "https://github.com/OWNER/REPO/pull/101",
+					},
 					ghrepo.New("OWNER", "REPO"),
 				),
 			},
@@ -382,13 +467,16 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
-			name: "with pr number, success, multiple sessions with pr and user data (tty)",
+			name: "with pr number, success, multiple sessions (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "pr-number",
+				SelectorArg: "101",
 				Finder: prShared.NewMockFinder(
-					"pr-number",
-					&api.PullRequest{FullDatabaseID: "999999"},
+					"101",
+					&api.PullRequest{
+						FullDatabaseID: "999999",
+						URL:            "https://github.com/OWNER/REPO/pull/101",
+					},
 					ghrepo.New("OWNER", "REPO"),
 				),
 			},
@@ -421,9 +509,9 @@ func Test_viewRun(t *testing.T) {
 							State:     "completed",
 							CreatedAt: sampleDate,
 							PullRequest: &api.PullRequest{
-								Title:  "fix something else",
-								Number: 102,
-								URL:    "https://github.com/OWNER/REPO/pull/102",
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
 								Repository: &api.PRRepository{
 									NameWithOwner: "OWNER/REPO",
 								},
@@ -456,21 +544,21 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
-			name: "with pr reference, success, multiple sessions with pr and user data (tty)",
+			name: "with pr reference, success, multiple sessions (tty)",
 			tty:  true,
 			opts: ViewOptions{
-				SelectorArg: "OWNER/REPO#999",
+				SelectorArg: "OWNER/REPO#101",
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return ghrepo.New("OWNER", "REPO"), nil
 				},
 			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, hostname string, owner string, repo string, number int) (int64, string, error) {
 					assert.Equal(t, "github.com", hostname)
 					assert.Equal(t, "OWNER", owner)
 					assert.Equal(t, "REPO", repo)
-					assert.Equal(t, 999, number)
-					return 999999, nil
+					assert.Equal(t, 101, number)
+					return 999999, "https://github.com/OWNER/REPO/pull/101", nil
 				}
 				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
 					assert.Equal(t, "pull", resourceType)
@@ -500,9 +588,9 @@ func Test_viewRun(t *testing.T) {
 							State:     "completed",
 							CreatedAt: sampleDate,
 							PullRequest: &api.PullRequest{
-								Title:  "fix something else",
-								Number: 102,
-								URL:    "https://github.com/OWNER/REPO/pull/102",
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
 								Repository: &api.PRRepository{
 									NameWithOwner: "OWNER/REPO",
 								},
@@ -533,6 +621,185 @@ func Test_viewRun(t *testing.T) {
 				View this session on GitHub:
 				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
 			`),
+		},
+		{
+			name: "with pr number, api error, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "101",
+				Finder: prShared.NewMockFinder(
+					"101",
+					&api.PullRequest{
+						FullDatabaseID: "999999",
+						URL:            "https://github.com/OWNER/REPO/pull/101",
+					},
+					ghrepo.New("OWNER", "REPO"),
+				),
+				Web: true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, _ string, _ int64, _ int) ([]*capi.Session, error) {
+					return nil, errors.New("some error")
+				}
+			},
+			wantErr: errors.New("failed to list sessions for pull request: some error"),
+		},
+		{
+			name: "with pr number, single session, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "101",
+				Finder: prShared.NewMockFinder(
+					"101",
+					&api.PullRequest{
+						FullDatabaseID: "999999",
+						URL:            "https://github.com/OWNER/REPO/pull/101",
+					},
+					ghrepo.New("OWNER", "REPO"),
+				),
+				Web: true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
+					assert.Equal(t, "pull", resourceType)
+					assert.Equal(t, int64(999999), resourceID)
+					assert.Equal(t, defaultLimit, limit)
+					return []*capi.Session{
+						{
+							ID:        "some-session-id",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							// User data is irrelevant in this case
+						},
+					}, nil
+				}
+			},
+			wantBrowserURL: "https://github.com/OWNER/REPO/pull/101/agent-sessions",
+			wantStderr:     "Opening https://github.com/OWNER/REPO/pull/101/agent-sessions in your browser.\n",
+		},
+		{
+			name: "with pr number, multiple sessions, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "101",
+				Finder: prShared.NewMockFinder(
+					"101",
+					&api.PullRequest{
+						FullDatabaseID: "999999",
+						URL:            "https://github.com/OWNER/REPO/pull/101",
+					},
+					ghrepo.New("OWNER", "REPO"),
+				),
+				Web: true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
+					assert.Equal(t, "pull", resourceType)
+					assert.Equal(t, int64(999999), resourceID)
+					assert.Equal(t, defaultLimit, limit)
+					return []*capi.Session{
+						{
+							ID:        "some-session-id",
+							Name:      "session one",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							// User data is irrelevant in this case
+						},
+						{
+							ID:        "some-other-session-id",
+							Name:      "session two",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							// User data is irrelevant in this case
+						},
+					}, nil
+				}
+			},
+			wantBrowserURL: "https://github.com/OWNER/REPO/pull/101/agent-sessions",
+			wantStderr:     "Opening https://github.com/OWNER/REPO/pull/101/agent-sessions in your browser.\n",
+		},
+		{
+			name: "with pr reference, multiple sessions, web mode (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "OWNER/REPO#101",
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+				Web: true,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetPullRequestDatabaseIDFunc = func(_ context.Context, hostname string, owner string, repo string, number int) (int64, string, error) {
+					assert.Equal(t, "github.com", hostname)
+					assert.Equal(t, "OWNER", owner)
+					assert.Equal(t, "REPO", repo)
+					assert.Equal(t, 101, number)
+					return 999999, "https://github.com/OWNER/REPO/pull/101", nil
+				}
+				m.ListSessionsByResourceIDFunc = func(_ context.Context, resourceType string, resourceID int64, limit int) ([]*capi.Session, error) {
+					assert.Equal(t, "pull", resourceType)
+					assert.Equal(t, int64(999999), resourceID)
+					assert.Equal(t, defaultLimit, limit)
+					return []*capi.Session{
+						{
+							ID:        "some-session-id",
+							Name:      "session one",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							// User data is irrelevant in this case
+						},
+						{
+							ID:        "some-other-session-id",
+							Name:      "session two",
+							State:     "completed",
+							CreatedAt: sampleDate,
+							PullRequest: &api.PullRequest{
+								Title:  "fix something",
+								Number: 101,
+								URL:    "https://github.com/OWNER/REPO/pull/101",
+								Repository: &api.PRRepository{
+									NameWithOwner: "OWNER/REPO",
+								},
+							},
+							// User data is irrelevant in this case
+						},
+					}, nil
+				}
+			},
+			wantBrowserURL: "https://github.com/OWNER/REPO/pull/101/agent-sessions",
+			wantStderr:     "Opening https://github.com/OWNER/REPO/pull/101/agent-sessions in your browser.\n",
 		},
 	}
 
@@ -551,9 +818,12 @@ func Test_viewRun(t *testing.T) {
 			ios, _, stdout, stderr := iostreams.Test()
 			ios.SetStdoutTTY(tt.tty)
 
+			browser := &browser.Stub{}
+
 			opts := tt.opts
 			opts.IO = ios
 			opts.Prompter = prompter
+			opts.Browser = browser
 			opts.CapiClient = func() (capi.CapiClient, error) {
 				return capiClientMock, nil
 			}
@@ -566,9 +836,9 @@ func Test_viewRun(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			got := stdout.String()
-			require.Equal(t, tt.wantOut, got)
-			require.Equal(t, tt.wantStderr, stderr.String())
+			assert.Equal(t, tt.wantOut, stdout.String())
+			assert.Equal(t, tt.wantStderr, stderr.String())
+			assert.Equal(t, tt.wantBrowserURL, browser.BrowsedURL())
 		})
 	}
 }

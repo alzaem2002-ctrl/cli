@@ -24,7 +24,7 @@ var _ CapiClient = &CapiClientMock{}
 //			GetJobFunc: func(ctx context.Context, owner string, repo string, jobID string) (*Job, error) {
 //				panic("mock out the GetJob method")
 //			},
-//			GetPullRequestDatabaseIDFunc: func(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+//			GetPullRequestDatabaseIDFunc: func(ctx context.Context, hostname string, owner string, repo string, number int) (int64, string, error) {
 //				panic("mock out the GetPullRequestDatabaseID method")
 //			},
 //			GetSessionFunc: func(ctx context.Context, id string) (*Session, error) {
@@ -53,7 +53,7 @@ type CapiClientMock struct {
 	GetJobFunc func(ctx context.Context, owner string, repo string, jobID string) (*Job, error)
 
 	// GetPullRequestDatabaseIDFunc mocks the GetPullRequestDatabaseID method.
-	GetPullRequestDatabaseIDFunc func(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error)
+	GetPullRequestDatabaseIDFunc func(ctx context.Context, hostname string, owner string, repo string, number int) (int64, string, error)
 
 	// GetSessionFunc mocks the GetSession method.
 	GetSessionFunc func(ctx context.Context, id string) (*Session, error)
@@ -245,7 +245,7 @@ func (mock *CapiClientMock) GetJobCalls() []struct {
 }
 
 // GetPullRequestDatabaseID calls GetPullRequestDatabaseIDFunc.
-func (mock *CapiClientMock) GetPullRequestDatabaseID(ctx context.Context, hostname string, owner string, repo string, number int) (int64, error) {
+func (mock *CapiClientMock) GetPullRequestDatabaseID(ctx context.Context, hostname string, owner string, repo string, number int) (int64, string, error) {
 	if mock.GetPullRequestDatabaseIDFunc == nil {
 		panic("CapiClientMock.GetPullRequestDatabaseIDFunc: method is nil but CapiClient.GetPullRequestDatabaseID was just called")
 	}
