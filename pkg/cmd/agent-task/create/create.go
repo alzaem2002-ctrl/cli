@@ -37,6 +37,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	opts := &CreateOptions{
 		IO:         f.IOStreams,
 		CapiClient: shared.CapiClientFunc(f),
+		Config:     f.Config,
 		Prompter:   f.Prompter,
 	}
 
@@ -69,7 +70,6 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				opts.ProblemStatement = trimmed
 			}
 
-			opts.Config = f.Config
 			if runF != nil {
 				return runF(opts)
 			}
