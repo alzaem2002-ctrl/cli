@@ -2,6 +2,7 @@ package shared
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
@@ -9,8 +10,10 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 )
 
-var uuidRE = regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$`)
-var agentSessionsPathRE = regexp.MustCompile(`^/agent-sessions/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})$`)
+const uuidPattern = `[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}`
+
+var uuidRE = regexp.MustCompile(fmt.Sprintf("^%s$", uuidPattern))
+var agentSessionsPathRE = regexp.MustCompile(fmt.Sprintf("^/agent-sessions/(%s)$", uuidPattern))
 
 func CapiClientFunc(f *cmdutil.Factory) func() (capi.CapiClient, error) {
 	return func() (capi.CapiClient, error) {
