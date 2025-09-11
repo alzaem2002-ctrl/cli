@@ -153,7 +153,7 @@ func Test_createRun(t *testing.T) {
 					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
 						require.Equal(t, "Enter the task description", prompt)
 						require.Equal(t, "task description from file", defaultValue)
-						return prompt + "+From editor", nil
+						return "edited task description", nil
 					},
 					ConfirmFunc: func(message string, defaultValue bool) (bool, error) {
 						require.Equal(t, "Submit agent task", message)
@@ -166,7 +166,7 @@ func Test_createRun(t *testing.T) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
 					require.Equal(t, "REPO", repo)
-					require.Equal(t, "Enter the task description+From editor", problemStatement)
+					require.Equal(t, "edited task description", problemStatement)
 					return &createdJobSuccessWithPR, nil
 				}
 			},
