@@ -272,6 +272,22 @@ func Test_createRun(t *testing.T) {
 			wantStdErr: "a task description is required.\n",
 		},
 		{
+			name: "problem statement loaded from arg non-interactively doesn't prompt or return error",
+			opts: &CreateOptions{
+				BaseRepo:         func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+				ProblemStatement: "task description",
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
+					require.Equal(t, "OWNER", owner)
+					require.Equal(t, "REPO", repo)
+					require.Equal(t, "task description", problemStatement)
+					return &createdJobSuccessWithPR, nil
+				}
+			},
+			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
+		},
+		{
 			name: "base branch included in create payload",
 			opts: &CreateOptions{
 				BaseRepo:         func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
