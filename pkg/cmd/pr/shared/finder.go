@@ -302,12 +302,9 @@ func (f *finder) Find(opts FindOptions) (*api.PullRequest, ghrepo.Interface, err
 
 var pullURLRE = regexp.MustCompile(`^/([^/]+)/([^/]+)/pull/(\d+)(.*$)`)
 
-// ParseURL parses a pull request URL and returns the repository and pull
-// request number. If there is no error, the returned repo is not nil and will
-// have non-empty hostname.
-//
-// Any path components (not query params or fragments) after the pull request
-// number are also returned.
+// ParseURL parses a pull request URL and returns the repository, pull request
+// number, and any tailing path components. If there is no error, the returned
+// repo is not nil and will have non-empty hostname.
 func ParseURL(prURL string) (ghrepo.Interface, int, string, error) {
 	if prURL == "" {
 		return nil, 0, "", fmt.Errorf("invalid URL: %q", prURL)
@@ -329,8 +326,8 @@ func ParseURL(prURL string) (ghrepo.Interface, int, string, error) {
 
 	repo := ghrepo.NewWithHost(m[1], m[2], u.Hostname())
 	prNumber, _ := strconv.Atoi(m[3])
-	rest := m[4]
-	return repo, prNumber, rest, nil
+	tail := m[4]
+	return repo, prNumber, tail, nil
 }
 
 var fullReferenceRE = regexp.MustCompile(`^(?:([^/]+)/([^/]+))#(\d+)$`)
