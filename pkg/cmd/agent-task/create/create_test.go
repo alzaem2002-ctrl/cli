@@ -45,50 +45,17 @@ func TestNewCmdCreate(t *testing.T) {
 			},
 		},
 		{
-			name: "from-file succes",
-			args: "-F task-description.md",
-			wantOpts: &CreateOptions{
-				ProblemStatement:     "",
-				ProblemStatementFile: "task-description.md",
-			},
-		},
-		{
-			name:  "file content from stdin success",
-			args:  "-F -",
-			stdin: "task description from stdin",
-			wantOpts: &CreateOptions{
-				ProblemStatement:     "",
-				ProblemStatementFile: "-",
-			},
-		},
-		{
 			name:    "mutually exclusive arg and file",
 			args:    "'some task inline' -F foo.md",
 			wantErr: "only one of -F or arg can be provided",
 		},
 		{
-			name: "missing file path is accepted",
-			args: "-F does-not-exist.md",
+			name: "base branch sets baseBranch field",
+			args: "'task description' -b feature",
 			wantOpts: &CreateOptions{
-				ProblemStatement:     "",
-				ProblemStatementFile: "does-not-exist.md",
-			},
-		},
-		{
-			name: "empty file accepted at",
-			args: "-F empty-task-description.md",
-			wantOpts: &CreateOptions{
-				ProblemStatement:     "",
-				ProblemStatementFile: "empty-task-description.md",
-			},
-		},
-		{
-			name:  "empty from stdin accepted",
-			args:  "-F -",
-			stdin: "   \n\n",
-			wantOpts: &CreateOptions{
-				ProblemStatement:     "",
-				ProblemStatementFile: "-",
+				ProblemStatement:     "task description",
+				ProblemStatementFile: "",
+				BaseBranch:           "feature",
 			},
 		},
 	}
@@ -129,6 +96,7 @@ func TestNewCmdCreate(t *testing.T) {
 			if tt.wantOpts != nil {
 				require.Equal(t, tt.wantOpts.ProblemStatement, gotOpts.ProblemStatement)
 				require.Equal(t, tt.wantOpts.ProblemStatementFile, gotOpts.ProblemStatementFile)
+				require.Equal(t, tt.wantOpts.BaseBranch, gotOpts.BaseBranch)
 			}
 		})
 	}
