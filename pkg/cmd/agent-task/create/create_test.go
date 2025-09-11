@@ -142,6 +142,7 @@ func Test_createRun(t *testing.T) {
 		wantStdout string
 		wantStdErr string
 		wantErr    string
+		wantErrIs  error
 	}{
 		{
 			name: "interactive with file prompts to edit with file contents",
@@ -190,6 +191,7 @@ func Test_createRun(t *testing.T) {
 			},
 			isTTY:      true,
 			wantErr:    "SilentError",
+			wantErrIs:  cmdutil.SilentError,
 			wantStdErr: "",
 		},
 		{
@@ -233,6 +235,7 @@ func Test_createRun(t *testing.T) {
 				},
 			},
 			wantErr:    "SilentError",
+			wantErrIs:  cmdutil.SilentError,
 			wantStdErr: "a task description is required.\n",
 		},
 		{
@@ -269,6 +272,7 @@ func Test_createRun(t *testing.T) {
 				ProblemStatement: "",
 			},
 			wantErr:    "SilentError",
+			wantErrIs:  cmdutil.SilentError,
 			wantStdErr: "a task description is required.\n",
 		},
 		{
@@ -449,10 +453,13 @@ func Test_createRun(t *testing.T) {
 			tt.opts.BackOff = backoff.WithMaxRetries(&backoff.ZeroBackOff{}, 3)
 
 			err := createRun(tt.opts)
+			if tt.wantErrIs != nil {
+				require.ErrorIs(t, err, tt.wantErrIs)
+			}
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Equal(t, tt.wantErr, err.Error())
-			} else {
+			} else if tt.wantErrIs == nil {
 				require.NoError(t, err)
 			}
 
