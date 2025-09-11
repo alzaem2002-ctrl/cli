@@ -23,7 +23,6 @@ func TestNewCmdCreate(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     string
-		stdin    string
 		tty      bool
 		wantOpts *CreateOptions
 		wantErr  string
@@ -82,9 +81,6 @@ func TestNewCmdCreate(t *testing.T) {
 			cmd.SetIn(stdin)
 			cmd.SetOut(io.Discard)
 			cmd.SetErr(io.Discard)
-			if tt.stdin != "" {
-				stdin.WriteString(tt.stdin)
-			}
 
 			_, err = cmd.ExecuteC()
 			if tt.wantErr != "" {
