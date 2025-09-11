@@ -80,7 +80,7 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 				opts.SelectorArg = args[0]
 				if shared.IsSessionID(opts.SelectorArg) {
 					opts.SessionID = opts.SelectorArg
-				} else if sessionID, err := shared.ParsePullRequestAgentSessionURL(opts.SelectorArg); err == nil {
+				} else if sessionID, err := shared.ParseSessionIDFromURL(opts.SelectorArg); err == nil {
 					opts.SessionID = sessionID
 				}
 			}

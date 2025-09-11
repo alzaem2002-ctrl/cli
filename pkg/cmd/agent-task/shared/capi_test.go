@@ -61,7 +61,7 @@ func TestParsePullRequestAgentSessionURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sessionID, err := ParsePullRequestAgentSessionURL(tt.url)
+			sessionID, err := ParseSessionIDFromURL(tt.url)
 
 			if tt.wantErr {
 				require.Error(t, err)

@@ -12,8 +12,8 @@ import (
 
 const uuidPattern = `[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}`
 
-var uuidRE = regexp.MustCompile(fmt.Sprintf("^%s$", uuidPattern))
-var agentSessionsPathRE = regexp.MustCompile(fmt.Sprintf("^/agent-sessions/(%s)$", uuidPattern))
+var sessionIDRegexp = regexp.MustCompile(fmt.Sprintf("^%s$", uuidPattern))
+var agentSessionURLRegexp = regexp.MustCompile(fmt.Sprintf("^/agent-sessions/(%s)$", uuidPattern))
 
 func CapiClientFunc(f *cmdutil.Factory) func() (capi.CapiClient, error) {
 	return func() (capi.CapiClient, error) {
@@ -33,20 +33,20 @@ func CapiClientFunc(f *cmdutil.Factory) func() (capi.CapiClient, error) {
 }
 
 func IsSessionID(s string) bool {
-	return uuidRE.MatchString(s)
+	return sessionIDRegexp.MatchString(s)
 }
 
-// ParsePullRequestAgentSessionURL parses session ID from a pull request's agent
-// session URL, which is of the form:
+// ParseSessionIDFromURL parses session ID from a pull request's agent session
+// URL, which is of the form:
 //
-//	https://github.com/OWNER/REPO/pull/NUMBER/agent-sessions/SESSION-ID
-func ParsePullRequestAgentSessionURL(u string) (string, error) {
+//	`https://github.com/OWNER/REPO/pull/NUMBER/agent-sessions/SESSION-ID`
+func ParseSessionIDFromURL(u string) (string, error) {
 	_, _, rest, err := prShared.ParseURL(u)
 	if err != nil {
 		return "", err
 	}
 
-	match := agentSessionsPathRE.FindStringSubmatch(rest)
+	match := agentSessionURLRegexp.FindStringSubmatch(rest)
 	if match == nil {
 		return "", errors.New("not a valid agent session URL")
 	}
