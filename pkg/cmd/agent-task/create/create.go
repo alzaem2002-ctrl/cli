@@ -23,14 +23,15 @@ import (
 
 // CreateOptions holds options for create command
 type CreateOptions struct {
-	IO               *iostreams.IOStreams
-	BaseRepo         func() (ghrepo.Interface, error)
-	CapiClient       func() (capi.CapiClient, error)
-	Config           func() (gh.Config, error)
-	ProblemStatement string
-	BackOff          backoff.BackOff
-	BaseBranch       string
-	Prompter         prompter.Prompter
+	IO                   *iostreams.IOStreams
+	BaseRepo             func() (ghrepo.Interface, error)
+	CapiClient           func() (capi.CapiClient, error)
+	Config               func() (gh.Config, error)
+	ProblemStatement     string
+	BackOff              backoff.BackOff
+	BaseBranch           string
+	Prompter             prompter.Prompter
+	ProblemStatementFile string
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
@@ -41,8 +42,6 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Prompter:   f.Prompter,
 	}
 
-	var fromFileName string
-
 	cmd := &cobra.Command{
 		Use:   "create [<task description>] [flags]",
 		Short: "Create an agent task (preview)",
@@ -51,23 +50,15 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			// Support -R/--repo override
 			opts.BaseRepo = f.BaseRepo
 
-			if err := cmdutil.MutuallyExclusive("only one of -F or arg can be provided", len(args) > 0, fromFileName != ""); err != nil {
+			if err := cmdutil.MutuallyExclusive("only one of -F or arg can be provided", len(args) > 0, opts.ProblemStatementFile != ""); err != nil {
 				return err
 			}
 
-			// Gather arg inputs for ProblemStatement
+			// Populate ProblemStatement from arg
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
-			} else if fromFileName != "" {
-				fileContent, err := cmdutil.ReadFile(fromFileName, opts.IO.In)
-				if err != nil {
-					return cmdutil.FlagErrorf("could not read task description file: %v", err)
-				}
-				trimmed := strings.TrimSpace(string(fileContent))
-				if trimmed == "" {
-					return cmdutil.FlagErrorf("task description file is empty")
-				}
-				opts.ProblemStatement = trimmed
+			} else if opts.ProblemStatementFile == "" && !opts.IO.CanPrompt() {
+				return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
 			}
 
 			if runF != nil {
@@ -95,7 +86,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmdutil.EnableRepoOverride(cmd, f)
 
-	cmd.Flags().StringVarP(&fromFileName, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&opts.ProblemStatementFile, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
 	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
 
 	return cmd
@@ -110,20 +101,37 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	if opts.ProblemStatement == "" {
-		if !opts.IO.CanPrompt() {
-			return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
+		// Load initial problem statement from file, if provided
+		if opts.ProblemStatementFile != "" {
+			fileContent, err := cmdutil.ReadFile(opts.ProblemStatementFile, opts.IO.In)
+			if err != nil {
+				return cmdutil.FlagErrorf("could not read task description file: %v", err)
+			}
+			opts.ProblemStatement = strings.TrimSpace(string(fileContent))
 		}
 
-		desc, err := opts.Prompter.MarkdownEditor("Enter the task description", opts.ProblemStatement, false)
+		if opts.IO.CanPrompt() {
+			desc, err := opts.Prompter.MarkdownEditor("Enter the task description", opts.ProblemStatement, false)
+			if err != nil {
+				return err
+			}
+			opts.ProblemStatement = strings.TrimSpace(desc)
+		}
+	}
+
+	if opts.ProblemStatement == "" {
+		fmt.Fprintf(opts.IO.ErrOut, "a task description is required.\n")
+		return cmdutil.SilentError
+	}
+
+	if opts.IO.CanPrompt() {
+		confirm, err := opts.Prompter.Confirm("Submit agent task", true)
 		if err != nil {
 			return err
 		}
-
-		trimmed := strings.TrimSpace(desc)
-		if trimmed == "" {
-			return cmdutil.FlagErrorf("a task description is required")
+		if !confirm {
+			return cmdutil.SilentError
 		}
-		opts.ProblemStatement = trimmed
 	}
 
 	client, err := opts.CapiClient()
