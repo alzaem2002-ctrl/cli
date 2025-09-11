@@ -76,8 +76,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			# Create a task with problem statement from stdin
 			$ echo "build me a new app" | gh agent-task create -F -
 
-			# Create a task with an editor prompt (interactive)
+			# Create a task with an editor
 			$ gh agent-task create
+
+			# Create a task with an editor and a file as a template
+			$ gh agent-task create -F task-desc.md
 
 			# Select a different base branch for the PR
 			$ gh agent-task create "fix errors" --base branch
