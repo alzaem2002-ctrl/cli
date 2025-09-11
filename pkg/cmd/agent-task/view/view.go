@@ -80,6 +80,8 @@ func NewCmdView(f *cmdutil.Factory, runF func(*ViewOptions) error) *cobra.Comman
 				opts.SelectorArg = args[0]
 				if shared.IsSessionID(opts.SelectorArg) {
 					opts.SessionID = opts.SelectorArg
+				} else if sessionID, err := shared.ParseSessionIDFromURL(opts.SelectorArg); err == nil {
+					opts.SessionID = sessionID
 				}
 			}
 
@@ -149,7 +151,7 @@ func viewRun(opts *ViewOptions) error {
 
 		session = sess
 	} else {
-		var resourceID int64
+		var prID int64
 		var prURL string
 
 		if opts.SelectorArg != "" {
@@ -169,14 +171,14 @@ func viewRun(opts *ViewOptions) error {
 					return fmt.Errorf("agent tasks are not supported on this host: %s", hostname)
 				}
 
-				resourceID, prURL, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
+				prID, prURL, err = capiClient.GetPullRequestDatabaseID(ctx, hostname, repo.RepoOwner(), repo.RepoName(), num)
 				if err != nil {
 					return fmt.Errorf("failed to fetch pull request: %w", err)
 				}
 			}
 		}
 
-		if resourceID == 0 {
+		if prID == 0 {
 			findOptions := prShared.FindOptions{
 				Selector: opts.SelectorArg,
 				Fields:   []string{"id", "url", "fullDatabaseId"},
@@ -196,7 +198,7 @@ func viewRun(opts *ViewOptions) error {
 				return fmt.Errorf("failed to parse pull request: %w", err)
 			}
 
-			resourceID = databaseID
+			prID = databaseID
 			prURL = pr.URL
 		}
 
@@ -204,7 +206,7 @@ func viewRun(opts *ViewOptions) error {
 		// matching sessions to avoid hitting the API too many times, but it's
 		// technically possible for a PR to be associated with lots of sessions
 		// (i.e. above our selected limit).
-		sessions, err := capiClient.ListSessionsByResourceID(ctx, "pull", resourceID, defaultLimit)
+		sessions, err := capiClient.ListSessionsByResourceID(ctx, "pull", prID, defaultLimit)
 		if err != nil {
 			return fmt.Errorf("failed to list sessions for pull request: %w", err)
 		}

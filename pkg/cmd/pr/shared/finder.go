@@ -112,7 +112,7 @@ func (f *finder) Find(opts FindOptions) (*api.PullRequest, ghrepo.Interface, err
 		return nil, nil, errors.New("Find error: no fields specified")
 	}
 
-	if repo, prNumber, err := ParseURL(opts.Selector); err == nil {
+	if repo, prNumber, _, err := ParseURL(opts.Selector); err == nil {
 		f.prNumber = prNumber
 		f.baseRefRepo = repo
 	}
@@ -300,32 +300,34 @@ func (f *finder) Find(opts FindOptions) (*api.PullRequest, ghrepo.Interface, err
 	return pr, f.baseRefRepo, g.Wait()
 }
 
-var pullURLRE = regexp.MustCompile(`^/([^/]+)/([^/]+)/pull/(\d+)`)
+var pullURLRE = regexp.MustCompile(`^/([^/]+)/([^/]+)/pull/(\d+)(.*$)`)
 
-// ParseURL parses a pull request URL and returns the repository and pull
-// request number.
-func ParseURL(prURL string) (ghrepo.Interface, int, error) {
+// ParseURL parses a pull request URL and returns the repository, pull request
+// number, and any tailing path components. If there is no error, the returned
+// repo is not nil and will have non-empty hostname.
+func ParseURL(prURL string) (ghrepo.Interface, int, string, error) {
 	if prURL == "" {
-		return nil, 0, fmt.Errorf("invalid URL: %q", prURL)
+		return nil, 0, "", fmt.Errorf("invalid URL: %q", prURL)
 	}
 
 	u, err := url.Parse(prURL)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, "", err
 	}
 
 	if u.Scheme != "https" && u.Scheme != "http" {
-		return nil, 0, fmt.Errorf("invalid scheme: %s", u.Scheme)
+		return nil, 0, "", fmt.Errorf("invalid scheme: %s", u.Scheme)
 	}
 
 	m := pullURLRE.FindStringSubmatch(u.Path)
 	if m == nil {
-		return nil, 0, fmt.Errorf("not a pull request URL: %s", prURL)
+		return nil, 0, "", fmt.Errorf("not a pull request URL: %s", prURL)
 	}
 
 	repo := ghrepo.NewWithHost(m[1], m[2], u.Hostname())
 	prNumber, _ := strconv.Atoi(m[3])
-	return repo, prNumber, nil
+	tail := m[4]
+	return repo, prNumber, tail, nil
 }
 
 var fullReferenceRE = regexp.MustCompile(`^(?:([^/]+)/([^/]+))#(\d+)$`)

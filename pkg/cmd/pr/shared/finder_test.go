@@ -21,6 +21,7 @@ func TestParseURL(t *testing.T) {
 		arg      string
 		wantRepo ghrepo.Interface
 		wantNum  int
+		wantRest string
 		wantErr  string
 	}{
 		{
@@ -36,13 +37,44 @@ func TestParseURL(t *testing.T) {
 			wantNum:  123,
 		},
 		{
+			name:     "valid HTTP URL with rest",
+			arg:      "http://example.com/owner/repo/pull/123/foo/bar",
+			wantRepo: ghrepo.NewWithHost("owner", "repo", "example.com"),
+			wantNum:  123,
+			wantRest: "/foo/bar",
+		},
+		{
+			name:     "valid HTTP URL with .patch as rest",
+			arg:      "http://example.com/owner/repo/pull/123.patch",
+			wantRepo: ghrepo.NewWithHost("owner", "repo", "example.com"),
+			wantNum:  123,
+			wantRest: ".patch",
+		},
+		{
+			name:     "valid HTTP URL with a trailing slash",
+			arg:      "http://example.com/owner/repo/pull/123/",
+			wantRepo: ghrepo.NewWithHost("owner", "repo", "example.com"),
+			wantNum:  123,
+			wantRest: "/",
+		},
+		{
 			name:    "empty URL",
 			wantErr: "invalid URL: \"\"",
+		},
+		{
+			name:    "no scheme",
+			arg:     "github.com/owner/repo/pull/123",
+			wantErr: "invalid scheme: ",
 		},
 		{
 			name:    "invalid scheme",
 			arg:     "ftp://github.com/owner/repo/pull/123",
 			wantErr: "invalid scheme: ftp",
+		},
+		{
+			name:    "no hostname",
+			arg:     "/owner/repo/pull/123",
+			wantErr: "invalid scheme: ",
 		},
 		{
 			name:    "incorrect path",
@@ -63,7 +95,7 @@ func TestParseURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo, num, err := ParseURL(tt.arg)
+			repo, num, rest, err := ParseURL(tt.arg)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -73,6 +105,7 @@ func TestParseURL(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.wantNum, num)
+			require.Equal(t, tt.wantRest, rest)
 			require.NotNil(t, repo)
 			require.True(t, ghrepo.IsSame(tt.wantRepo, repo))
 		})
