@@ -159,6 +159,13 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 			To change the active account for a host, see %[1]sgh auth switch%[1]s.
 		`, "`"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmdutil.MutuallyExclusive(
+				"`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
+				opts.Exporter != nil,
+				opts.ShowToken,
+			); err != nil {
+				return err
+			}
 			if runF != nil {
 				return runF(opts)
 			}
@@ -189,10 +196,6 @@ func statusRun(opts *StatusOptions) error {
 	cs := opts.IO.ColorScheme()
 
 	if opts.Exporter != nil {
-		if opts.ShowToken {
-			fmt.Fprintf(stderr, "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.")
-			return nil
-		}
 		opts.ShowToken = true
 	}
 

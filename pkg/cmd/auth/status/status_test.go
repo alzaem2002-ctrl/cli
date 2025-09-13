@@ -22,9 +22,11 @@ import (
 
 func Test_NewCmdStatus(t *testing.T) {
 	tests := []struct {
-		name  string
-		cli   string
-		wants StatusOptions
+		name       string
+		cli        string
+		wants      StatusOptions
+		wantErr    error
+		wantErrOut string
 	}{
 		{
 			name:  "no arguments",
@@ -52,6 +54,11 @@ func Test_NewCmdStatus(t *testing.T) {
 				Active: true,
 			},
 		},
+		{
+			name:    "both --show-token and --json flags",
+			cli:     "--show-token --json state,token",
+			wantErr: cmdutil.FlagErrorf("`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`."),
+		},
 	}
 
 	for _, tt := range tests {
@@ -76,11 +83,15 @@ func Test_NewCmdStatus(t *testing.T) {
 			cmd.SetErr(&bytes.Buffer{})
 
 			_, err = cmd.ExecuteC()
-			assert.NoError(t, err)
+			if tt.wantErr == nil {
+				assert.NoError(t, err)
 
-			assert.Equal(t, tt.wants.Hostname, gotOpts.Hostname)
-			assert.Equal(t, tt.wants.ShowToken, gotOpts.ShowToken)
-			assert.Equal(t, tt.wants.Active, gotOpts.Active)
+				assert.Equal(t, tt.wants.Hostname, gotOpts.Hostname)
+				assert.Equal(t, tt.wants.ShowToken, gotOpts.ShowToken)
+				assert.Equal(t, tt.wants.Active, gotOpts.Active)
+			} else {
+				assert.Equal(t, tt.wantErr, err)
+			}
 		})
 	}
 }
@@ -661,17 +672,6 @@ func Test_statusRun(t *testing.T) {
 				login(t, c, "github.com", "monalisa", "abc123", "https")
 			},
 			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","state":"success","token":"abc123"}]}` + "\n",
-		},
-		{
-			name: "Both show token and json flags",
-			opts: StatusOptions{
-				ShowToken: true,
-				Exporter:  defaultJsonExporter(),
-			},
-			cfgStubs: func(t *testing.T, c gh.Config) {
-				login(t, c, "github.com", "monalisa", "abc123", "https")
-			},
-			wantErrOut: "`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
 		},
 	}
 
