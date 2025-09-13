@@ -758,9 +758,9 @@ func Test_statusRun(t *testing.T) {
 	}
 }
 
-func login(t *testing.T, c gh.Config, hostname, username, protocol, token string) {
+func login(t *testing.T, c gh.Config, hostname, username, token, protocol string) {
 	t.Helper()
-	_, err := c.Authentication().Login(hostname, username, protocol, token, false)
+	_, err := c.Authentication().Login(hostname, username, token, protocol, false)
 	require.NoError(t, err)
 }
 
