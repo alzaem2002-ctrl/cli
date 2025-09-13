@@ -242,14 +242,13 @@ func statusRun(opts *StatusOptions) error {
 			activeUser, _ = authCfg.ActiveUser(hostname)
 		}
 		entry := buildEntry(httpClient, buildEntryOptions{
-			active:       true,
-			gitProtocol:  gitProtocol,
-			hostname:     hostname,
-			showToken:    showToken,
-			token:        activeUserToken,
-			tokenSource:  activeUserTokenSource,
-			username:     activeUser,
-			includeScope: opts.includeScope(),
+			active:      true,
+			gitProtocol: gitProtocol,
+			hostname:    hostname,
+			showToken:   showToken,
+			token:       activeUserToken,
+			tokenSource: activeUserTokenSource,
+			username:    activeUser,
 		})
 		statuses[hostname] = append(statuses[hostname], entry)
 
@@ -268,14 +267,13 @@ func statusRun(opts *StatusOptions) error {
 			}
 			token, tokenSource, _ := authCfg.TokenForUser(hostname, username)
 			entry := buildEntry(httpClient, buildEntryOptions{
-				active:       false,
-				gitProtocol:  gitProtocol,
-				hostname:     hostname,
-				showToken:    showToken,
-				token:        token,
-				tokenSource:  tokenSource,
-				username:     username,
-				includeScope: opts.includeScope(),
+				active:      false,
+				gitProtocol: gitProtocol,
+				hostname:    hostname,
+				showToken:   showToken,
+				token:       token,
+				tokenSource: tokenSource,
+				username:    username,
 			})
 			statuses[hostname] = append(statuses[hostname], entry)
 
@@ -350,14 +348,13 @@ func expectScopes(token string) bool {
 }
 
 type buildEntryOptions struct {
-	active       bool
-	gitProtocol  string
-	hostname     string
-	showToken    bool
-	token        string
-	tokenSource  string
-	username     string
-	includeScope bool
+	active      bool
+	gitProtocol string
+	hostname    string
+	showToken   bool
+	token       string
+	tokenSource string
+	username    string
 }
 
 func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
@@ -393,21 +390,19 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		}
 	}
 
-	if opts.includeScope {
-		// Get scopes for token.
-		scopesHeader, err := shared.GetScopes(httpClient, opts.hostname, opts.token)
-		if err != nil {
-			var networkError net.Error
-			if errors.As(err, &networkError) && networkError.Timeout() {
-				entry.State = authStateTimeout
-				return entry
-			}
-
-			entry.State = authStateError
+	// Get scopes for token.
+	scopesHeader, err := shared.GetScopes(httpClient, opts.hostname, opts.token)
+	if err != nil {
+		var networkError net.Error
+		if errors.As(err, &networkError) && networkError.Timeout() {
+			entry.State = authStateTimeout
 			return entry
 		}
-		entry.Scopes = scopesHeader
+
+		entry.State = authStateError
+		return entry
 	}
+	entry.Scopes = scopesHeader
 
 	entry.State = authStateSuccess
 	return entry
@@ -419,11 +414,4 @@ func authTokenWriteable(src string) bool {
 
 func isValidEntry(entry authEntry) bool {
 	return entry.State == authStateSuccess
-}
-
-func (opts *StatusOptions) includeScope() bool {
-	if opts.Exporter == nil {
-		return true
-	}
-	return slices.Contains(opts.Exporter.Fields(), "scopes")
 }
