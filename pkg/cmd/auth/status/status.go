@@ -105,29 +105,6 @@ func (e authEntry) ExportData(fields []string) map[string]interface{} {
 	return cmdutil.StructExportData(e, fields)
 }
 
-type Entry interface {
-	String(cs *iostreams.ColorScheme) string
-	ExportData(fields []string) map[string]interface{}
-}
-
-type Entries []Entry
-
-func (e Entries) Strings(cs *iostreams.ColorScheme) []string {
-	var out []string
-	for _, entry := range e {
-		out = append(out, entry.String(cs))
-	}
-	return out
-}
-
-func (e Entries) ExportData(fields []string) []map[string]interface{} {
-	var out []map[string]interface{}
-	for _, entry := range e {
-		out = append(out, entry.ExportData(fields))
-	}
-	return out
-}
-
 type StatusOptions struct {
 	HttpClient func() (*http.Client, error)
 	IO         *iostreams.IOStreams
@@ -202,7 +179,7 @@ func statusRun(opts *StatusOptions) error {
 		showToken = true
 	}
 
-	statuses := make(map[string]Entries)
+	statuses := make(map[string][]authEntry)
 
 	hostnames := authCfg.Hosts()
 	if len(hostnames) == 0 {
@@ -284,15 +261,7 @@ func statusRun(opts *StatusOptions) error {
 	}
 
 	if opts.Exporter != nil {
-		statusesForExport := make(map[string]interface{})
-
-		for _, hostname := range hostnames {
-			if len(statuses[hostname]) > 0 {
-				statusesForExport[hostname] = statuses[hostname].ExportData(opts.Exporter.Fields())
-			}
-		}
-
-		opts.Exporter.Write(opts.IO, statusesForExport)
+		opts.Exporter.Write(opts.IO, statuses)
 		return nil
 	}
 
@@ -313,7 +282,12 @@ func statusRun(opts *StatusOptions) error {
 		}
 		prevEntry = true
 		fmt.Fprintf(stream, "%s\n", cs.Bold(hostname))
-		fmt.Fprintf(stream, "%s", strings.Join(entries.Strings(cs), "\n"))
+		for i, entry := range entries {
+			fmt.Fprintf(stream, "%s", entry.String(cs))
+			if i < len(entries)-1 {
+				fmt.Fprint(stream, "\n")
+			}
+		}
 	}
 
 	return err
