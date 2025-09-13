@@ -29,6 +29,8 @@ type authEntry struct {
 	Token       string    `json:"token"`
 	Scopes      string    `json:"scopes"`
 	GitProtocol string    `json:"gitProtocol"`
+
+	showToken bool
 }
 
 var authFields = []string{
@@ -53,7 +55,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme) string {
 		activeStr := fmt.Sprintf("%v", e.Active)
 		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 		sb.WriteString(fmt.Sprintf("  - Git operations protocol: %s\n", cs.Bold(e.GitProtocol)))
-		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(e.Token)))
+		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(e.displayToken())))
 
 		if expectScopes(e.Token) {
 			sb.WriteString(fmt.Sprintf("  - Token scopes: %s\n", cs.Bold(displayScopes(e.Scopes))))
@@ -318,17 +320,17 @@ func statusRun(opts *StatusOptions) error {
 	return err
 }
 
-func displayToken(token string, printRaw bool) string {
-	if printRaw {
-		return token
+func (e authEntry) displayToken() string {
+	if e.showToken {
+		return e.Token
 	}
 
-	if idx := strings.LastIndexByte(token, '_'); idx > -1 {
-		prefix := token[0 : idx+1]
-		return prefix + strings.Repeat("*", len(token)-len(prefix))
+	if idx := strings.LastIndexByte(e.Token, '_'); idx > -1 {
+		prefix := e.Token[0 : idx+1]
+		return prefix + strings.Repeat("*", len(e.Token)-len(prefix))
 	}
 
-	return strings.Repeat("*", len(token))
+	return strings.Repeat("*", len(e.Token))
 }
 
 func displayScopes(scopes string) string {
@@ -364,8 +366,10 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		Host:        opts.hostname,
 		Login:       opts.username,
 		TokenSource: opts.tokenSource,
-		Token:       displayToken(opts.token, opts.showToken),
+		Token:       opts.token,
 		GitProtocol: opts.gitProtocol,
+
+		showToken: opts.showToken,
 	}
 
 	if opts.tokenSource == "oauth_token" {
