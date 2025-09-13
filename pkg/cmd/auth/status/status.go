@@ -197,8 +197,9 @@ func statusRun(opts *StatusOptions) error {
 	stdout := opts.IO.Out
 	cs := opts.IO.ColorScheme()
 
-	if opts.Exporter != nil {
-		opts.ShowToken = true
+	showToken := opts.ShowToken
+	if opts.Exporter != nil && slices.Contains(opts.Exporter.Fields(), "token") {
+		showToken = true
 	}
 
 	statuses := make(map[string]Entries)
@@ -244,7 +245,7 @@ func statusRun(opts *StatusOptions) error {
 			active:       true,
 			gitProtocol:  gitProtocol,
 			hostname:     hostname,
-			showToken:    opts.ShowToken,
+			showToken:    showToken,
 			token:        activeUserToken,
 			tokenSource:  activeUserTokenSource,
 			username:     activeUser,
@@ -270,7 +271,7 @@ func statusRun(opts *StatusOptions) error {
 				active:       false,
 				gitProtocol:  gitProtocol,
 				hostname:     hostname,
-				showToken:    opts.ShowToken,
+				showToken:    showToken,
 				token:        token,
 				tokenSource:  tokenSource,
 				username:     username,
