@@ -137,6 +137,19 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 
 			To change the active account for a host, see %[1]sgh auth switch%[1]s.
 		`, "`"),
+		Example: heredoc.Doc(`
+			# Show authentication status for all accounts on all hosts
+			$ gh auth status
+
+			# Show authentication status for active accounts on a specific host
+			$ gh auth status --hostname github.example.com --active
+
+			# Show the authentication status with json output 
+			$ gh auth status --json active,token,host,login
+
+			# Gets the access token of the github.com active account
+			$ gh auth status -a --json token --jq '.["github.com"][0].token'
+		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmdutil.MutuallyExclusive(
 				"`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
