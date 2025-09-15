@@ -59,11 +59,13 @@ func TestFollow(t *testing.T) {
 			err = NewLogRenderer().Follow(fetcher, stdout, ios)
 			require.NoError(t, err)
 
+			// Handy note for updating the testdata files when they change:
+			// ext := filepath.Ext(tt.log)
+			// stripped := strings.TrimSuffix(tt.log, ext)
+			// os.WriteFile(stripped+".want"+ext, stdout.Bytes(), 0644)
+
 			want, err := os.ReadFile(tt.want)
 			require.NoError(t, err)
-
-			// // Temp for updating tests
-			// os.WriteFile(tt.log+".got", stdout.Bytes(), 0644)
 
 			assert.Equal(t, string(want), stdout.String())
 		})
