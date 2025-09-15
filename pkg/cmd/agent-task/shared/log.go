@@ -122,7 +122,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 			switch name {
 			case "run_setup":
 				if v := unmarshal[runSetupToolArgs](args); v != nil {
-					renderToolCall(w, cs, v.Name, "")
+					renderToolCallTitle(w, cs, v.Name, "")
 					continue
 				}
 			case "view":
@@ -141,9 +141,9 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 			case "bash":
 				if v := unmarshal[bashToolArgs](args); v != nil {
 					if v.Description != "" {
-						renderToolCall(w, cs, "Bash", v.Description)
+						renderToolCallTitle(w, cs, "Bash", v.Description)
 					} else {
-						renderToolCall(w, cs, "Run Bash command", "")
+						renderToolCallTitle(w, cs, "Run Bash command", "")
 					}
 
 					contentWithCommand := choice.Delta.Content
@@ -193,7 +193,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 				}
 
 				// NOTE: omit the delta.content since it's the same as thought
-				renderToolCall(w, cs, "Thought", "")
+				renderToolCallTitle(w, cs, "Thought", "")
 				if err := renderRawMarkdown(args.Thought, w, io); err != nil {
 					return false, fmt.Errorf("failed to render thought: %w", err)
 				}
@@ -203,7 +203,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 					return false, fmt.Errorf("failed to parse 'report_progress' tool call arguments: %w", err)
 				}
 
-				renderToolCall(w, cs, "Progress update", cs.Bold(args.CommitMessage))
+				renderToolCallTitle(w, cs, "Progress update", cs.Bold(args.CommitMessage))
 				if args.PrDescription != "" {
 					if err := renderRawMarkdown(args.PrDescription, w, io); err != nil {
 						return false, fmt.Errorf("failed to render PR description: %w", err)
@@ -223,7 +223,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
 					return false, fmt.Errorf("failed to parse 'create' tool call arguments: %w", err)
 				}
-				renderToolCall(w, cs, "Create", cs.Bold(relativeFilePath(args.Path)))
+				renderToolCallTitle(w, cs, "Create", cs.Bold(relativeFilePath(args.Path)))
 
 				if err := renderFileContentAsMarkdown(args.Path, args.FileText, w, io); err != nil {
 					return false, fmt.Errorf("failed to render created file content: %w", err)
@@ -234,7 +234,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 					return false, fmt.Errorf("failed to parse 'str_replace' tool call arguments: %w", err)
 				}
 
-				renderToolCall(w, cs, "Edit", cs.Bold(relativeFilePath(args.Path)))
+				renderToolCallTitle(w, cs, "Edit", cs.Bold(relativeFilePath(args.Path)))
 				if err := renderFileContentAsMarkdown("output.diff", choice.Delta.Content, w, io); err != nil {
 					return false, fmt.Errorf("failed to render str_replace diff: %w", err)
 				}
@@ -387,7 +387,7 @@ func unmarshal[T any](raw string) *T {
 	return &t
 }
 
-func renderToolCall(w io.Writer, cs *iostreams.ColorScheme, descriptor, title string) {
+func renderToolCallTitle(w io.Writer, cs *iostreams.ColorScheme, descriptor, title string) {
 	if title != "" {
 		title = cs.Bold(title)
 	}
@@ -462,7 +462,7 @@ func renderGenericToolCall(w io.Writer, cs *iostreams.ColorScheme, name string) 
 		descriptor = fmt.Sprintf("Call to %s", name)
 	}
 
-	renderToolCall(w, cs, descriptor, "")
+	renderToolCallTitle(w, cs, descriptor, "")
 }
 
 type chatCompletionChunkEntry struct {
