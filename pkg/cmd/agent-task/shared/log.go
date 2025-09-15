@@ -111,7 +111,8 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 		}
 
 		if choice.Delta.ReasoningText != "" {
-			// Note that this should be formatted as a normal Copilot message.
+			// Note that this should be formatted as a normal "thought" message,
+			// without the heading.
 			renderRawMarkdown(choice.Delta.ReasoningText, w, io)
 		}
 
