@@ -130,7 +130,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
 					return false, fmt.Errorf("failed to parse 'view' tool call arguments: %w", err)
 				}
-				fmt.Fprintf(w, "View %s\n", cs.Bold(relativePath(args.Path)))
+				fmt.Fprintf(w, "View %s\n", cs.Bold(relativeFilePath(args.Path)))
 
 				content := stripDiffFormat(choice.Delta.Content)
 
@@ -223,7 +223,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
 					return false, fmt.Errorf("failed to parse 'create' tool call arguments: %w", err)
 				}
-				renderToolCall(w, cs, "Create", cs.Bold(relativePath(args.Path)))
+				renderToolCall(w, cs, "Create", cs.Bold(relativeFilePath(args.Path)))
 
 				if err := renderFileContentAsMarkdown(args.Path, args.FileText, w, io); err != nil {
 					return false, fmt.Errorf("failed to render created file content: %w", err)
@@ -234,7 +234,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 					return false, fmt.Errorf("failed to parse 'str_replace' tool call arguments: %w", err)
 				}
 
-				renderToolCall(w, cs, "Edit", cs.Bold(relativePath(args.Path)))
+				renderToolCall(w, cs, "Edit", cs.Bold(relativeFilePath(args.Path)))
 				if err := renderFileContentAsMarkdown("output.diff", choice.Delta.Content, w, io); err != nil {
 					return false, fmt.Errorf("failed to render str_replace diff: %w", err)
 				}
@@ -329,7 +329,9 @@ func stripDiffFormat(diff string) string {
 		return diff
 	}
 
-	// Now we strip the leading + and - from lines.
+	// Now we strip the leading + and - from lines, if they exist.
+	// Note: most of the time, but not all the time, we get a diff without
+	// these prefixes.
 	var stripped []string
 	for _, line := range lines {
 		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
@@ -361,7 +363,7 @@ func renderFileContentAsMarkdown(path, content string, w io.Writer, io *iostream
 	return renderMarkdownWithFormat(md, w, io, formatFunc)
 }
 
-func relativePath(absPath string) string {
+func relativeFilePath(absPath string) string {
 	relPath := strings.TrimPrefix(absPath, "/home/runner/work/")
 
 	parts := strings.Split(relPath, "/")
