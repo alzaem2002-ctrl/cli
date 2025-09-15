@@ -159,6 +159,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 						return false, fmt.Errorf("failed to render bash command output: %w", err)
 					}
 				}
+			// TODO: consider including more details for these bash-related tool calls.
 			case "write_bash":
 				if v := unmarshal[writeBashToolArgs](args); v != nil {
 					renderToolCallTitle(w, cs, "Send input to Bash session", "")
