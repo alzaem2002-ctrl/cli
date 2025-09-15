@@ -34,6 +34,9 @@ func TestFollow(t *testing.T) {
 			raw, err := os.ReadFile(tt.log)
 			require.NoError(t, err)
 
+			// Delete all the `/r` to make the tests OS-agnostic.
+			raw = []byte(strings.ReplaceAll(string(raw), "\r\n", "\n"))
+
 			lines := slices.DeleteFunc(strings.Split(string(raw), "\n"), func(line string) bool {
 				return line == ""
 			})
