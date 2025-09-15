@@ -2,7 +2,6 @@ package shared
 
 import (
 	"os"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -33,12 +32,6 @@ func TestFollow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			raw, err := os.ReadFile(tt.log)
-			// If GOOS is windows, the testdata files may have been checked out with \r\n line endings.
-			// Delete all the `/r` to make the tests OS-agnostic.
-			if runtime.GOOS == "windows" {
-				raw = []byte(strings.ReplaceAll(string(raw), "\r\n", "\n"))
-			}
-			raw = []byte(strings.ReplaceAll(string(raw), "\r", ""))
 			require.NoError(t, err)
 
 			lines := slices.DeleteFunc(strings.Split(string(raw), "\n"), func(line string) bool {
@@ -66,6 +59,9 @@ func TestFollow(t *testing.T) {
 
 			want, err := os.ReadFile(tt.want)
 			require.NoError(t, err)
+
+			// Delete all the `/r` to make the tests OS-agnostic.
+			want = []byte(strings.ReplaceAll(string(want), "\r\n", "\n"))
 
 			assert.Equal(t, string(want), stdout.String())
 		})
