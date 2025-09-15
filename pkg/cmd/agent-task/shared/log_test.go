@@ -19,13 +19,13 @@ func TestFollow(t *testing.T) {
 	}{
 		{
 			name: "sample log 1",
-			log:  "testdata/sample-log-1.txt",
-			want: "testdata/sample-log-1.want.txt",
+			log:  "testdata/log-1-input.txt",
+			want: "testdata/log-1-want.txt",
 		},
 		{
 			name: "sample log 2",
-			log:  "testdata/sample-log-2.txt",
-			want: "testdata/sample-log-2.want.txt",
+			log:  "testdata/log-2-input.txt",
+			want: "testdata/log-2-want.txt",
 		},
 	}
 
