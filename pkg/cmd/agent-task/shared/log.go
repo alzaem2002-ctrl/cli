@@ -25,6 +25,8 @@ func NewLogRenderer() LogRenderer {
 	return &logRenderer{}
 }
 
+// Follow continuously fetches logs using the provided fetcher function and
+// renders them to the provided writer. It stops when Render indicates to stop.
 func (r *logRenderer) Follow(fetcher func() ([]byte, error), w io.Writer, io *iostreams.IOStreams) error {
 	var last string
 	for {
@@ -50,6 +52,8 @@ func (r *logRenderer) Follow(fetcher func() ([]byte, error), w io.Writer, io *io
 	}
 }
 
+// Render processes the given logs and writes the rendered output to w.
+// Errors are returned when an unexpected log entry is encountered.
 func (r *logRenderer) Render(logs []byte, w io.Writer, io *iostreams.IOStreams) (bool, error) {
 	lines := slices.DeleteFunc(strings.Split(string(logs), "\n"), func(line string) bool {
 		return line == ""
@@ -255,6 +259,10 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 	return stop, nil
 }
 
+// renderContentAsJSONMarkdown tries to unmarshal the given content as JSON,
+// wrap that content in a markdown JSON code block, and render it as markdown.
+// If label is non-empty, it is rendered as leading text before and outside of
+// the JSON block.
 func renderContentAsJSONMarkdown(label, content string, w io.Writer, io *iostreams.IOStreams) error {
 	var contentAsJSON any
 	if err := json.Unmarshal([]byte(content), &contentAsJSON); err == nil {
@@ -276,6 +284,8 @@ func renderContentAsJSONMarkdown(label, content string, w io.Writer, io *iostrea
 	return nil
 }
 
+// renderRawMarkdown renders the given raw markdown string to the given writer.
+// Use for complete markdown content from tool calls that need no conversion.
 func renderRawMarkdown(md string, w io.Writer, io *iostreams.IOStreams) error {
 	// Glamour doesn't add leading newlines when content is a complete
 	// markdown document. So, we must add the leading newline.
@@ -309,6 +319,8 @@ func renderMarkdownWithFormat(md string, w io.Writer, io *iostreams.IOStreams, f
 	return nil
 }
 
+// stripDiffFormat implements a primitive conversion from a diff string to a
+// plain text representation by removing diff-specific formatting.
 func stripDiffFormat(diff string) string {
 	lines := strings.Split(diff, "\n")
 
@@ -363,6 +375,9 @@ func renderFileContentAsMarkdown(path, content string, w io.Writer, io *iostream
 	return renderMarkdownWithFormat(md, w, io, formatFunc)
 }
 
+// relativeFilePath converts an absolute file path to a relative one.
+// We expect paths to be of the form: /home/runner/work/<repo-owner>/<repo-name>/path/to/file
+// The expected output of that example is: path/to/file
 func relativeFilePath(absPath string) string {
 	relPath := strings.TrimPrefix(absPath, "/home/runner/work/")
 
@@ -387,22 +402,28 @@ func unmarshal[T any](raw string) *T {
 	return &t
 }
 
-func renderToolCallTitle(w io.Writer, cs *iostreams.ColorScheme, descriptor, title string) {
+// renderToolCallTitle renders a title for a tool call. Should be followed by a
+// call to render a markdown representation of the tool call's content.
+func renderToolCallTitle(w io.Writer, cs *iostreams.ColorScheme, toolName, title string) {
+	// Should not happen, but if it does we still want to print a heading
+	// with the information we do have.
+	if toolName == "" {
+		toolName = "Generic tool call"
+	}
+
 	if title != "" {
 		title = cs.Bold(title)
 	}
 
-	if descriptor != "" && title != "" {
-		fmt.Fprintf(w, "%s: %s\n", descriptor, title)
-	} else if title == "" {
-		fmt.Fprintf(w, "%s\n", descriptor)
+	if title != "" {
+		fmt.Fprintf(w, "%s: %s\n", toolName, title)
 	} else {
-		fmt.Fprintf(w, "%s\n", title)
+		fmt.Fprintf(w, "%s\n", toolName)
 	}
 }
 
 func renderGenericToolCall(w io.Writer, cs *iostreams.ColorScheme, name string) {
-	genericToolCallTitles := map[string]string{
+	genericToolCallNamesToTitles := map[string]string{
 		// Custom tools, the GitHub UI doesn't currently have these.
 		"codeql_checker": "Run CodeQL analysis",
 
@@ -457,12 +478,12 @@ func renderGenericToolCall(w io.Writer, cs *iostreams.ColorScheme, name string) 
 		"github-mcp-server-list_workflows":                 "List GitHub Actions workflows",
 	}
 
-	descriptor, ok := genericToolCallTitles[name]
+	toolName, ok := genericToolCallNamesToTitles[name]
 	if !ok {
-		descriptor = fmt.Sprintf("Call to %s", name)
+		toolName = fmt.Sprintf("Call to %s", name)
 	}
 
-	renderToolCallTitle(w, cs, descriptor, "")
+	renderToolCallTitle(w, cs, toolName, "")
 }
 
 type chatCompletionChunkEntry struct {
