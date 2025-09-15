@@ -241,7 +241,7 @@ func (c *CAPIClient) GetSession(ctx context.Context, id string) (*Session, error
 	return sessions[0], nil
 }
 
-// GetSession retrieves logs of an agent session identified by ID.
+// GetSessionLogs retrieves logs of an agent session identified by ID.
 func (c *CAPIClient) GetSessionLogs(ctx context.Context, id string) ([]byte, error) {
 	if id == "" {
 		return nil, fmt.Errorf("missing session ID")
