@@ -158,38 +158,36 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 						return false, fmt.Errorf("failed to render bash command output: %w", err)
 					}
 				}
-
-			// TODO: GUI does not currently support these.
-			// case "write_bash":
-			// 	if v := unmarshal[writeBashToolArgs](args); v != nil {
-			// 		renderToolCallTitle("Send input to Bash session " + v.SessionID)
-			// 		continue
-			// 	}
-			// case "read_bash":
-			// 	if v := unmarshal[readBashToolArgs](args); v != nil {
-			// 		renderToolCallTitle("Read logs from Bash session " + v.SessionID)
-			// 		continue
-			// 	}
-			// case "stop_bash":
-			// 	if v := unmarshal[stopBashToolArgs](args); v != nil {
-			// 		renderToolCallTitle("Stop Bash session " + v.SessionID)
-			// 		continue
-			// 	}
-			// case "async_bash":
-			// 	if v := unmarshal[asyncBashToolArgs](args); v != nil {
-			// 		renderToolCallTitle("Start or send input to long-running Bash session " + v.SessionID)
-			// 		continue
-			// 	}
-			// case "read_async_bash":
-			// 	if v := unmarshal[readAsyncBashToolArgs](args); v != nil {
-			// 		renderToolCallTitle("View logs from long-running Bash session " + v.SessionID)
-			// 		continue
-			// 	}
-			// case "stop_async_bash":
-			// 	if v := unmarshal[stopAsyncBashToolArgs](args); v != nil {
-			// 		renderToolCallTitle("Stop long-running Bash session " + v.SessionID)
-			// 		continue
-			// 	}
+			case "write_bash":
+				if v := unmarshal[writeBashToolArgs](args); v != nil {
+					renderToolCallTitle(w, cs, "Send input to Bash session", "")
+					continue
+				}
+			case "read_bash":
+				if v := unmarshal[readBashToolArgs](args); v != nil {
+					renderToolCallTitle(w, cs, "Read logs from Bash session", "")
+					continue
+				}
+			case "stop_bash":
+				if v := unmarshal[stopBashToolArgs](args); v != nil {
+					renderToolCallTitle(w, cs, "Stop Bash session", "")
+					continue
+				}
+			case "async_bash":
+				if v := unmarshal[asyncBashToolArgs](args); v != nil {
+					renderToolCallTitle(w, cs, "Start or send input to long-running Bash session", "")
+					continue
+				}
+			case "read_async_bash":
+				if v := unmarshal[readAsyncBashToolArgs](args); v != nil {
+					renderToolCallTitle(w, cs, "View logs from long-running Bash session", "")
+					continue
+				}
+			case "stop_async_bash":
+				if v := unmarshal[stopAsyncBashToolArgs](args); v != nil {
+					renderToolCallTitle(w, cs, "Stop long-running Bash session", "")
+					continue
+				}
 			case "think":
 				args := thinkToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
@@ -519,32 +517,31 @@ type bashToolArgs struct {
 	Description string `json:"description"`
 }
 
-// TODO: GUI does not currently support these.
-// type readBashToolArgs struct {
-// 	SessionID string `json:"sessionId"`
-// }
+type readBashToolArgs struct {
+	SessionID string `json:"sessionId"`
+}
 
-// type writeBashToolArgs struct {
-// 	SessionID string `json:"sessionId"`
-// 	Input     string `json:"input"`
-// }
+type writeBashToolArgs struct {
+	SessionID string `json:"sessionId"`
+	Input     string `json:"input"`
+}
 
-// type stopBashToolArgs struct {
-// 	SessionID string `json:"sessionId"`
-// }
+type stopBashToolArgs struct {
+	SessionID string `json:"sessionId"`
+}
 
-// type asyncBashToolArgs struct {
-// 	Command   string `json:"command"`
-// 	SessionID string `json:"sessionId"`
-// }
+type asyncBashToolArgs struct {
+	Command   string `json:"command"`
+	SessionID string `json:"sessionId"`
+}
 
-// type readAsyncBashToolArgs struct {
-// 	SessionID string `json:"sessionId"`
-// }
+type readAsyncBashToolArgs struct {
+	SessionID string `json:"sessionId"`
+}
 
-// type stopAsyncBashToolArgs struct {
-// 	SessionID string `json:"sessionId"`
-// }
+type stopAsyncBashToolArgs struct {
+	SessionID string `json:"sessionId"`
+}
 
 type viewToolArgs struct {
 	Path string `json:"path"`
