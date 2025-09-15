@@ -155,7 +155,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 					}
 				}
 
-			// GUI does not currently support these.
+			// TODO: GUI does not currently support these.
 			// case "write_bash":
 			// 	if v := unmarshal[writeBashToolArgs](args); v != nil {
 			// 		renderToolCallTitle("Send input to Bash session " + v.SessionID)
@@ -210,7 +210,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 					}
 				}
 
-				// TODO: KW I wasn't able to get this to populate.
+				// TODO: KW I wasn't able to get this case to populate ever.
 				if choice.Delta.Content != "" {
 					// Try to treat this as JSON
 					if err := renderContentAsJSONMarkdown("", choice.Delta.Content, w, io); err != nil {
@@ -278,18 +278,18 @@ func renderContentAsJSONMarkdown(label, content string, w io.Writer, io *iostrea
 
 func renderRawMarkdown(md string, w io.Writer, io *iostreams.IOStreams) error {
 	// Glamour doesn't add leading newlines when content is a complete
-	// markdown document. So, we have to add the leading newline.
-	paddingFunc := func(s string) string {
+	// markdown document. So, we must add the leading newline.
+	formatFunc := func(s string) string {
 		return fmt.Sprintf("\n%s\n\n", s)
 	}
 
-	return renderMarkdownWithPadding(md, w, io, paddingFunc)
+	return renderMarkdownWithFormat(md, w, io, formatFunc)
 }
 
-// renderMarkdownWithPadding renders the given markdown string to the given writer.
-// If a paddingFunc is provided, the md string is ran through it before
+// renderMarkdownWithFormat renders the given markdown string to the given writer.
+// If a formatFunc is provided, the md string is ran through it before
 // rendering. This can be used to add newlines before and after the content.
-func renderMarkdownWithPadding(md string, w io.Writer, io *iostreams.IOStreams, paddingFunc func(string) string) error {
+func renderMarkdownWithFormat(md string, w io.Writer, io *iostreams.IOStreams, formatFunc func(string) string) error {
 	rendered, err := markdown.Render(md,
 		markdown.WithTheme(io.TerminalTheme()),
 		markdown.WithWrap(io.TerminalWidth()),
@@ -300,8 +300,8 @@ func renderMarkdownWithPadding(md string, w io.Writer, io *iostreams.IOStreams, 
 	}
 
 	rendered = strings.TrimSpace(rendered)
-	if paddingFunc != nil {
-		rendered = paddingFunc(rendered)
+	if formatFunc != nil {
+		rendered = formatFunc(rendered)
 	}
 
 	fmt.Fprint(w, rendered)
@@ -354,11 +354,11 @@ func renderFileContentAsMarkdown(path, content string, w io.Writer, io *iostream
 	md := fmt.Sprintf("```%s\n%s\n```", lang, content)
 	// Glamour adds leading newlines when content is only a code block,
 	// so we only want to add a trailing newline.
-	paddingFunc := func(s string) string {
+	formatFunc := func(s string) string {
 		return fmt.Sprintf("%s\n\n", s)
 	}
 
-	return renderMarkdownWithPadding(md, w, io, paddingFunc)
+	return renderMarkdownWithFormat(md, w, io, formatFunc)
 }
 
 func relativePath(absPath string) string {
@@ -496,6 +496,7 @@ type bashToolArgs struct {
 	Description string `json:"description"`
 }
 
+// TODO: GUI does not currently support these.
 // type readBashToolArgs struct {
 // 	SessionID string `json:"sessionId"`
 // }
