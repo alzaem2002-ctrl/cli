@@ -153,7 +153,7 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 
 					contentWithCommand := choice.Delta.Content
 					if v.Command != "" {
-						contentWithCommand = fmt.Sprintf("%s\n%s", v.Command, choice.Delta.Content)
+						contentWithCommand = fmt.Sprintf("$ %s\n%s", v.Command, choice.Delta.Content)
 					}
 					if err := renderFileContentAsMarkdown("commands.sh", contentWithCommand, w, io); err != nil {
 						return false, fmt.Errorf("failed to render bash command output: %w", err)

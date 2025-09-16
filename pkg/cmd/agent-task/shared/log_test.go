@@ -58,7 +58,8 @@ func TestFollow(t *testing.T) {
 			// Handy note for updating the testdata files when they change:
 			// ext := filepath.Ext(tt.log)
 			// stripped := strings.TrimSuffix(tt.log, ext)
-			// os.WriteFile(stripped+".want"+ext, stdout.Bytes(), 0644)
+			// stripped = strings.TrimSuffix(stripped, "-input")
+			// os.WriteFile(stripped+"-want"+ext, stdout.Bytes(), 0644)
 
 			want, err := os.ReadFile(tt.want)
 			require.NoError(t, err)
