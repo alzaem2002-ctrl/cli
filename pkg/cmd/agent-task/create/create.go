@@ -83,6 +83,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			# Create a task from an inline description
 			$ gh agent-task create "build me a new app"
 
+			# Create a task from an inline description and follow logs
+			$ gh agent-task create "build me a new app" --follow
+
 			# Create a task from a file
 			$ gh agent-task create -F task-desc.md
 
