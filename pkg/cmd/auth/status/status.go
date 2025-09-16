@@ -45,8 +45,7 @@ var authFields = []string{
 
 func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 	var sb strings.Builder
-	switch e.State {
-	case authStateSuccess:
+	if e.State == authStateSuccess {
 		sb.WriteString(
 			fmt.Sprintf("  %s Logged in to %s account %s (%s)\n", cs.SuccessIcon(), e.Host, cs.Bold(e.Login), e.TokenSource),
 		)
@@ -69,24 +68,18 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 				}
 			}
 		}
+		return sb.String()
+	}
 
-	case authStateTimeout:
-		if e.Login != "" {
-			sb.WriteString(fmt.Sprintf("  %s Timeout trying to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
-		} else {
-			sb.WriteString(fmt.Sprintf("  %s Timeout trying to log in to %s using token (%s)\n", cs.Red("X"), e.Host, e.TokenSource))
-		}
-		activeStr := fmt.Sprintf("%v", e.Active)
-		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
+	if e.Login != "" {
+		sb.WriteString(fmt.Sprintf("  %s %s to %s account %s (%s)\n", cs.Red("X"), e.Error, e.Host, cs.Bold(e.Login), e.TokenSource))
+	} else {
+		sb.WriteString(fmt.Sprintf("  %s %s to %s using token (%s)\n", cs.Red("X"), e.Error, e.Host, e.TokenSource))
+	}
+	activeStr := fmt.Sprintf("%v", e.Active)
+	sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 
-	case authStateError:
-		if e.Login != "" {
-			sb.WriteString(fmt.Sprintf("  %s Failed to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
-		} else {
-			sb.WriteString(fmt.Sprintf("  %s Failed to log in to %s using token (%s)\n", cs.Red("X"), e.Host, e.TokenSource))
-		}
-		activeStr := fmt.Sprintf("%v", e.Active)
-		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
+	if e.State == authStateError {
 		sb.WriteString(fmt.Sprintf("  - The token in %s is invalid.\n", e.TokenSource))
 		if authTokenWriteable(e.TokenSource) {
 			loginInstructions := fmt.Sprintf("gh auth login -h %s", e.Host)
@@ -94,7 +87,6 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 			sb.WriteString(fmt.Sprintf("  - To re-authenticate, run: %s\n", cs.Bold(loginInstructions)))
 			sb.WriteString(fmt.Sprintf("  - To forget about this account, run: %s\n", cs.Bold(logoutInstructions)))
 		}
-
 	}
 	return sb.String()
 }
@@ -351,24 +343,24 @@ type buildEntryOptions struct {
 }
 
 func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
+	tokenSource := opts.tokenSource
+	if tokenSource == "oauth_token" {
+		// The go-gh function TokenForHost returns this value as source for tokens read from the
+		// config file, but we want the file path instead. This attempts to reconstruct it.
+		tokenSource = filepath.Join(config.ConfigDir(), "hosts.yml")
+	}
 	entry := authEntry{
 		Active:      opts.active,
 		Host:        opts.hostname,
 		Login:       opts.username,
-		TokenSource: opts.tokenSource,
+		TokenSource: tokenSource,
 		Token:       opts.token,
 		GitProtocol: opts.gitProtocol,
 	}
 
-	if opts.tokenSource == "oauth_token" {
-		// The go-gh function TokenForHost returns this value as source for tokens read from the
-		// config file, but we want the file path instead. This attempts to reconstruct it.
-		entry.TokenSource = filepath.Join(config.ConfigDir(), "hosts.yml")
-	}
-
 	// If token is not writeable, then it came from an environment variable and
 	// we need to fetch the username as it won't be stored in the config.
-	if !authTokenWriteable(opts.tokenSource) {
+	if !authTokenWriteable(tokenSource) {
 		// The httpClient will automatically use the correct token here as
 		// the token from the environment variable take highest precedence.
 		apiClient := api.NewClientFromHTTP(httpClient)
@@ -376,6 +368,7 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		entry.Login, err = api.CurrentLoginName(apiClient, opts.hostname)
 		if err != nil {
 			entry.State = authStateError
+			entry.Error = "Failed to log in"
 			return entry
 		}
 	}
@@ -386,10 +379,12 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		var networkError net.Error
 		if errors.As(err, &networkError) && networkError.Timeout() {
 			entry.State = authStateTimeout
+			entry.Error = "Timeout trying to log in"
 			return entry
 		}
 
 		entry.State = authStateError
+		entry.Error = "Failed to log in"
 		return entry
 	}
 	entry.Scopes = scopesHeader

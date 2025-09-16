@@ -664,9 +664,28 @@ func Test_statusRun(t *testing.T) {
 				"]}\n",
 		},
 		{
+			name: "token from env with json flag",
+			opts: StatusOptions{
+				Exporter: defaultJsonExporter(),
+			},
+			env: map[string]string{"GH_TOKEN": "gho_abc123"},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("GET", ""),
+					httpmock.ScopesResponder(""))
+				reg.Register(
+					httpmock.GraphQL(`query UserCurrent\b`),
+					httpmock.StringResponse(`{"data":{"viewer":{"login":"monalisa"}}}`))
+			},
+			wantOut: `{` +
+				`"github.com":[` +
+				`{"active":true,"host":"github.com","login":"monalisa","state":"success"}` +
+				"]}\n",
+		},
+		{
 			name: "bad token with json flag",
 			opts: StatusOptions{
-				Exporter: addFieldsToExporter(defaultJsonExporter(), []string{"scopes"}),
+				Exporter: addFieldsToExporter(defaultJsonExporter(), []string{"error"}),
 			},
 			cfgStubs: func(t *testing.T, c gh.Config) {
 				login(t, c, "ghe.io", "monalisa-ghe", "gho_abc123", "https")
@@ -675,13 +694,27 @@ func Test_statusRun(t *testing.T) {
 				// mock for HeaderHasMinimumScopes api requests to a non-github.com host
 				reg.Register(httpmock.REST("GET", "api/v3/"), httpmock.StatusStringResponse(400, "no bueno"))
 			},
-			wantOut: `{"ghe.io":[{"active":true,"host":"ghe.io","login":"monalisa-ghe","scopes":"","state":"error"}]}` + "\n",
+			wantOut: `{"ghe.io":[{"active":true,"error":"Failed to log in","host":"ghe.io","login":"monalisa-ghe","state":"error"}]}` + "\n",
+		},
+		{
+			name: "bad token from env with json flag",
+			opts: StatusOptions{
+				Exporter: addFieldsToExporter(defaultJsonExporter(), []string{"error"}),
+			},
+			env: map[string]string{"GH_TOKEN": "gho_abc123"},
+			httpStubs: func(reg *httpmock.Registry) {
+				// mock for HeaderHasMinimumScopes api requests to a non-github.com host
+				reg.Register(
+					httpmock.GraphQL(`query UserCurrent\b`),
+					httpmock.StatusStringResponse(400, "no bueno"))
+			},
+			wantOut: `{"github.com":[{"active":true,"error":"Failed to log in","host":"github.com","login":"","state":"error"}]}` + "\n",
 		},
 		{
 			name: "timeout error with json flag",
 			opts: StatusOptions{
 				Hostname: "github.com",
-				Exporter: addFieldsToExporter(defaultJsonExporter(), []string{"scopes"}),
+				Exporter: addFieldsToExporter(defaultJsonExporter(), []string{"error"}),
 			},
 			cfgStubs: func(t *testing.T, c gh.Config) {
 				login(t, c, "github.com", "monalisa", "abc123", "https")
@@ -692,7 +725,7 @@ func Test_statusRun(t *testing.T) {
 					return nil, context.DeadlineExceeded
 				})
 			},
-			wantOut: `{"github.com":[{"active":true,"host":"github.com","login":"monalisa","scopes":"","state":"timeout"}]}` + "\n",
+			wantOut: `{"github.com":[{"active":true,"error":"Timeout trying to log in","host":"github.com","login":"monalisa","state":"timeout"}]}` + "\n",
 		},
 		{
 			name: "token is not masked with json flag",
