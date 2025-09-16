@@ -13,19 +13,26 @@ import (
 
 func TestFollow(t *testing.T) {
 	tests := []struct {
-		name string
-		log  string
-		want string
+		name           string
+		log            string
+		wantStdoutFile string
+		wantStderrFile string
 	}{
 		{
-			name: "sample log 1",
-			log:  "testdata/log-1-input.txt",
-			want: "testdata/log-1-want.txt",
+			name:           "sample log 1",
+			log:            "testdata/log-1-input.txt",
+			wantStdoutFile: "testdata/log-1-want.txt",
 		},
 		{
-			name: "sample log 2",
-			log:  "testdata/log-2-input.txt",
-			want: "testdata/log-2-want.txt",
+			name:           "sample log 2",
+			log:            "testdata/log-2-input.txt",
+			wantStdoutFile: "testdata/log-2-want.txt",
+		},
+		{
+			name:           "sample log 3 (tolerant parse failures)",
+			log:            "testdata/log-3-synthetic-failures-input.txt",
+			wantStdoutFile: "testdata/log-3-synthetic-failures-want.txt",
+			wantStderrFile: "testdata/log-3-synthetic-failures-want-stderr.txt",
 		},
 	}
 
@@ -50,7 +57,7 @@ func TestFollow(t *testing.T) {
 				return []byte(strings.Join(lines[0:hits], "\n\n")), nil
 			}
 
-			ios, _, stdout, _ := iostreams.Test()
+			ios, _, stdout, stderr := iostreams.Test()
 
 			err = NewLogRenderer().Follow(fetcher, stdout, ios)
 			require.NoError(t, err)
@@ -60,14 +67,29 @@ func TestFollow(t *testing.T) {
 			// stripped := strings.TrimSuffix(tt.log, ext)
 			// stripped = strings.TrimSuffix(stripped, "-input")
 			// os.WriteFile(stripped+"-want"+ext, stdout.Bytes(), 0644)
+			// if tt.wantStderrFile != "" {
+			// 	os.WriteFile(stripped+"-want-stderr"+ext, stderr.Bytes(), 0644)
+			// }
 
-			want, err := os.ReadFile(tt.want)
+			wantStdout, err := os.ReadFile(tt.wantStdoutFile)
 			require.NoError(t, err)
 
 			// Normalize CRLF to LF to make the tests OS-agnostic.
-			want = []byte(strings.ReplaceAll(string(want), "\r\n", "\n"))
+			wantStdout = []byte(strings.ReplaceAll(string(wantStdout), "\r\n", "\n"))
 
-			assert.Equal(t, string(want), stdout.String())
+			assert.Equal(t, string(wantStdout), stdout.String())
+
+			if tt.wantStderrFile != "" {
+				wantStderr, err := os.ReadFile(tt.wantStderrFile)
+				require.NoError(t, err)
+
+				// Normalize CRLF to LF to make the tests OS-agnostic.
+				wantStderr = []byte(strings.ReplaceAll(string(wantStderr), "\r\n", "\n"))
+
+				assert.Equal(t, string(wantStderr), stderr.String())
+			} else {
+				require.Empty(t, stderr, "expected no stderr output")
+			}
 		})
 	}
 }

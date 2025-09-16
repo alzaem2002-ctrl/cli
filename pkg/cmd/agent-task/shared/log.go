@@ -133,15 +133,16 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 			case "view":
 				args := viewToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'view' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'view' tool call arguments: %v\n", err)
+					continue
 				}
-				fmt.Fprintf(w, "View %s\n", cs.Bold(relativeFilePath(args.Path)))
+				renderToolCallTitle(w, cs, fmt.Sprintf("View %s", cs.Bold(relativeFilePath(args.Path))), "")
 
 				content := stripDiffFormat(choice.Delta.Content)
 
-				// TODO: Strip the diff formatting from this, but for now render as it is.
 				if err := renderFileContentAsMarkdown(args.Path, content, w, io); err != nil {
-					return false, fmt.Errorf("failed to render viewed file content: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render viewed file content: %v\n\n", err)
+					fmt.Fprintln(io.ErrOut, content) // raw fallback
 				}
 			case "bash":
 				if v := unmarshal[bashToolArgs](args); v != nil {
@@ -156,7 +157,8 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 						contentWithCommand = fmt.Sprintf("$ %s\n%s", v.Command, choice.Delta.Content)
 					}
 					if err := renderFileContentAsMarkdown("commands.sh", contentWithCommand, w, io); err != nil {
-						return false, fmt.Errorf("failed to render bash command output: %w", err)
+						fmt.Fprintf(io.ErrOut, "\nfailed to render bash command output: %v\n\n", err)
+						fmt.Fprintln(io.ErrOut, contentWithCommand)
 					}
 				}
 			// TODO: consider including more details for these bash-related tool calls.
@@ -193,24 +195,26 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 			case "think":
 				args := thinkToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'think' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'think' tool call arguments: %v\n", err)
+					continue
 				}
 
 				// NOTE: omit the delta.content since it's the same as thought
 				renderToolCallTitle(w, cs, "Thought", "")
 				if err := renderRawMarkdown(args.Thought, w, io); err != nil {
-					return false, fmt.Errorf("failed to render thought: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render thought: %v\n", err)
 				}
 			case "report_progress":
 				args := reportProgressToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'report_progress' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'report_progress' tool call arguments: %v\n", err)
+					continue
 				}
 
 				renderToolCallTitle(w, cs, "Progress update", cs.Bold(args.CommitMessage))
 				if args.PrDescription != "" {
 					if err := renderRawMarkdown(args.PrDescription, w, io); err != nil {
-						return false, fmt.Errorf("failed to render PR description: %w", err)
+						fmt.Fprintf(io.ErrOut, "\nfailed to render PR description: %v\n", err)
 					}
 				}
 
@@ -218,29 +222,33 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 				if choice.Delta.Content != "" {
 					// Try to treat this as JSON
 					if err := renderContentAsJSONMarkdown("", choice.Delta.Content, w, io); err != nil {
-						return false, fmt.Errorf("failed to render progress update content: %w", err)
+						fmt.Fprintf(io.ErrOut, "\nfailed to render progress update content: %v\n", err)
 					}
 				}
 
 			case "create":
 				args := createToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'create' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'create' tool call arguments: %v\n", err)
+					continue
 				}
 				renderToolCallTitle(w, cs, "Create", cs.Bold(relativeFilePath(args.Path)))
 
 				if err := renderFileContentAsMarkdown(args.Path, args.FileText, w, io); err != nil {
-					return false, fmt.Errorf("failed to render created file content: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render created file content: %v\n\n", err)
+					fmt.Fprintln(io.ErrOut, args.FileText)
 				}
 			case "str_replace":
 				args := strReplaceToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'str_replace' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'str_replace' tool call arguments: %v\n", err)
+					continue
 				}
 
 				renderToolCallTitle(w, cs, "Edit", cs.Bold(relativeFilePath(args.Path)))
 				if err := renderFileContentAsMarkdown("output.diff", choice.Delta.Content, w, io); err != nil {
-					return false, fmt.Errorf("failed to render str_replace diff: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render str_replace diff: %v\n\n", err)
+					fmt.Fprintln(io.ErrOut, choice.Delta.Content)
 				}
 			default:
 				// Unknown tool call. For example for "codeql_checker":
