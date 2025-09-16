@@ -151,40 +151,21 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
-	// Print this agent session URL and exit if we happen to get it.
-	// Right now, this never happens.
-	if job.PullRequest != nil && job.PullRequest.Number > 0 {
-		fmt.Fprintf(opts.IO.Out, "%s\n", agentSessionWebURL(repo, job))
-		return nil
-	}
-
-	// Otherwise, poll using exponential backoff until we either observe a PR or hit the overall timeout.
-	if opts.BackOff == nil {
-		opts.BackOff = backoff.NewExponentialBackOff(
-			backoff.WithMaxElapsedTime(10*time.Second),
-			backoff.WithInitialInterval(300*time.Millisecond),
-			backoff.WithMaxInterval(10*time.Second),
-			backoff.WithMultiplier(1.5),
-		)
-	}
-
-	jobWithPR, err := fetchJobWithBackoff(ctx, client, repo, job.ID, opts.BackOff)
-	if err != nil {
-		// If this does happen ever, we still want the user to get the
-		// fallback message and URL. So, we don't return with this error,
-		// but we do still want to print it.
-		fmt.Fprintf(opts.IO.ErrOut, "%v\n", err)
-	}
-
-	if jobWithPR != nil {
-		opts.IO.StopProgressIndicator()
-		fmt.Fprintln(opts.IO.Out, agentSessionWebURL(repo, jobWithPR))
-		return nil
-	}
-
-	// Fallback if PR not yet ready
+	sessionURL, err := fetchJobSessionURL(ctx, client, repo, job, opts.BackOff)
 	opts.IO.StopProgressIndicator()
-	fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: https://github.com/copilot/agents\n", job.ID)
+
+	if sessionURL != "" {
+		fmt.Fprintln(opts.IO.Out, sessionURL)
+	} else {
+		if err != nil {
+			// If this does happen ever, we still want the user to get the fallback
+			// message and URL. So, we don't return with this error, but we do still
+			// want to print it.
+			fmt.Fprintf(opts.IO.ErrOut, "%v\n", err)
+		}
+		fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: %s\n", job.ID, capi.AgentsHomeURL)
+	}
+
 	return nil
 }
 
@@ -196,6 +177,31 @@ func agentSessionWebURL(repo ghrepo.Interface, j *capi.Job) string {
 		return fmt.Sprintf("https://github.com/%s/%s/pull/%d", url.PathEscape(repo.RepoOwner()), url.PathEscape(repo.RepoName()), j.PullRequest.Number)
 	}
 	return fmt.Sprintf("https://github.com/%s/%s/pull/%d/agent-sessions/%s", url.PathEscape(repo.RepoOwner()), url.PathEscape(repo.RepoName()), j.PullRequest.Number, url.PathEscape(j.SessionID))
+}
+
+// fetchJobSessionURL tries to return the agent session URL for a job. If the pull
+// request is not yet available, ("", nil) is returned.
+func fetchJobSessionURL(ctx context.Context, client capi.CapiClient, repo ghrepo.Interface, job *capi.Job, bo backoff.BackOff) (string, error) {
+	if job.PullRequest != nil && job.PullRequest.Number > 0 {
+		// Return the agent session URL if we happen to get it.
+		// Right now, this never happens.
+		return agentSessionWebURL(repo, job), nil
+	}
+
+	if bo == nil {
+		bo = backoff.NewExponentialBackOff(
+			backoff.WithMaxElapsedTime(10*time.Second),
+			backoff.WithInitialInterval(300*time.Millisecond),
+			backoff.WithMaxInterval(10*time.Second),
+			backoff.WithMultiplier(1.5),
+		)
+	}
+
+	jobWithPR, err := fetchJobWithBackoff(ctx, client, repo, job.ID, bo)
+	if jobWithPR != nil {
+		return agentSessionWebURL(repo, jobWithPR), nil
+	}
+	return "", err
 }
 
 // fetchJobWithBackoff polls the job resource until a PR number is present or the overall
