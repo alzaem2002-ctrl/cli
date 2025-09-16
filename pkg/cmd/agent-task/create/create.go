@@ -21,25 +21,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultLogPollInterval = 5 * time.Second
+
 // CreateOptions holds options for create command
 type CreateOptions struct {
-	IO                   *iostreams.IOStreams
-	BaseRepo             func() (ghrepo.Interface, error)
-	CapiClient           func() (capi.CapiClient, error)
-	Config               func() (gh.Config, error)
+	IO         *iostreams.IOStreams
+	BaseRepo   func() (ghrepo.Interface, error)
+	CapiClient func() (capi.CapiClient, error)
+	Config     func() (gh.Config, error)
+
+	LogRenderer func() shared.LogRenderer
+	Sleep       func(d time.Duration)
+
 	ProblemStatement     string
 	BackOff              backoff.BackOff
 	BaseBranch           string
 	Prompter             prompter.Prompter
 	ProblemStatementFile string
+	Follow               bool
+}
+
+func defaultLogRenderer() shared.LogRenderer {
+	return shared.NewLogRenderer()
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:         f.IOStreams,
-		CapiClient: shared.CapiClientFunc(f),
-		Config:     f.Config,
-		Prompter:   f.Prompter,
+		IO:          f.IOStreams,
+		CapiClient:  shared.CapiClientFunc(f),
+		Config:      f.Config,
+		Prompter:    f.Prompter,
+		LogRenderer: defaultLogRenderer,
+		Sleep:       time.Sleep,
 	}
 
 	cmd := &cobra.Command{
@@ -91,6 +104,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmd.Flags().StringVarP(&opts.ProblemStatementFile, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
 	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
+	cmd.Flags().BoolVar(&opts.Follow, "follow", false, "Follow agent session logs")
 
 	return cmd
 }
@@ -166,6 +180,9 @@ func createRun(opts *CreateOptions) error {
 		fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: %s\n", job.ID, capi.AgentsHomeURL)
 	}
 
+	if opts.Follow {
+		return followLogs(opts, client, job.SessionID)
+	}
 	return nil
 }
 
@@ -233,4 +250,26 @@ func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrep
 		return nil, retryErr
 	}
 	return result, nil
+}
+
+func followLogs(opts *CreateOptions, capiClient capi.CapiClient, sessionID string) error {
+	ctx := context.Background()
+
+	renderer := opts.LogRenderer()
+
+	var called bool
+	fetcher := func() ([]byte, error) {
+		if called {
+			opts.Sleep(defaultLogPollInterval)
+		}
+		called = true
+		raw, err := capiClient.GetSessionLogs(ctx, sessionID)
+		if err != nil {
+			return nil, err
+		}
+		return raw, nil
+	}
+
+	fmt.Fprintln(opts.IO.Out, "")
+	return renderer.Follow(fetcher, opts.IO.Out, opts.IO)
 }
