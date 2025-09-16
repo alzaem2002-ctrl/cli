@@ -133,8 +133,8 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 
 			# Display authentication status for the active account on a specific host
 			$ gh auth status --active --hostname github.example.com
-
-            # Display tokens in plain text
+			
+			# Display tokens in plain text
 			$ gh auth status --show-token
 
 			# Format authentication status as JSON
