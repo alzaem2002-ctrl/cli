@@ -422,62 +422,63 @@ func renderToolCallTitle(w io.Writer, cs *iostreams.ColorScheme, toolName, title
 	}
 }
 
+// genericToolCallNamesToTitles maps known generic tool call identifiers to human-friendly titles.
+var genericToolCallNamesToTitles = map[string]string{
+	// Custom tools, the GitHub UI doesn't currently have these.
+	"codeql_checker": "Run CodeQL analysis",
+
+	// Playwright tools.
+	"playwright-browser_navigate":         "Navigate Playwright web browser to a URL",
+	"playwright-browser_navigate_back":    "Navigate back in Playwright web browser",
+	"playwright-browser_navigate_forward": "Navigate forward in Playwright web browser",
+	"playwright-browser_click":            "Click element in Playwright web browser",
+	"playwright-browser_take_screenshot":  "Take screenshot of Playwright web browser",
+	"playwright-browser_type":             "Type in Playwright web browser",
+	"playwright-browser_wait_for":         "Wait for text to appear/disappear in Playwright web browser",
+	"playwright-browser_evaluate":         "Run JavaScript in Playwright web browser",
+	"playwright-browser_snapshot":         "Take snapshot of page in Playwright web browser",
+	"playwright-browser_resize":           "Resize Playwright web browser window",
+	"playwright-browser_close":            "Close Playwright web browser",
+	"playwright-browser_press_key":        "Press key in Playwright web browser",
+	"playwright-browser_select_option":    "Select option in Playwright web browser",
+	"playwright-browser_handle_dialog":    "Interact with dialog in Playwright web browser",
+	"playwright-browser_console_messages": "Get console messages from Playwright web browser",
+	"playwright-browser_drag":             "Drag mouse between elements in Playwright web browser",
+	"playwright-browser_file_upload":      "Upload file in Playwright web browser",
+	"playwright-browser_hover":            "Hover mouse over element in Playwright web browser",
+	"playwright-browser_network_requests": "Get network requests from Playwright web browser",
+
+	// GitHub MCP server common tools
+	"github-mcp-server-get_file_contents":              "Get file contents from GitHub",
+	"github-mcp-server-get_pull_request":               "Get pull request from GitHub",
+	"github-mcp-server-get_issue":                      "Get issue from GitHub",
+	"github-mcp-server-get_pull_request_files":         "Get pull request changed files from GitHub",
+	"github-mcp-server-list_pull_requests":             "List pull requests on GitHub",
+	"github-mcp-server-list_branches":                  "List branches on GitHub",
+	"github-mcp-server-get_pull_request_diff":          "Get pull request diff from GitHub",
+	"github-mcp-server-get_pull_request_comments":      "Get pull request comments from GitHub",
+	"github-mcp-server-get_commit":                     "Get commit from GitHub",
+	"github-mcp-server-search_repositories":            "Search repositories on GitHub",
+	"github-mcp-server-search_code":                    "Search code on GitHub",
+	"github-mcp-server-get_issue_comments":             "Get issue comments from GitHub",
+	"github-mcp-server-list_issues":                    "List issues on GitHub",
+	"github-mcp-server-search_pull_requests":           "Search pull requests on GitHub",
+	"github-mcp-server-list_commits":                   "List commits on GitHub",
+	"github-mcp-server-get_pull_request_status":        "Get pull request status from GitHub",
+	"github-mcp-server-search_issues":                  "Search issues on GitHub",
+	"github-mcp-server-get_pull_request_reviews":       "Get pull request reviews from GitHub",
+	"github-mcp-server-download_workflow_run_artifact": "Download GitHub Actions workflow run artifact",
+	"github-mcp-server-get_job_logs":                   "Get GitHub Actions job logs",
+	"github-mcp-server-get_workflow_run":               "Get GitHub Actions workflow run",
+	"github-mcp-server-get_workflow_run_logs":          "Get GitHub Actions workflow run logs",
+	"github-mcp-server-get_workflow_run_usage":         "Get GitHub Actions workflow usage",
+	"github-mcp-server-list_workflow_jobs":             "List GitHub Actions workflow jobs",
+	"github-mcp-server-list_workflow_run_artifacts":    "List GitHub Actions workflow run artifacts",
+	"github-mcp-server-list_workflow_runs":             "List GitHub Actions workflow runs",
+	"github-mcp-server-list_workflows":                 "List GitHub Actions workflows",
+}
+
 func renderGenericToolCall(w io.Writer, cs *iostreams.ColorScheme, name string) {
-	genericToolCallNamesToTitles := map[string]string{
-		// Custom tools, the GitHub UI doesn't currently have these.
-		"codeql_checker": "Run CodeQL analysis",
-
-		// Playwright tools.
-		"playwright-browser_navigate":         "Navigate Playwright web browser to a URL",
-		"playwright-browser_navigate_back":    "Navigate back in Playwright web browser",
-		"playwright-browser_navigate_forward": "Navigate forward in Playwright web browser",
-		"playwright-browser_click":            "Click element in Playwright web browser",
-		"playwright-browser_take_screenshot":  "Take screenshot of Playwright web browser",
-		"playwright-browser_type":             "Type in Playwright web browser",
-		"playwright-browser_wait_for":         "Wait for text to appear/disappear in Playwright web browser",
-		"playwright-browser_evaluate":         "Run JavaScript in Playwright web browser",
-		"playwright-browser_snapshot":         "Take snapshot of page in Playwright web browser",
-		"playwright-browser_resize":           "Resize Playwright web browser window",
-		"playwright-browser_close":            "Close Playwright web browser",
-		"playwright-browser_press_key":        "Press key in Playwright web browser",
-		"playwright-browser_select_option":    "Select option in Playwright web browser",
-		"playwright-browser_handle_dialog":    "Interact with dialog in Playwright web browser",
-		"playwright-browser_console_messages": "Get console messages from Playwright web browser",
-		"playwright-browser_drag":             "Drag mouse between elements in Playwright web browser",
-		"playwright-browser_file_upload":      "Upload file in Playwright web browser",
-		"playwright-browser_hover":            "Hover mouse over element in Playwright web browser",
-		"playwright-browser_network_requests": "Get network requests from Playwright web browser",
-
-		// GitHub MCP server common tools
-		"github-mcp-server-get_file_contents":              "Get file contents from GitHub",
-		"github-mcp-server-get_pull_request":               "Get pull request from GitHub",
-		"github-mcp-server-get_issue":                      "Get issue from GitHub",
-		"github-mcp-server-get_pull_request_files":         "Get pull request changed files from GitHub",
-		"github-mcp-server-list_pull_requests":             "List pull requests on GitHub",
-		"github-mcp-server-list_branches":                  "List branches on GitHub",
-		"github-mcp-server-get_pull_request_diff":          "Get pull request diff from GitHub",
-		"github-mcp-server-get_pull_request_comments":      "Get pull request comments from GitHub",
-		"github-mcp-server-get_commit":                     "Get commit from GitHub",
-		"github-mcp-server-search_repositories":            "Search repositories on GitHub",
-		"github-mcp-server-search_code":                    "Search code on GitHub",
-		"github-mcp-server-get_issue_comments":             "Get issue comments from GitHub",
-		"github-mcp-server-list_issues":                    "List issues on GitHub",
-		"github-mcp-server-search_pull_requests":           "Search pull requests on GitHub",
-		"github-mcp-server-list_commits":                   "List commits on GitHub",
-		"github-mcp-server-get_pull_request_status":        "Get pull request status from GitHub",
-		"github-mcp-server-search_issues":                  "Search issues on GitHub",
-		"github-mcp-server-get_pull_request_reviews":       "Get pull request reviews from GitHub",
-		"github-mcp-server-download_workflow_run_artifact": "Download GitHub Actions workflow run artifact",
-		"github-mcp-server-get_job_logs":                   "Get GitHub Actions job logs",
-		"github-mcp-server-get_workflow_run":               "Get GitHub Actions workflow run",
-		"github-mcp-server-get_workflow_run_logs":          "Get GitHub Actions workflow run logs",
-		"github-mcp-server-get_workflow_run_usage":         "Get GitHub Actions workflow usage",
-		"github-mcp-server-list_workflow_jobs":             "List GitHub Actions workflow jobs",
-		"github-mcp-server-list_workflow_run_artifacts":    "List GitHub Actions workflow run artifacts",
-		"github-mcp-server-list_workflow_runs":             "List GitHub Actions workflow runs",
-		"github-mcp-server-list_workflows":                 "List GitHub Actions workflows",
-	}
-
 	toolName, ok := genericToolCallNamesToTitles[name]
 	if !ok {
 		toolName = fmt.Sprintf("Call to %s", name)
