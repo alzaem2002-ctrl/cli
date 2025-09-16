@@ -342,13 +342,14 @@ func stripDiffFormat(diff string) string {
 		}
 	}
 
-	// If we found the hunk header end, we strip everything before it.
-	if hunkEndIndex != -1 {
-		lines = lines[hunkEndIndex+1:]
-	} else {
-		// This isn't a diff, so we defensively just return the original string.
+	// Guard clause: if we didn't find a hunk header, this isn't a diff, so
+	// we defensively just return the original string.
+	if hunkEndIndex == -1 {
 		return diff
 	}
+
+	// We found the hunk header end; strip everything before it.
+	lines = lines[hunkEndIndex+1:]
 
 	// Now we strip the leading + and - from lines, if they exist.
 	// Note: most of the time, but not all the time, we get a diff without
