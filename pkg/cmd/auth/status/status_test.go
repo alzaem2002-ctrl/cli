@@ -22,11 +22,10 @@ import (
 
 func Test_NewCmdStatus(t *testing.T) {
 	tests := []struct {
-		name       string
-		cli        string
-		wants      StatusOptions
-		wantErr    error
-		wantErrOut string
+		name    string
+		cli     string
+		wants   StatusOptions
+		wantErr error
 	}{
 		{
 			name:  "no arguments",

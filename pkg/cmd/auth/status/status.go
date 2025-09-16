@@ -29,8 +29,6 @@ type authEntry struct {
 	Token       string    `json:"token"`
 	Scopes      string    `json:"scopes"`
 	GitProtocol string    `json:"gitProtocol"`
-
-	showToken bool
 }
 
 var authFields = []string{
@@ -45,7 +43,7 @@ var authFields = []string{
 	"gitProtocol",
 }
 
-func (e authEntry) String(cs *iostreams.ColorScheme) string {
+func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 	var sb strings.Builder
 	switch e.State {
 	case authStateSuccess:
@@ -55,7 +53,7 @@ func (e authEntry) String(cs *iostreams.ColorScheme) string {
 		activeStr := fmt.Sprintf("%v", e.Active)
 		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 		sb.WriteString(fmt.Sprintf("  - Git operations protocol: %s\n", cs.Bold(e.GitProtocol)))
-		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(e.displayToken())))
+		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(displayToken(e.Token, showToken))))
 
 		if expectScopes(e.Token) {
 			sb.WriteString(fmt.Sprintf("  - Token scopes: %s\n", cs.Bold(displayScopes(e.Scopes))))
@@ -199,6 +197,7 @@ func statusRun(opts *StatusOptions) error {
 		fmt.Fprintf(stderr,
 			"You are not logged into any GitHub hosts. To log in, run: %s\n", cs.Bold("gh auth login"))
 		if opts.Exporter != nil {
+			// In machine-friendly mode, we always exit with no error.
 			opts.Exporter.Write(opts.IO, struct{}{})
 			return nil
 		}
@@ -209,6 +208,7 @@ func statusRun(opts *StatusOptions) error {
 		fmt.Fprintf(stderr,
 			"You are not logged into any accounts on %s\n", opts.Hostname)
 		if opts.Exporter != nil {
+			// In machine-friendly mode, we always exit with no error.
 			opts.Exporter.Write(opts.IO, struct{}{})
 			return nil
 		}
@@ -296,7 +296,7 @@ func statusRun(opts *StatusOptions) error {
 		prevEntry = true
 		fmt.Fprintf(stream, "%s\n", cs.Bold(hostname))
 		for i, entry := range entries {
-			fmt.Fprintf(stream, "%s", entry.String(cs))
+			fmt.Fprintf(stream, "%s", entry.String(cs, showToken))
 			if i < len(entries)-1 {
 				fmt.Fprint(stream, "\n")
 			}
@@ -306,17 +306,17 @@ func statusRun(opts *StatusOptions) error {
 	return err
 }
 
-func (e authEntry) displayToken() string {
-	if e.showToken {
-		return e.Token
+func displayToken(token string, printRaw bool) string {
+	if printRaw {
+		return token
 	}
 
-	if idx := strings.LastIndexByte(e.Token, '_'); idx > -1 {
-		prefix := e.Token[0 : idx+1]
-		return prefix + strings.Repeat("*", len(e.Token)-len(prefix))
+	if idx := strings.LastIndexByte(token, '_'); idx > -1 {
+		prefix := token[0 : idx+1]
+		return prefix + strings.Repeat("*", len(token)-len(prefix))
 	}
 
-	return strings.Repeat("*", len(e.Token))
+	return strings.Repeat("*", len(token))
 }
 
 func displayScopes(scopes string) string {
@@ -345,7 +345,6 @@ type buildEntryOptions struct {
 }
 
 func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
-
 	entry := authEntry{
 		Active:      opts.active,
 		Host:        opts.hostname,
@@ -353,8 +352,6 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		TokenSource: opts.tokenSource,
 		Token:       opts.token,
 		GitProtocol: opts.gitProtocol,
-
-		showToken: opts.showToken,
 	}
 
 	if opts.tokenSource == "oauth_token" {
