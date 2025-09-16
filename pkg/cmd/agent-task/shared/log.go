@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -366,10 +367,9 @@ func stripDiffFormat(diff string) string {
 // renderFileContentAsMarkdown renders the given content as markdown
 // based on the file extension of the path.
 func renderFileContentAsMarkdown(path, content string, w io.Writer, io *iostreams.IOStreams) error {
-	parts := strings.Split(path, ".")
-	lang := parts[len(parts)-1]
+	lang := filepath.Ext(filepath.ToSlash(path))
 
-	if lang == "md" {
+	if lang == ".md" {
 		return renderRawMarkdown(content, w, io)
 	}
 
