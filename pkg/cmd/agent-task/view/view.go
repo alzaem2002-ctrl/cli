@@ -325,6 +325,12 @@ func printLogs(opts *ViewOptions, capiClient capi.CapiClient, sessionID string) 
 
 	renderer := opts.LogRenderer()
 
+	if err := opts.IO.StartPager(); err == nil {
+		defer opts.IO.StopPager()
+	} else {
+		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
+	}
+
 	if opts.Follow {
 		var called bool
 		fetcher := func() ([]byte, error) {
