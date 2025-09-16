@@ -136,17 +136,23 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 			To change the active account for a host, see %[1]sgh auth switch%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
-			# Show authentication status for all accounts on all hosts
+			# Display authentication status for all accounts on all hosts
 			$ gh auth status
 
-			# Show authentication status for active accounts on a specific host
-			$ gh auth status --hostname github.example.com --active
+			# Display authentication status for the active account on a specific host
+			$ gh auth status --active --hostname github.example.com
 
-			# Show the authentication status with json output 
-			$ gh auth status --json active,token,host,login
+            # Display tokens in plain text
+			$ gh auth status --show-token
 
-			# Gets the access token of the github.com active account
-			$ gh auth status -a --json token --jq '.["github.com"][0].token'
+			# Format authentication status as JSON
+			$ gh auth status --json active,login,host
+
+			# Include plain text token in JSON output
+			$ gh auth status --json token,login
+
+			# Format output as a flat JSON array
+			$ gh auth status --json active,host,login --jq add
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmdutil.MutuallyExclusive(
