@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -133,15 +134,16 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 			case "view":
 				args := viewToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'view' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'view' tool call arguments: %v\n", err)
+					continue
 				}
-				fmt.Fprintf(w, "View %s\n", cs.Bold(relativeFilePath(args.Path)))
+				renderToolCallTitle(w, cs, fmt.Sprintf("View %s", cs.Bold(relativeFilePath(args.Path))), "")
 
 				content := stripDiffFormat(choice.Delta.Content)
 
-				// TODO: Strip the diff formatting from this, but for now render as it is.
 				if err := renderFileContentAsMarkdown(args.Path, content, w, io); err != nil {
-					return false, fmt.Errorf("failed to render viewed file content: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render viewed file content: %v\n\n", err)
+					fmt.Fprintln(io.ErrOut, content) // raw fallback
 				}
 			case "bash":
 				if v := unmarshal[bashToolArgs](args); v != nil {
@@ -153,10 +155,11 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 
 					contentWithCommand := choice.Delta.Content
 					if v.Command != "" {
-						contentWithCommand = fmt.Sprintf("%s\n%s", v.Command, choice.Delta.Content)
+						contentWithCommand = fmt.Sprintf("$ %s\n%s", v.Command, choice.Delta.Content)
 					}
 					if err := renderFileContentAsMarkdown("commands.sh", contentWithCommand, w, io); err != nil {
-						return false, fmt.Errorf("failed to render bash command output: %w", err)
+						fmt.Fprintf(io.ErrOut, "\nfailed to render bash command output: %v\n\n", err)
+						fmt.Fprintln(io.ErrOut, contentWithCommand)
 					}
 				}
 			// TODO: consider including more details for these bash-related tool calls.
@@ -193,24 +196,26 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 			case "think":
 				args := thinkToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'think' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'think' tool call arguments: %v\n", err)
+					continue
 				}
 
 				// NOTE: omit the delta.content since it's the same as thought
 				renderToolCallTitle(w, cs, "Thought", "")
 				if err := renderRawMarkdown(args.Thought, w, io); err != nil {
-					return false, fmt.Errorf("failed to render thought: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render thought: %v\n", err)
 				}
 			case "report_progress":
 				args := reportProgressToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'report_progress' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'report_progress' tool call arguments: %v\n", err)
+					continue
 				}
 
 				renderToolCallTitle(w, cs, "Progress update", cs.Bold(args.CommitMessage))
 				if args.PrDescription != "" {
 					if err := renderRawMarkdown(args.PrDescription, w, io); err != nil {
-						return false, fmt.Errorf("failed to render PR description: %w", err)
+						fmt.Fprintf(io.ErrOut, "\nfailed to render PR description: %v\n", err)
 					}
 				}
 
@@ -218,29 +223,33 @@ func renderLogEntry(entry chatCompletionChunkEntry, w io.Writer, io *iostreams.I
 				if choice.Delta.Content != "" {
 					// Try to treat this as JSON
 					if err := renderContentAsJSONMarkdown("", choice.Delta.Content, w, io); err != nil {
-						return false, fmt.Errorf("failed to render progress update content: %w", err)
+						fmt.Fprintf(io.ErrOut, "\nfailed to render progress update content: %v\n", err)
 					}
 				}
 
 			case "create":
 				args := createToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'create' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'create' tool call arguments: %v\n", err)
+					continue
 				}
 				renderToolCallTitle(w, cs, "Create", cs.Bold(relativeFilePath(args.Path)))
 
 				if err := renderFileContentAsMarkdown(args.Path, args.FileText, w, io); err != nil {
-					return false, fmt.Errorf("failed to render created file content: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render created file content: %v\n\n", err)
+					fmt.Fprintln(io.ErrOut, args.FileText)
 				}
 			case "str_replace":
 				args := strReplaceToolArgs{}
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-					return false, fmt.Errorf("failed to parse 'str_replace' tool call arguments: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to parse 'str_replace' tool call arguments: %v\n", err)
+					continue
 				}
 
 				renderToolCallTitle(w, cs, "Edit", cs.Bold(relativeFilePath(args.Path)))
 				if err := renderFileContentAsMarkdown("output.diff", choice.Delta.Content, w, io); err != nil {
-					return false, fmt.Errorf("failed to render str_replace diff: %w", err)
+					fmt.Fprintf(io.ErrOut, "\nfailed to render str_replace diff: %v\n\n", err)
+					fmt.Fprintln(io.ErrOut, choice.Delta.Content)
 				}
 			default:
 				// Unknown tool call. For example for "codeql_checker":
@@ -333,13 +342,14 @@ func stripDiffFormat(diff string) string {
 		}
 	}
 
-	// If we found the hunk header end, we strip everything before it.
-	if hunkEndIndex != -1 {
-		lines = lines[hunkEndIndex+1:]
-	} else {
-		// This isn't a diff, so we defensively just return the original string.
+	// Guard clause: if we didn't find a hunk header, this isn't a diff, so
+	// we defensively just return the original string.
+	if hunkEndIndex == -1 {
 		return diff
 	}
+
+	// We found the hunk header end; strip everything before it.
+	lines = lines[hunkEndIndex+1:]
 
 	// Now we strip the leading + and - from lines, if they exist.
 	// Note: most of the time, but not all the time, we get a diff without
@@ -358,10 +368,9 @@ func stripDiffFormat(diff string) string {
 // renderFileContentAsMarkdown renders the given content as markdown
 // based on the file extension of the path.
 func renderFileContentAsMarkdown(path, content string, w io.Writer, io *iostreams.IOStreams) error {
-	parts := strings.Split(path, ".")
-	lang := parts[len(parts)-1]
+	lang := filepath.Ext(filepath.ToSlash(path))
 
-	if lang == "md" {
+	if lang == ".md" {
 		return renderRawMarkdown(content, w, io)
 	}
 
@@ -422,62 +431,63 @@ func renderToolCallTitle(w io.Writer, cs *iostreams.ColorScheme, toolName, title
 	}
 }
 
+// genericToolCallNamesToTitles maps known generic tool call identifiers to human-friendly titles.
+var genericToolCallNamesToTitles = map[string]string{
+	// Custom tools, the GitHub UI doesn't currently have these.
+	"codeql_checker": "Run CodeQL analysis",
+
+	// Playwright tools.
+	"playwright-browser_navigate":         "Navigate Playwright web browser to a URL",
+	"playwright-browser_navigate_back":    "Navigate back in Playwright web browser",
+	"playwright-browser_navigate_forward": "Navigate forward in Playwright web browser",
+	"playwright-browser_click":            "Click element in Playwright web browser",
+	"playwright-browser_take_screenshot":  "Take screenshot of Playwright web browser",
+	"playwright-browser_type":             "Type in Playwright web browser",
+	"playwright-browser_wait_for":         "Wait for text to appear/disappear in Playwright web browser",
+	"playwright-browser_evaluate":         "Run JavaScript in Playwright web browser",
+	"playwright-browser_snapshot":         "Take snapshot of page in Playwright web browser",
+	"playwright-browser_resize":           "Resize Playwright web browser window",
+	"playwright-browser_close":            "Close Playwright web browser",
+	"playwright-browser_press_key":        "Press key in Playwright web browser",
+	"playwright-browser_select_option":    "Select option in Playwright web browser",
+	"playwright-browser_handle_dialog":    "Interact with dialog in Playwright web browser",
+	"playwright-browser_console_messages": "Get console messages from Playwright web browser",
+	"playwright-browser_drag":             "Drag mouse between elements in Playwright web browser",
+	"playwright-browser_file_upload":      "Upload file in Playwright web browser",
+	"playwright-browser_hover":            "Hover mouse over element in Playwright web browser",
+	"playwright-browser_network_requests": "Get network requests from Playwright web browser",
+
+	// GitHub MCP server common tools
+	"github-mcp-server-get_file_contents":              "Get file contents from GitHub",
+	"github-mcp-server-get_pull_request":               "Get pull request from GitHub",
+	"github-mcp-server-get_issue":                      "Get issue from GitHub",
+	"github-mcp-server-get_pull_request_files":         "Get pull request changed files from GitHub",
+	"github-mcp-server-list_pull_requests":             "List pull requests on GitHub",
+	"github-mcp-server-list_branches":                  "List branches on GitHub",
+	"github-mcp-server-get_pull_request_diff":          "Get pull request diff from GitHub",
+	"github-mcp-server-get_pull_request_comments":      "Get pull request comments from GitHub",
+	"github-mcp-server-get_commit":                     "Get commit from GitHub",
+	"github-mcp-server-search_repositories":            "Search repositories on GitHub",
+	"github-mcp-server-search_code":                    "Search code on GitHub",
+	"github-mcp-server-get_issue_comments":             "Get issue comments from GitHub",
+	"github-mcp-server-list_issues":                    "List issues on GitHub",
+	"github-mcp-server-search_pull_requests":           "Search pull requests on GitHub",
+	"github-mcp-server-list_commits":                   "List commits on GitHub",
+	"github-mcp-server-get_pull_request_status":        "Get pull request status from GitHub",
+	"github-mcp-server-search_issues":                  "Search issues on GitHub",
+	"github-mcp-server-get_pull_request_reviews":       "Get pull request reviews from GitHub",
+	"github-mcp-server-download_workflow_run_artifact": "Download GitHub Actions workflow run artifact",
+	"github-mcp-server-get_job_logs":                   "Get GitHub Actions job logs",
+	"github-mcp-server-get_workflow_run":               "Get GitHub Actions workflow run",
+	"github-mcp-server-get_workflow_run_logs":          "Get GitHub Actions workflow run logs",
+	"github-mcp-server-get_workflow_run_usage":         "Get GitHub Actions workflow usage",
+	"github-mcp-server-list_workflow_jobs":             "List GitHub Actions workflow jobs",
+	"github-mcp-server-list_workflow_run_artifacts":    "List GitHub Actions workflow run artifacts",
+	"github-mcp-server-list_workflow_runs":             "List GitHub Actions workflow runs",
+	"github-mcp-server-list_workflows":                 "List GitHub Actions workflows",
+}
+
 func renderGenericToolCall(w io.Writer, cs *iostreams.ColorScheme, name string) {
-	genericToolCallNamesToTitles := map[string]string{
-		// Custom tools, the GitHub UI doesn't currently have these.
-		"codeql_checker": "Run CodeQL analysis",
-
-		// Playwright tools.
-		"playwright-browser_navigate":         "Navigate Playwright web browser to a URL",
-		"playwright-browser_navigate_back":    "Navigate back in Playwright web browser",
-		"playwright-browser_navigate_forward": "Navigate forward in Playwright web browser",
-		"playwright-browser_click":            "Click element in Playwright web browser",
-		"playwright-browser_take_screenshot":  "Take screenshot of Playwright web browser",
-		"playwright-browser_type":             "Type in Playwright web browser",
-		"playwright-browser_wait_for":         "Wait for text to appear/disappear in Playwright web browser",
-		"playwright-browser_evaluate":         "Run JavaScript in Playwright web browser",
-		"playwright-browser_snapshot":         "Take snapshot of page in Playwright web browser",
-		"playwright-browser_resize":           "Resize Playwright web browser window",
-		"playwright-browser_close":            "Close Playwright web browser",
-		"playwright-browser_press_key":        "Press key in Playwright web browser",
-		"playwright-browser_select_option":    "Select option in Playwright web browser",
-		"playwright-browser_handle_dialog":    "Interact with dialog in Playwright web browser",
-		"playwright-browser_console_messages": "Get console messages from Playwright web browser",
-		"playwright-browser_drag":             "Drag mouse between elements in Playwright web browser",
-		"playwright-browser_file_upload":      "Upload file in Playwright web browser",
-		"playwright-browser_hover":            "Hover mouse over element in Playwright web browser",
-		"playwright-browser_network_requests": "Get network requests from Playwright web browser",
-
-		// GitHub MCP server common tools
-		"github-mcp-server-get_file_contents":              "Get file contents from GitHub",
-		"github-mcp-server-get_pull_request":               "Get pull request from GitHub",
-		"github-mcp-server-get_issue":                      "Get issue from GitHub",
-		"github-mcp-server-get_pull_request_files":         "Get pull request changed files from GitHub",
-		"github-mcp-server-list_pull_requests":             "List pull requests on GitHub",
-		"github-mcp-server-list_branches":                  "List branches on GitHub",
-		"github-mcp-server-get_pull_request_diff":          "Get pull request diff from GitHub",
-		"github-mcp-server-get_pull_request_comments":      "Get pull request comments from GitHub",
-		"github-mcp-server-get_commit":                     "Get commit from GitHub",
-		"github-mcp-server-search_repositories":            "Search repositories on GitHub",
-		"github-mcp-server-search_code":                    "Search code on GitHub",
-		"github-mcp-server-get_issue_comments":             "Get issue comments from GitHub",
-		"github-mcp-server-list_issues":                    "List issues on GitHub",
-		"github-mcp-server-search_pull_requests":           "Search pull requests on GitHub",
-		"github-mcp-server-list_commits":                   "List commits on GitHub",
-		"github-mcp-server-get_pull_request_status":        "Get pull request status from GitHub",
-		"github-mcp-server-search_issues":                  "Search issues on GitHub",
-		"github-mcp-server-get_pull_request_reviews":       "Get pull request reviews from GitHub",
-		"github-mcp-server-download_workflow_run_artifact": "Download GitHub Actions workflow run artifact",
-		"github-mcp-server-get_job_logs":                   "Get GitHub Actions job logs",
-		"github-mcp-server-get_workflow_run":               "Get GitHub Actions workflow run",
-		"github-mcp-server-get_workflow_run_logs":          "Get GitHub Actions workflow run logs",
-		"github-mcp-server-get_workflow_run_usage":         "Get GitHub Actions workflow usage",
-		"github-mcp-server-list_workflow_jobs":             "List GitHub Actions workflow jobs",
-		"github-mcp-server-list_workflow_run_artifacts":    "List GitHub Actions workflow run artifacts",
-		"github-mcp-server-list_workflow_runs":             "List GitHub Actions workflow runs",
-		"github-mcp-server-list_workflows":                 "List GitHub Actions workflows",
-	}
-
 	toolName, ok := genericToolCallNamesToTitles[name]
 	if !ok {
 		toolName = fmt.Sprintf("Call to %s", name)

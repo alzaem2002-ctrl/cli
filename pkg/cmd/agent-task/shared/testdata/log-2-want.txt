@@ -6,7 +6,7 @@ I'll help you create a .yaml file with random fields in the repository. Let
   and then create a plan.
 
 Bash: Find documentation and config files to understand the repository
-cd /home/runner/work/foo/foo && find . -type f -name "*.md" -o -name "*.  
+$ cd /home/runner/work/foo/foo && find . -type f -name "*.md" -o -name "*.
   txt" -o -name "*.json" -o -name "*.yaml" -o -name "*.yml" | head -20        
     ./README.md                                                               
     ./.github/workflows/upload-artifact.yml                                   
@@ -23,7 +23,7 @@ View repository
      README.md
 
 Bash: List all files in the root directory
-cd /home/runner/work/foo/foo && ls -la                                    
+$ cd /home/runner/work/foo/foo && ls -la                                  
     total 20                                                                  
     drwxr-xr-x 4 runner runner 4096 Sep 11 13:35 .                            
     drwxr-xr-x 3 runner runner 4096 Sep 11 13:34 ..                           
@@ -37,7 +37,7 @@ View README.md
 # foo
 
 Bash: Check git status to understand current state
-cd /home/runner/work/foo/foo && git --no-pager status                     
+$ cd /home/runner/work/foo/foo && git --no-pager status                   
     On branch copilot/fix-5b1c2fcb-9248-492c-84fa-04a3e0304d25                
     Your branch is up to date with 'origin/copilot/fix-5b1c2fcb-9248-492c-84fa-
   04a3e0304d25'.                                                              
@@ -197,13 +197,13 @@ Now let me verify that the YAML file is valid by testing it with a YAML
   parser:
 
 Bash: Validate the YAML file syntax
-cd /home/runner/work/foo/foo && python3 -c "import yaml; yaml.            
+$ cd /home/runner/work/foo/foo && python3 -c "import yaml; yaml.          
   safe_load(open('sample-data.yaml', 'r')); print('YAML file is valid!')"     
                                                                               
     <exited with exit code 0>
 
 Bash: Validate YAML and show structure
-cd /home/runner/work/foo/foo && python3 -c "import yaml; data = yaml.     
+$ cd /home/runner/work/foo/foo && python3 -c "import yaml; data = yaml.   
   safe_load(open('sample-data.yaml', 'r')); print('YAML file is valid!');     
   print(f'Loaded {len(data)} top-level keys: {list(data.keys())}')"           
                                                                               
@@ -213,7 +213,7 @@ cd /home/runner/work/foo/foo && python3 -c "import yaml; data = yaml.
 Let me try a different approach to verify the YAML:
 
 Bash: Detailed YAML validation with content verification
-cd /home/runner/work/foo/foo && python3 -c "                              
+$ cd /home/runner/work/foo/foo && python3 -c "                            
     import yaml                                                               
     try:                                                                      
         with open('sample-data.yaml', 'r') as f:                              
@@ -237,7 +237,7 @@ cd /home/runner/work/foo/foo && python3 -c "
 Perfect! Let me also check the file contents and verify the current status:
 
 Bash: Check git status to see the new file
-cd /home/runner/work/foo/foo && git --no-pager status                     
+$ cd /home/runner/work/foo/foo && git --no-pager status                   
     On branch copilot/fix-5b1c2fcb-9248-492c-84fa-04a3e0304d25                
     Your branch is up to date with 'origin/copilot/fix-5b1c2fcb-9248-492c-84fa-
   04a3e0304d25'.                                                              

@@ -11,7 +11,7 @@ View repository
      README.md
 
 Bash: Check current directory and list all files
-cd /home/runner/work/foo/foo && pwd && ls -la                             
+$ cd /home/runner/work/foo/foo && pwd && ls -la                           
     /home/runner/work/foo/foo                                                 
     total 20                                                                  
     drwxr-xr-x 4 runner docker 4096 Sep  9 10:17 .                            
@@ -36,8 +36,8 @@ View README.md
 # foo
 
 Bash: Check if there are any existing scripts or build files
-cd /home/runner/work/foo/foo && find . -name "*.sh" -o -name "Makefile" -o -
-  name "package.json" -o -name "*.yml" -o -name "*.yaml"                      
+$ cd /home/runner/work/foo/foo && find . -name "*.sh" -o -name "Makefile" -
+  o -name "package.json" -o -name "*.yml" -o -name "*.yaml"                   
     ./.github/workflows/upload-artifact.yml                                   
     ./.github/workflows/manual-dispatch.yml                                   
     ./.github/workflows/cache.yml                                             
@@ -195,7 +195,7 @@ Create: os_info.sh
 Now let me make the script executable and test it:
 
 Bash: Make script executable and test it
-cd /home/runner/work/foo/foo && chmod +x os_info.sh && ./os_info.sh       
+$ cd /home/runner/work/foo/foo && chmod +x os_info.sh && ./os_info.sh     
     ==================================================                        
              OPERATING SYSTEM INFORMATION                                     
     ==================================================                        
@@ -270,7 +270,7 @@ diff --git a/home/runner/work/foo/foo/README.md
 Let me verify the changes look good:
 
 Bash: Check file permissions and final status
-cd /home/runner/work/foo/foo && ls -la os_info.sh && echo "---" && git    
+$ cd /home/runner/work/foo/foo && ls -la os_info.sh && echo "---" && git  
   status                                                                      
     -rwxr-xr-x 1 runner docker 2139 Sep  9 10:18 os_info.sh                   
     ---                                                                       
@@ -323,7 +323,7 @@ Perfect! Let me test the script one more time to make sure everything is
   working correctly and commit the changes:
 
 Bash: Final test of the script
-cd /home/runner/work/foo/foo && echo "Testing script execution:" && .     
+$ cd /home/runner/work/foo/foo && echo "Testing script execution:" && .   
   /os_info.sh | head -10                                                      
     Testing script execution:                                                 
     ==================================================                        
