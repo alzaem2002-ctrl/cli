@@ -77,7 +77,8 @@ func TestListSessionsForViewer(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -125,17 +126,18 @@ func TestListSessionsForViewer(t *testing.T) {
 			wantOut: []*Session{
 				{
 
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2000,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2000,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -186,7 +188,8 @@ func TestListSessionsForViewer(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "",
 									"resource_id": 0,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -218,17 +221,18 @@ func TestListSessionsForViewer(t *testing.T) {
 			wantOut: []*Session{
 				{
 
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "",
-					ResourceID:   0,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "",
+					ResourceID:      0,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					User: &api.GitHubUser{
 						Login:      "octocat",
 						Name:       "Octocat",
@@ -264,7 +268,8 @@ func TestListSessionsForViewer(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -295,7 +300,8 @@ func TestListSessionsForViewer(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2001,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -358,17 +364,18 @@ func TestListSessionsForViewer(t *testing.T) {
 			},
 			wantOut: []*Session{
 				{
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2000,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2000,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -391,17 +398,18 @@ func TestListSessionsForViewer(t *testing.T) {
 					},
 				},
 				{
-					ID:           "sess2",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2001,
-					CreatedAt:    sampleDate,
+					ID:              "sess2",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2001,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2001",
@@ -467,7 +475,8 @@ func TestListSessionsForViewer(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -591,7 +600,8 @@ func TestListSessionsForRepo(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -638,17 +648,18 @@ func TestListSessionsForRepo(t *testing.T) {
 			},
 			wantOut: []*Session{
 				{
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2000,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2000,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -699,7 +710,8 @@ func TestListSessionsForRepo(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "",
 									"resource_id": 0,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -731,17 +743,18 @@ func TestListSessionsForRepo(t *testing.T) {
 			wantOut: []*Session{
 				{
 
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "",
-					ResourceID:   0,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "",
+					ResourceID:      0,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					User: &api.GitHubUser{
 						Login:      "octocat",
 						Name:       "Octocat",
@@ -777,7 +790,8 @@ func TestListSessionsForRepo(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -808,7 +822,8 @@ func TestListSessionsForRepo(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2001,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -871,17 +886,18 @@ func TestListSessionsForRepo(t *testing.T) {
 			},
 			wantOut: []*Session{
 				{
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2000,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2000,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -904,17 +920,18 @@ func TestListSessionsForRepo(t *testing.T) {
 					},
 				},
 				{
-					ID:           "sess2",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2001,
-					CreatedAt:    sampleDate,
+					ID:              "sess2",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2001,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2001",
@@ -980,7 +997,8 @@ func TestListSessionsForRepo(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -1107,7 +1125,8 @@ func TestListSessionsByResourceID(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -1155,17 +1174,18 @@ func TestListSessionsByResourceID(t *testing.T) {
 			wantOut: []*Session{
 				{
 
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2000,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2000,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -1216,7 +1236,8 @@ func TestListSessionsByResourceID(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -1247,7 +1268,8 @@ func TestListSessionsByResourceID(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2001,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -1310,17 +1332,18 @@ func TestListSessionsByResourceID(t *testing.T) {
 			},
 			wantOut: []*Session{
 				{
-					ID:           "sess1",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2000,
-					CreatedAt:    sampleDate,
+					ID:              "sess1",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2000,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -1343,17 +1366,18 @@ func TestListSessionsByResourceID(t *testing.T) {
 					},
 				},
 				{
-					ID:           "sess2",
-					Name:         "Build artifacts",
-					UserID:       1,
-					AgentID:      2,
-					Logs:         "",
-					State:        "completed",
-					OwnerID:      10,
-					RepoID:       1000,
-					ResourceType: "pull",
-					ResourceID:   2001,
-					CreatedAt:    sampleDate,
+					ID:              "sess2",
+					Name:            "Build artifacts",
+					UserID:          1,
+					AgentID:         2,
+					Logs:            "",
+					State:           "completed",
+					OwnerID:         10,
+					RepoID:          1000,
+					ResourceType:    "pull",
+					ResourceID:      2001,
+					CreatedAt:       sampleDate,
+					PremiumRequests: 0.1,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2001",
@@ -1419,7 +1443,8 @@ func TestListSessionsByResourceID(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
-									"created_at": "%[1]s"
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
 								}
 							]
 						}`,
@@ -1538,7 +1563,8 @@ func TestGetSession(t *testing.T) {
 							"repo_id": 1000,
 							"resource_type": "pull",
 							"resource_id": 2000,
-							"created_at": "%[1]s"
+							"created_at": "%[1]s",
+							"premium_requests": 0.1
 						}`,
 						sampleDateString,
 					)),
@@ -1582,17 +1608,18 @@ func TestGetSession(t *testing.T) {
 				)
 			},
 			wantOut: &Session{
-				ID:           "some-uuid",
-				Name:         "Build artifacts",
-				UserID:       1,
-				AgentID:      2,
-				Logs:         "",
-				State:        "completed",
-				OwnerID:      10,
-				RepoID:       1000,
-				ResourceType: "pull",
-				ResourceID:   2000,
-				CreatedAt:    sampleDate,
+				ID:              "some-uuid",
+				Name:            "Build artifacts",
+				UserID:          1,
+				AgentID:         2,
+				Logs:            "",
+				State:           "completed",
+				OwnerID:         10,
+				RepoID:          1000,
+				ResourceType:    "pull",
+				ResourceID:      2000,
+				CreatedAt:       sampleDate,
+				PremiumRequests: 0.1,
 				PullRequest: &api.PullRequest{
 					ID:             "PR_node",
 					FullDatabaseID: "2000",
@@ -1633,7 +1660,8 @@ func TestGetSession(t *testing.T) {
 							"repo_id": 1000,
 							"resource_type": "",
 							"resource_id": 0,
-							"created_at": "%[1]s"
+							"created_at": "%[1]s",
+							"premium_requests": 0.1
 						}`,
 						sampleDateString,
 					)),
@@ -1661,17 +1689,18 @@ func TestGetSession(t *testing.T) {
 				)
 			},
 			wantOut: &Session{
-				ID:           "some-uuid",
-				Name:         "Build artifacts",
-				UserID:       1,
-				AgentID:      2,
-				Logs:         "",
-				State:        "completed",
-				OwnerID:      10,
-				RepoID:       1000,
-				ResourceType: "",
-				ResourceID:   0,
-				CreatedAt:    sampleDate,
+				ID:              "some-uuid",
+				Name:            "Build artifacts",
+				UserID:          1,
+				AgentID:         2,
+				Logs:            "",
+				State:           "completed",
+				OwnerID:         10,
+				RepoID:          1000,
+				ResourceType:    "",
+				ResourceID:      0,
+				CreatedAt:       sampleDate,
+				PremiumRequests: 0.1,
 				User: &api.GitHubUser{
 					Login:      "octocat",
 					Name:       "Octocat",
@@ -1696,7 +1725,8 @@ func TestGetSession(t *testing.T) {
 							"repo_id": 1000,
 							"resource_type": "pull",
 							"resource_id": 2000,
-							"created_at": "%[1]s"
+							"created_at": "%[1]s",
+							"premium_requests": 0.1
 						}`,
 						sampleDateString,
 					)),
