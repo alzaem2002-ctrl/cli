@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -306,13 +307,19 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 		fmt.Fprintf(opts.IO.Out, "Started %s\n", text.FuzzyAgo(time.Now(), session.CreatedAt))
 	}
 
-	var durationNote string
-	if session.CompletedAt.After(session.CreatedAt) {
-		durationNote = fmt.Sprintf("Duration %s", session.CompletedAt.Sub(session.CreatedAt).Round(time.Second).String())
+	additionalNotes := make([]string, 0, 2)
+
+	if session.PremiumRequests > 0 {
+		s := strings.TrimSuffix(fmt.Sprintf("%.1f", session.PremiumRequests), ".0")
+		additionalNotes = append(additionalNotes, fmt.Sprintf("Used %s premium request(s)", s))
 	}
 
-	if durationNote != "" {
-		fmt.Fprintf(opts.IO.Out, "%s\n", cs.Muted(durationNote))
+	if session.CompletedAt.After(session.CreatedAt) {
+		additionalNotes = append(additionalNotes, fmt.Sprintf("Duration %s", session.CompletedAt.Sub(session.CreatedAt).Round(time.Second).String()))
+	}
+
+	if len(additionalNotes) > 0 {
+		fmt.Fprintf(opts.IO.Out, "%s\n", cs.Muted(strings.Join(additionalNotes, " • ")))
 	}
 
 	if !opts.Log {
