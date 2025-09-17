@@ -306,6 +306,15 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 		fmt.Fprintf(opts.IO.Out, "Started %s\n", text.FuzzyAgo(time.Now(), session.CreatedAt))
 	}
 
+	var durationNote string
+	if session.CompletedAt.After(session.CreatedAt) {
+		durationNote = fmt.Sprintf("Duration %s", session.CompletedAt.Sub(session.CreatedAt).Round(time.Second).String())
+	}
+
+	if durationNote != "" {
+		fmt.Fprintf(opts.IO.Out, "%s\n", cs.Muted(durationNote))
+	}
+
 	if !opts.Log {
 		fmt.Fprintln(opts.IO.Out, "")
 		fmt.Fprintf(opts.IO.Out, "For detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID)

@@ -159,6 +159,7 @@ func TestNewCmdList(t *testing.T) {
 
 func Test_viewRun(t *testing.T) {
 	sampleDate := time.Now().Add(-6 * time.Hour) // 6h ago
+	sampleCompletedAt := sampleDate.Add(5 * time.Minute)
 
 	tests := []struct {
 		name             string
@@ -212,9 +213,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						PullRequest: &api.PullRequest{
 							Title:  "fix something",
 							Number: 101,
@@ -232,6 +234,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -252,9 +255,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						PullRequest: &api.PullRequest{
 							Title:  "fix something",
 							Number: 101,
@@ -269,6 +273,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review • fix something • OWNER/REPO#101
 				Started about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -289,9 +294,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						User: &api.GitHubUser{
 							Login: "octocat",
 						},
@@ -301,6 +307,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -318,15 +325,17 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 					}, nil
 				}
 			},
 			wantOut: heredoc.Doc(`
 				Ready for review
 				Started about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -360,9 +369,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						// User data is irrelevant in this case
 					}, nil
 				}
@@ -382,9 +392,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						PullRequest: &api.PullRequest{
 							Title:  "fix something",
 							Number: 101,
@@ -488,9 +499,10 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:        "some-session-id",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-session-id",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -509,6 +521,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -538,10 +551,11 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:        "some-session-id",
-							Name:      "session one",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-session-id",
+							Name:        "session one",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -555,10 +569,11 @@ func Test_viewRun(t *testing.T) {
 							},
 						},
 						{
-							ID:        "some-other-session-id",
-							Name:      "session two",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-other-session-id",
+							Name:        "session two",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -589,6 +604,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -620,10 +636,11 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:        "some-session-id",
-							Name:      "session one",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-session-id",
+							Name:        "session one",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -637,10 +654,11 @@ func Test_viewRun(t *testing.T) {
 							},
 						},
 						{
-							ID:        "some-other-session-id",
-							Name:      "session two",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-other-session-id",
+							Name:        "session two",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -671,6 +689,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -723,9 +742,10 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:        "some-session-id",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-session-id",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -764,10 +784,11 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:        "some-session-id",
-							Name:      "session one",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-session-id",
+							Name:        "session one",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -779,10 +800,11 @@ func Test_viewRun(t *testing.T) {
 							// User data is irrelevant in this case
 						},
 						{
-							ID:        "some-other-session-id",
-							Name:      "session two",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-other-session-id",
+							Name:        "session two",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -823,10 +845,11 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:        "some-session-id",
-							Name:      "session one",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-session-id",
+							Name:        "session one",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -838,10 +861,11 @@ func Test_viewRun(t *testing.T) {
 							// User data is irrelevant in this case
 						},
 						{
-							ID:        "some-other-session-id",
-							Name:      "session two",
-							State:     "completed",
-							CreatedAt: sampleDate,
+							ID:          "some-other-session-id",
+							Name:        "session two",
+							State:       "completed",
+							CreatedAt:   sampleDate,
+							CompletedAt: sampleCompletedAt,
 							PullRequest: &api.PullRequest{
 								Title:  "fix something",
 								Number: 101,
@@ -870,9 +894,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						User: &api.GitHubUser{
 							Login: "octocat",
 						},
@@ -892,6 +917,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				To follow session logs, try:
 				gh agent-task view 'some-session-id' --log --follow
@@ -913,9 +939,10 @@ func Test_viewRun(t *testing.T) {
 				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
 					assert.Equal(t, "some-session-id", id)
 					return &capi.Session{
-						ID:        "some-session-id",
-						State:     "completed",
-						CreatedAt: sampleDate,
+						ID:          "some-session-id",
+						State:       "completed",
+						CreatedAt:   sampleDate,
+						CompletedAt: sampleCompletedAt,
 						User: &api.GitHubUser{
 							Login: "octocat",
 						},
@@ -949,6 +976,7 @@ func Test_viewRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Ready for review
 				Started on behalf of octocat about 6 hours ago
+				Duration 5m0s
 
 				(rendered:) <raw-logs-one>
 				(rendered:) <raw-logs-two>
