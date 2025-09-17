@@ -21,25 +21,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultLogPollInterval = 5 * time.Second
+
 // CreateOptions holds options for create command
 type CreateOptions struct {
-	IO                   *iostreams.IOStreams
-	BaseRepo             func() (ghrepo.Interface, error)
-	CapiClient           func() (capi.CapiClient, error)
-	Config               func() (gh.Config, error)
+	IO         *iostreams.IOStreams
+	BaseRepo   func() (ghrepo.Interface, error)
+	CapiClient func() (capi.CapiClient, error)
+	Config     func() (gh.Config, error)
+
+	LogRenderer func() shared.LogRenderer
+	Sleep       func(d time.Duration)
+
 	ProblemStatement     string
 	BackOff              backoff.BackOff
 	BaseBranch           string
 	Prompter             prompter.Prompter
 	ProblemStatementFile string
+	Follow               bool
+}
+
+func defaultLogRenderer() shared.LogRenderer {
+	return shared.NewLogRenderer()
 }
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:         f.IOStreams,
-		CapiClient: shared.CapiClientFunc(f),
-		Config:     f.Config,
-		Prompter:   f.Prompter,
+		IO:          f.IOStreams,
+		CapiClient:  shared.CapiClientFunc(f),
+		Config:      f.Config,
+		Prompter:    f.Prompter,
+		LogRenderer: defaultLogRenderer,
+		Sleep:       time.Sleep,
 	}
 
 	cmd := &cobra.Command{
@@ -70,6 +83,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			# Create a task from an inline description
 			$ gh agent-task create "build me a new app"
 
+			# Create a task from an inline description and follow logs
+			$ gh agent-task create "build me a new app" --follow
+
 			# Create a task from a file
 			$ gh agent-task create -F task-desc.md
 
@@ -91,6 +107,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmd.Flags().StringVarP(&opts.ProblemStatementFile, "from-file", "F", "", "Read task description from `file` (use \"-\" to read from standard input)")
 	cmd.Flags().StringVarP(&opts.BaseBranch, "base", "b", "", "Base branch for the pull request (use default branch if not provided)")
+	cmd.Flags().BoolVar(&opts.Follow, "follow", false, "Follow agent session logs")
 
 	return cmd
 }
@@ -151,40 +168,24 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
-	// Print this agent session URL and exit if we happen to get it.
-	// Right now, this never happens.
-	if job.PullRequest != nil && job.PullRequest.Number > 0 {
-		fmt.Fprintf(opts.IO.Out, "%s\n", agentSessionWebURL(repo, job))
-		return nil
-	}
-
-	// Otherwise, poll using exponential backoff until we either observe a PR or hit the overall timeout.
-	if opts.BackOff == nil {
-		opts.BackOff = backoff.NewExponentialBackOff(
-			backoff.WithMaxElapsedTime(10*time.Second),
-			backoff.WithInitialInterval(300*time.Millisecond),
-			backoff.WithMaxInterval(10*time.Second),
-			backoff.WithMultiplier(1.5),
-		)
-	}
-
-	jobWithPR, err := fetchJobWithBackoff(ctx, client, repo, job.ID, opts.BackOff)
-	if err != nil {
-		// If this does happen ever, we still want the user to get the
-		// fallback message and URL. So, we don't return with this error,
-		// but we do still want to print it.
-		fmt.Fprintf(opts.IO.ErrOut, "%v\n", err)
-	}
-
-	if jobWithPR != nil {
-		opts.IO.StopProgressIndicator()
-		fmt.Fprintln(opts.IO.Out, agentSessionWebURL(repo, jobWithPR))
-		return nil
-	}
-
-	// Fallback if PR not yet ready
+	sessionURL, err := fetchJobSessionURL(ctx, client, repo, job, opts.BackOff)
 	opts.IO.StopProgressIndicator()
-	fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: https://github.com/copilot/agents\n", job.ID)
+
+	if sessionURL != "" {
+		fmt.Fprintln(opts.IO.Out, sessionURL)
+	} else {
+		if err != nil {
+			// If this does happen ever, we still want the user to get the fallback
+			// message and URL. So, we don't return with this error, but we do still
+			// want to print it.
+			fmt.Fprintf(opts.IO.ErrOut, "%v\n", err)
+		}
+		fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: %s\n", job.ID, capi.AgentsHomeURL)
+	}
+
+	if opts.Follow {
+		return followLogs(opts, client, job.SessionID)
+	}
 	return nil
 }
 
@@ -196,6 +197,31 @@ func agentSessionWebURL(repo ghrepo.Interface, j *capi.Job) string {
 		return fmt.Sprintf("https://github.com/%s/%s/pull/%d", url.PathEscape(repo.RepoOwner()), url.PathEscape(repo.RepoName()), j.PullRequest.Number)
 	}
 	return fmt.Sprintf("https://github.com/%s/%s/pull/%d/agent-sessions/%s", url.PathEscape(repo.RepoOwner()), url.PathEscape(repo.RepoName()), j.PullRequest.Number, url.PathEscape(j.SessionID))
+}
+
+// fetchJobSessionURL tries to return the agent session URL for a job. If the pull
+// request is not yet available, ("", nil) is returned.
+func fetchJobSessionURL(ctx context.Context, client capi.CapiClient, repo ghrepo.Interface, job *capi.Job, bo backoff.BackOff) (string, error) {
+	if job.PullRequest != nil && job.PullRequest.Number > 0 {
+		// Return the agent session URL if we happen to get it.
+		// Right now, this never happens.
+		return agentSessionWebURL(repo, job), nil
+	}
+
+	if bo == nil {
+		bo = backoff.NewExponentialBackOff(
+			backoff.WithMaxElapsedTime(10*time.Second),
+			backoff.WithInitialInterval(300*time.Millisecond),
+			backoff.WithMaxInterval(10*time.Second),
+			backoff.WithMultiplier(1.5),
+		)
+	}
+
+	jobWithPR, err := fetchJobWithBackoff(ctx, client, repo, job.ID, bo)
+	if jobWithPR != nil {
+		return agentSessionWebURL(repo, jobWithPR), nil
+	}
+	return "", err
 }
 
 // fetchJobWithBackoff polls the job resource until a PR number is present or the overall
@@ -227,4 +253,26 @@ func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrep
 		return nil, retryErr
 	}
 	return result, nil
+}
+
+func followLogs(opts *CreateOptions, capiClient capi.CapiClient, sessionID string) error {
+	ctx := context.Background()
+
+	renderer := opts.LogRenderer()
+
+	var called bool
+	fetcher := func() ([]byte, error) {
+		if called {
+			opts.Sleep(defaultLogPollInterval)
+		}
+		called = true
+		raw, err := capiClient.GetSessionLogs(ctx, sessionID)
+		if err != nil {
+			return nil, err
+		}
+		return raw, nil
+	}
+
+	fmt.Fprintln(opts.IO.Out, "")
+	return renderer.Follow(fetcher, opts.IO.Out, opts.IO)
 }
