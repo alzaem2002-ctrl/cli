@@ -200,8 +200,9 @@ func viewRun(opts *ViewOptions) error {
 
 		if prID == 0 {
 			findOptions := prShared.FindOptions{
-				Selector: opts.SelectorArg,
-				Fields:   []string{"id", "url", "fullDatabaseId"},
+				Selector:        opts.SelectorArg,
+				Fields:          []string{"id", "url", "fullDatabaseId"},
+				DisableProgress: true,
 			}
 
 			pr, repo, err := opts.Finder.Find(findOptions)
