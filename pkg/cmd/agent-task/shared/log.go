@@ -342,18 +342,15 @@ func stripDiffFormat(diff string) string {
 		}
 	}
 
-	// Guard clause: if we didn't find a hunk header, this isn't a diff, so
-	// we defensively just return the original string.
+	// This isn't a diff.
 	if hunkEndIndex == -1 {
 		return diff
 	}
 
-	// We found the hunk header end; strip everything before it.
+	// Removing hunk header.
 	lines = lines[hunkEndIndex+1:]
 
-	// Now we strip the leading + and - from lines, if they exist.
-	// Note: most of the time, but not all the time, we get a diff without
-	// these prefixes.
+	// Strip the leading + and - from lines, if they exist.
 	var stripped []string
 	for _, line := range lines {
 		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
