@@ -56,8 +56,6 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		},
 	}
 
-	cmdutil.EnableRepoOverride(cmd, f)
-
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "L", defaultLimit, fmt.Sprintf("Maximum number of agent tasks to fetch (default %d)", defaultLimit))
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open agent tasks in the browser")
 
@@ -66,10 +64,6 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 
 func listRun(opts *ListOptions) error {
 	if opts.Web {
-		// Currently the web GUI does not have a page that supports filtering
-		// based on repo, so we just open the agents dashboard with no args.
-		// If that page is ever added in the future, we should route to that
-		// page instead of the global one when --repo is set.
 		webURL := capi.AgentsHomeURL
 		if opts.IO.IsStdoutTTY() {
 			fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", text.DisplayURL(webURL))
@@ -91,24 +85,11 @@ func listRun(opts *ListOptions) error {
 	var sessions []*capi.Session
 	ctx := context.Background()
 
-	var repo ghrepo.Interface
-	if opts.BaseRepo != nil {
-		// We swallow this error because when CWD is not a repo and
-		// the --repo flag is not set, we use the global/user session listing.
-		repo, _ = opts.BaseRepo()
+	sessions, err = capiClient.ListLatestSessionsForViewer(ctx, opts.Limit)
+	if err != nil {
+		return err
 	}
 
-	if repo != nil && repo.RepoOwner() != "" && repo.RepoName() != "" {
-		sessions, err = capiClient.ListSessionsForRepo(ctx, repo.RepoOwner(), repo.RepoName(), opts.Limit)
-		if err != nil {
-			return err
-		}
-	} else {
-		sessions, err = capiClient.ListSessionsForViewer(ctx, opts.Limit)
-		if err != nil {
-			return err
-		}
-	}
 	opts.IO.StopProgressIndicator()
 
 	if len(sessions) == 0 {
@@ -119,6 +100,12 @@ func listRun(opts *ListOptions) error {
 		defer opts.IO.StopPager()
 	} else {
 		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
+	}
+
+	if opts.IO.IsStdoutTTY() {
+		count := len(sessions)
+		header := fmt.Sprintf("Showing %s", text.Pluralize(count, "session"))
+		fmt.Fprintf(opts.IO.Out, "%s\n\n", header)
 	}
 
 	cs := opts.IO.ColorScheme()

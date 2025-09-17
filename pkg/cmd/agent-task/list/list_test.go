@@ -3,7 +3,6 @@ package list
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"testing"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/cli/v2/api"
 	"github.com/cli/cli/v2/internal/browser"
-	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
@@ -22,25 +20,16 @@ import (
 
 func TestNewCmdList(t *testing.T) {
 	tests := []struct {
-		name         string
-		args         string
-		wantOpts     ListOptions
-		wantBaseRepo ghrepo.Interface
-		wantErr      string
+		name     string
+		args     string
+		wantOpts ListOptions
+		wantErr  string
 	}{
 		{
 			name: "no arguments",
 			wantOpts: ListOptions{
 				Limit: defaultLimit,
 			},
-		},
-		{
-			name: "base repo specified",
-			args: "--repo OWNER/REPO",
-			wantOpts: ListOptions{
-				Limit: defaultLimit,
-			},
-			wantBaseRepo: ghrepo.New("OWNER", "REPO"),
 		},
 		{
 			name: "custom limit",
@@ -96,12 +85,6 @@ func TestNewCmdList(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOpts.Limit, gotOpts.Limit)
 			assert.Equal(t, tt.wantOpts.Web, gotOpts.Web)
-
-			if tt.wantBaseRepo != nil {
-				baseRepo, err := gotOpts.BaseRepo()
-				require.NoError(t, err)
-				assert.True(t, ghrepo.IsSame(tt.wantBaseRepo, baseRepo))
-			}
 		})
 	}
 }
@@ -114,8 +97,6 @@ func Test_listRun(t *testing.T) {
 		name           string
 		tty            bool
 		capiStubs      func(*testing.T, *capi.CapiClientMock)
-		baseRepo       ghrepo.Interface
-		baseRepoErr    error
 		limit          int
 		web            bool
 		wantOut        string
@@ -127,7 +108,7 @@ func Test_listRun(t *testing.T) {
 			name: "viewer-scoped no sessions",
 			tty:  true,
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
+				m.ListLatestSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return nil, nil
 				}
 			},
@@ -138,7 +119,7 @@ func Test_listRun(t *testing.T) {
 			tty:   true,
 			limit: 999,
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
+				m.ListLatestSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					assert.Equal(t, 999, limit)
 					return nil, nil
 				}
@@ -149,7 +130,7 @@ func Test_listRun(t *testing.T) {
 			name: "viewer-scoped single session (tty)",
 			tty:  true,
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
+				m.ListLatestSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
 							ID:           "id1",
@@ -168,6 +149,8 @@ func Test_listRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
+				Showing 1 session
+
 				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
 				s1            #101          OWNER/REPO  completed      about 6 hours ago
 			`),
@@ -176,7 +159,7 @@ func Test_listRun(t *testing.T) {
 			name: "viewer-scoped single session (nontty)",
 			tty:  false,
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
+				m.ListLatestSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
 							ID:           "id1",
@@ -200,7 +183,7 @@ func Test_listRun(t *testing.T) {
 			name: "viewer-scoped many sessions (tty)",
 			tty:  true,
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
+				m.ListLatestSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
 					return []*capi.Session{
 						{
 							ID:           "id1",
@@ -284,6 +267,8 @@ func Test_listRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
+				Showing 6 sessions
+
 				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
 				s1            #101          OWNER/REPO  completed      about 6 hours ago
 				s2            #102          OWNER/REPO  failed         about 6 hours ago
@@ -292,209 +277,11 @@ func Test_listRun(t *testing.T) {
 				s5            #105          OWNER/REPO  canceled       about 6 hours ago
 				s6            #106          OWNER/REPO  mystery        about 6 hours ago
 			`),
-		},
-		{
-			name:     "repo-scoped no sessions",
-			tty:      true,
-			baseRepo: ghrepo.New("OWNER", "REPO"),
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
-					return nil, nil
-				}
-			},
-			wantErr: cmdutil.NewNoResultsError("no agent tasks found"),
-		},
-		{
-			name:     "repo-scoped respects --limit/--repo",
-			tty:      true,
-			limit:    999,
-			baseRepo: ghrepo.New("OWNER", "REPO"),
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
-					assert.Equal(t, 999, limit)
-					assert.Equal(t, "OWNER", owner)
-					assert.Equal(t, "REPO", repo)
-					return nil, nil
-				}
-			},
-			wantErr: cmdutil.NewNoResultsError("no agent tasks found"), // not important
-		},
-		{
-			name:     "repo-scoped single session (tty)",
-			tty:      true,
-			baseRepo: ghrepo.New("OWNER", "REPO"),
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
-					return []*capi.Session{
-						{
-							ID:           "id1",
-							Name:         "s1",
-							State:        "completed",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 101,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-					}, nil
-				}
-			},
-			wantOut: heredoc.Doc(`
-				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1            #101          OWNER/REPO  completed      about 6 hours ago
-			`),
-		},
-		{
-			name:     "repo-scoped single session (nontty)",
-			tty:      false,
-			baseRepo: ghrepo.New("OWNER", "REPO"),
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
-					return []*capi.Session{
-						{
-							ID:           "id1",
-							Name:         "s1",
-							State:        "completed",
-							ResourceType: "pull",
-							CreatedAt:    sampleDate,
-							PullRequest: &api.PullRequest{
-								Number: 101,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-					}, nil
-				}
-			},
-			wantOut: "s1\t#101\tOWNER/REPO\tcompleted\t" + sampleDateString + "\n", // header omitted for non-tty
-		},
-		{
-			name:     "repo-scoped many sessions (tty)",
-			tty:      true,
-			baseRepo: ghrepo.New("OWNER", "REPO"),
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				m.ListSessionsForRepoFunc = func(ctx context.Context, owner, repo string, limit int) ([]*capi.Session, error) {
-					return []*capi.Session{
-						{
-							ID:           "id1",
-							Name:         "s1",
-							State:        "completed",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 101,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-						{
-							ID:           "id2",
-							Name:         "s2",
-							State:        "failed",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 102,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-						{
-							ID:           "id3",
-							Name:         "s3",
-							State:        "in_progress",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 103,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-						{
-							ID:           "id4",
-							Name:         "s4",
-							State:        "queued",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 104,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-						{
-							ID:           "id5",
-							Name:         "s5",
-							State:        "canceled",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 105,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-						{
-							ID:           "id6",
-							Name:         "s6",
-							State:        "mystery",
-							CreatedAt:    sampleDate,
-							ResourceType: "pull",
-							PullRequest: &api.PullRequest{
-								Number: 106,
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-						},
-					}, nil
-				}
-			},
-			wantOut: heredoc.Doc(`
-				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1            #101          OWNER/REPO  completed      about 6 hours ago
-				s2            #102          OWNER/REPO  failed         about 6 hours ago
-				s3            #103          OWNER/REPO  in_progress    about 6 hours ago
-				s4            #104          OWNER/REPO  queued         about 6 hours ago
-				s5            #105          OWNER/REPO  canceled       about 6 hours ago
-				s6            #106          OWNER/REPO  mystery        about 6 hours ago
-			`),
-		},
-		{
-			name:        "repo resolution error does not surface",
-			tty:         true,
-			baseRepoErr: errors.New("ambiguous repo"),
-			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
-				// We expect a viewer-scoped fetch request:
-				m.ListSessionsForViewerFunc = func(ctx context.Context, limit int) ([]*capi.Session, error) {
-					return nil, nil
-				}
-			},
-			wantErr: cmdutil.NewNoResultsError("no agent tasks found"),
 		},
 		{
 			name:           "web mode",
 			tty:            true,
 			web:            true,
-			wantOut:        "",
-			wantStderr:     "Opening https://github.com/copilot/agents in your browser.\n",
-			wantBrowserURL: "https://github.com/copilot/agents",
-		},
-		{
-			name:           "web mode with repo still uses global URL, even when --repo is set",
-			tty:            true,
-			web:            true,
-			baseRepo:       ghrepo.New("OWNER", "REPO"),
 			wantOut:        "",
 			wantStderr:     "Opening https://github.com/copilot/agents in your browser.\n",
 			wantBrowserURL: "https://github.com/copilot/agents",
@@ -527,11 +314,6 @@ func Test_listRun(t *testing.T) {
 					}
 					return capiClientMock, nil
 				},
-			}
-			if tt.baseRepo != nil || tt.baseRepoErr != nil {
-				baseRepo := tt.baseRepo
-				baseRepoErr := tt.baseRepoErr
-				opts.BaseRepo = func() (ghrepo.Interface, error) { return baseRepo, baseRepoErr }
 			}
 
 			err := listRun(opts)
