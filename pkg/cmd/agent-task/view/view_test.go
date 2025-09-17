@@ -932,13 +932,6 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review
-				Started on behalf of octocat about 6 hours ago
-				Used 1.5 premium request(s) • Duration 5m0s
-
-				To follow session logs, try:
-				gh agent-task view 'some-session-id' --log --follow
-
 				(rendered:) <raw-logs>
 			`),
 		},
@@ -992,10 +985,6 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review
-				Started on behalf of octocat about 6 hours ago
-				Used 1.5 premium request(s) • Duration 5m0s
-
 				(rendered:) <raw-logs-one>
 				(rendered:) <raw-logs-two>
 			`),
