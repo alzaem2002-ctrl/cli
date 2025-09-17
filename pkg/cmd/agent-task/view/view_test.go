@@ -230,7 +230,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed • fix something • OWNER/REPO#101
+				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
 
 				For detailed session logs, try:
@@ -267,7 +267,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed • fix something • OWNER/REPO#101
+				Ready for review • fix something • OWNER/REPO#101
 				Started about 6 hours ago
 
 				For detailed session logs, try:
@@ -299,7 +299,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed
+				Ready for review
 				Started on behalf of octocat about 6 hours ago
 
 				For detailed session logs, try:
@@ -325,7 +325,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed
+				Ready for review
 				Started about 6 hours ago
 
 				For detailed session logs, try:
@@ -507,7 +507,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed • fix something • OWNER/REPO#101
+				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
 
 				For detailed session logs, try:
@@ -587,7 +587,7 @@ func Test_viewRun(t *testing.T) {
 				)
 			},
 			wantOut: heredoc.Doc(`
-				Completed • fix something • OWNER/REPO#101
+				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
 
 				For detailed session logs, try:
@@ -669,7 +669,7 @@ func Test_viewRun(t *testing.T) {
 				)
 			},
 			wantOut: heredoc.Doc(`
-				Completed • fix something • OWNER/REPO#101
+				Ready for review • fix something • OWNER/REPO#101
 				Started on behalf of octocat about 6 hours ago
 
 				For detailed session logs, try:
@@ -890,7 +890,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed
+				Ready for review
 				Started on behalf of octocat about 6 hours ago
 
 				To follow session logs, try:
@@ -947,7 +947,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Completed
+				Ready for review
 				Started on behalf of octocat about 6 hours ago
 
 				(rendered:) <raw-logs-one>

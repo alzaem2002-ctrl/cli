@@ -32,7 +32,7 @@ func SessionStateString(state string) string {
 	case "in_progress":
 		return "In Progress"
 	case "completed":
-		return "Completed"
+		return "Ready for review"
 	case "failed":
 		return "Failed"
 	case "idle":
