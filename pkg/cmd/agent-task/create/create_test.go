@@ -47,6 +47,21 @@ func TestNewCmdCreate(t *testing.T) {
 			},
 		},
 		{
+			name:    "empty arg",
+			args:    "''",
+			wantErr: "task description cannot be empty",
+		},
+		{
+			name:    "whitespace arg",
+			args:    "'   '",
+			wantErr: "task description cannot be empty",
+		},
+		{
+			name:    "whitespace and newline arg",
+			args:    "'\n'",
+			wantErr: "task description cannot be empty",
+		},
+		{
 			name:    "mutually exclusive arg and file",
 			args:    "'some task inline' -F foo.md",
 			wantErr: "only one of -F or arg can be provided",
@@ -96,7 +111,7 @@ func TestNewCmdCreate(t *testing.T) {
 
 			_, err = cmd.ExecuteC()
 			if tt.wantErr != "" {
-				require.Error(t, err, tt.wantErr)
+				require.EqualError(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}

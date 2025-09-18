@@ -70,6 +70,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			// Populate ProblemStatement from arg
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
+				if strings.TrimSpace(opts.ProblemStatement) == "" {
+					return cmdutil.FlagErrorf("task description cannot be empty")
+				}
 			} else if opts.ProblemStatementFile == "" && !opts.IO.CanPrompt() {
 				return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
 			}
