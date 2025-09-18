@@ -190,9 +190,11 @@ type args struct {
 	baseRepoFn      func() (ghrepo.Interface, error)
 	branchFn        func() (string, error)
 	gitConfigClient stubGitConfigClient
+	progress        *stubProgressIndicator
 	selector        string
 	fields          []string
 	baseBranch      string
+	disableProgress bool
 }
 
 func TestFind(t *testing.T) {
@@ -228,12 +230,13 @@ func TestFind(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		args     args
-		httpStub func(*httpmock.Registry)
-		wantPR   int
-		wantRepo string
-		wantErr  bool
+		name            string
+		args            args
+		httpStub        func(*httpmock.Registry)
+		wantUseProgress bool
+		wantPR          int
+		wantRepo        string
+		wantErr         bool
 	}{
 		{
 			name: "number argument",
@@ -824,6 +827,51 @@ func TestFind(t *testing.T) {
 			wantPR:   13,
 			wantRepo: "https://github.com/OWNER/REPO",
 		},
+		{
+			name: "number argument, with non nil-progress indicator",
+			args: args{
+				selector:   "13",
+				fields:     []string{"id", "number"},
+				baseRepoFn: stubBaseRepoFn(ghrepo.New("ORIGINOWNER", "REPO"), nil),
+				branchFn: func() (string, error) {
+					return "blueberries", nil
+				},
+				progress: &stubProgressIndicator{},
+			},
+			httpStub: func(r *httpmock.Registry) {
+				r.Register(
+					httpmock.GraphQL(`query PullRequestByNumber\b`),
+					httpmock.StringResponse(`{"data":{"repository":{
+						"pullRequest":{"number":13}
+					}}}`))
+			},
+			wantPR:          13,
+			wantRepo:        "https://github.com/ORIGINOWNER/REPO",
+			wantUseProgress: true,
+		},
+		{
+			name: "number argument, with non-nil progress indicator and DisableProgress set",
+			args: args{
+				selector:   "13",
+				fields:     []string{"id", "number"},
+				baseRepoFn: stubBaseRepoFn(ghrepo.New("ORIGINOWNER", "REPO"), nil),
+				branchFn: func() (string, error) {
+					return "blueberries", nil
+				},
+				progress:        &stubProgressIndicator{},
+				disableProgress: true,
+			},
+			httpStub: func(r *httpmock.Registry) {
+				r.Register(
+					httpmock.GraphQL(`query PullRequestByNumber\b`),
+					httpmock.StringResponse(`{"data":{"repository":{
+						"pullRequest":{"number":13}
+					}}}`))
+			},
+			wantPR:          13,
+			wantRepo:        "https://github.com/ORIGINOWNER/REPO",
+			wantUseProgress: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -847,11 +895,25 @@ func TestFind(t *testing.T) {
 				}, nil),
 			}
 
+			if tt.args.progress != nil {
+				f.progress = tt.args.progress
+			}
+
 			pr, repo, err := f.Find(FindOptions{
-				Selector:   tt.args.selector,
-				Fields:     tt.args.fields,
-				BaseBranch: tt.args.baseBranch,
+				Selector:        tt.args.selector,
+				Fields:          tt.args.fields,
+				BaseBranch:      tt.args.baseBranch,
+				DisableProgress: tt.args.disableProgress,
 			})
+
+			if tt.args.progress != nil {
+				if tt.args.progress.startCalled != tt.wantUseProgress {
+					t.Errorf("progress was (not) used as expected")
+				} else if tt.args.progress.startCalled != tt.args.progress.stopCalled {
+					t.Errorf("progress was started but not stopped")
+				}
+			}
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Find() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -946,4 +1008,17 @@ func (s stubGitConfigClient) PushRevision(ctx context.Context, branchName string
 		panic("unexpected call to PushRevision")
 	}
 	return s.pushRevisionFn(ctx, branchName)
+}
+
+type stubProgressIndicator struct {
+	startCalled bool
+	stopCalled  bool
+}
+
+func (s *stubProgressIndicator) StartProgressIndicator() {
+	s.startCalled = true
+}
+
+func (s *stubProgressIndicator) StopProgressIndicator() {
+	s.stopCalled = true
 }

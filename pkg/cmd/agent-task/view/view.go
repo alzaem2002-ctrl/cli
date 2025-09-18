@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -200,8 +201,9 @@ func viewRun(opts *ViewOptions) error {
 
 		if prID == 0 {
 			findOptions := prShared.FindOptions{
-				Selector: opts.SelectorArg,
-				Fields:   []string{"id", "url", "fullDatabaseId"},
+				Selector:        opts.SelectorArg,
+				Fields:          []string{"id", "url", "fullDatabaseId"},
+				DisableProgress: true,
 			}
 
 			pr, repo, err := opts.Finder.Find(findOptions)
@@ -275,11 +277,11 @@ func viewRun(opts *ViewOptions) error {
 		}
 	}
 
-	printSession(opts, session)
-
 	if opts.Log {
 		return printLogs(opts, capiClient, session.ID)
 	}
+
+	printSession(opts, session)
 	return nil
 }
 
@@ -304,6 +306,16 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 		// Should never happen, but we need to cover the path
 		fmt.Fprintf(opts.IO.Out, "Started %s\n", text.FuzzyAgo(time.Now(), session.CreatedAt))
 	}
+
+	usedPremiumRequests := strings.TrimSuffix(fmt.Sprintf("%.1f", session.PremiumRequests), ".0")
+	usedPremiumRequestsNote := fmt.Sprintf("Used %s premium request(s)", usedPremiumRequests)
+
+	var durationNote string
+	if session.CompletedAt.After(session.CreatedAt) {
+		durationNote = fmt.Sprintf(" • Duration %s", session.CompletedAt.Sub(session.CreatedAt).Round(time.Second).String())
+	}
+
+	fmt.Fprintf(opts.IO.Out, "%s%s\n", cs.Muted(usedPremiumRequestsNote), cs.Muted(durationNote))
 
 	if !opts.Log {
 		fmt.Fprintln(opts.IO.Out, "")
@@ -345,7 +357,6 @@ func printLogs(opts *ViewOptions, capiClient capi.CapiClient, sessionID string) 
 			return raw, nil
 		}
 
-		fmt.Fprintln(opts.IO.Out, "")
 		return renderer.Follow(fetcher, opts.IO.Out, opts.IO)
 	}
 
@@ -354,7 +365,6 @@ func printLogs(opts *ViewOptions, capiClient capi.CapiClient, sessionID string) 
 		return fmt.Errorf("failed to fetch session logs: %w", err)
 	}
 
-	fmt.Fprintln(opts.IO.Out, "")
 	_, err = renderer.Render(raw, opts.IO.Out, opts.IO)
 	return err
 }
