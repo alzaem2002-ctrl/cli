@@ -43,6 +43,7 @@ type session struct {
 	EventURL        string    `json:"event_url"`
 	EventType       string    `json:"event_type"`
 	PremiumRequests float64   `json:"premium_requests"`
+	WorkflowRunID   uint64    `json:"workflow_run_id,omitempty"`
 	Error           *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -87,6 +88,7 @@ type Session struct {
 	EventURL        string
 	EventType       string
 	PremiumRequests float64
+	WorkflowRunID   uint64
 	Error           *SessionError
 
 	PullRequest *api.PullRequest
@@ -467,6 +469,7 @@ func fromAPISession(s session) *Session {
 		EventURL:        s.EventURL,
 		EventType:       s.EventType,
 		PremiumRequests: s.PremiumRequests,
+		WorkflowRunID:   s.WorkflowRunID,
 	}
 	if s.Error != nil {
 		result.Error = &SessionError{
