@@ -317,6 +317,26 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 
 	fmt.Fprintf(opts.IO.Out, "%s%s\n", cs.Muted(usedPremiumRequestsNote), cs.Muted(durationNote))
 
+	if session.Error != nil {
+		var workflowRunURL string
+		if session.WorkflowRunID != 0 && session.PullRequest != nil {
+			if u, err := url.Parse(session.PullRequest.URL); err == nil {
+				workflowRunURL = fmt.Sprintf("%s://%s/%s/actions/runs/%d", u.Scheme, u.Host, session.PullRequest.Repository.NameWithOwner, session.WorkflowRunID)
+			}
+		}
+
+		message := session.Error.Message
+		if message == "" {
+			message = "An error occurred"
+		}
+		fmt.Fprintln(opts.IO.Out, "")
+		fmt.Fprintf(opts.IO.Out, "%s %s\n", cs.FailureIconWithColor(cs.Red), message)
+
+		if workflowRunURL != "" {
+			fmt.Fprintf(opts.IO.Out, "See the detailed logs in GitHub Actions:\n%s\n", workflowRunURL)
+		}
+	}
+
 	if !opts.Log {
 		fmt.Fprintln(opts.IO.Out, "")
 		fmt.Fprintf(opts.IO.Out, "For detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID)
