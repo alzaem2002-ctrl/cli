@@ -70,6 +70,9 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			// Populate ProblemStatement from arg
 			if len(args) > 0 {
 				opts.ProblemStatement = args[0]
+				if strings.TrimSpace(opts.ProblemStatement) == "" {
+					return cmdutil.FlagErrorf("task description cannot be empty")
+				}
 			} else if opts.ProblemStatementFile == "" && !opts.IO.CanPrompt() {
 				return cmdutil.FlagErrorf("a task description or -F is required when running non-interactively")
 			}
@@ -121,36 +124,30 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	if opts.ProblemStatement == "" {
-		// Load initial problem statement from file, if provided
 		if opts.ProblemStatementFile != "" {
 			fileContent, err := cmdutil.ReadFile(opts.ProblemStatementFile, opts.IO.In)
 			if err != nil {
-				return cmdutil.FlagErrorf("could not read task description file: %v", err)
+				return fmt.Errorf("could not read task description file: %w", err)
 			}
-			opts.ProblemStatement = strings.TrimSpace(string(fileContent))
-		}
 
-		if opts.IO.CanPrompt() {
+			trimmed := strings.TrimSpace(string(fileContent))
+			if trimmed == "" {
+				return errors.New("task description file cannot be empty")
+			}
+
+			opts.ProblemStatement = trimmed
+		} else {
 			desc, err := opts.Prompter.MarkdownEditor("Enter the task description", opts.ProblemStatement, false)
 			if err != nil {
 				return err
 			}
-			opts.ProblemStatement = strings.TrimSpace(desc)
-		}
-	}
 
-	if opts.ProblemStatement == "" {
-		fmt.Fprintf(opts.IO.ErrOut, "a task description is required.\n")
-		return cmdutil.SilentError
-	}
+			trimmed := strings.TrimSpace(string(desc))
+			if trimmed == "" {
+				return errors.New("a task description is required")
+			}
 
-	if opts.IO.CanPrompt() {
-		confirm, err := opts.Prompter.Confirm("Submit agent task", true)
-		if err != nil {
-			return err
-		}
-		if !confirm {
-			return cmdutil.SilentError
+			opts.ProblemStatement = trimmed
 		}
 	}
 
@@ -168,6 +165,10 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
+	if opts.Follow {
+		return followLogs(opts, client, job.SessionID)
+	}
+
 	sessionURL, err := fetchJobSessionURL(ctx, client, repo, job, opts.BackOff)
 	opts.IO.StopProgressIndicator()
 
@@ -183,9 +184,6 @@ func createRun(opts *CreateOptions) error {
 		fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: %s\n", job.ID, capi.AgentsHomeURL)
 	}
 
-	if opts.Follow {
-		return followLogs(opts, client, job.SessionID)
-	}
 	return nil
 }
 
@@ -256,8 +254,13 @@ func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrep
 }
 
 func followLogs(opts *CreateOptions, capiClient capi.CapiClient, sessionID string) error {
-	ctx := context.Background()
+	if err := opts.IO.StartPager(); err == nil {
+		defer opts.IO.StopPager()
+	} else {
+		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
+	}
 
+	ctx := context.Background()
 	renderer := opts.LogRenderer()
 
 	var called bool
@@ -273,6 +276,5 @@ func followLogs(opts *CreateOptions, capiClient capi.CapiClient, sessionID strin
 		return raw, nil
 	}
 
-	fmt.Fprintln(opts.IO.Out, "")
 	return renderer.Follow(fetcher, opts.IO.Out, opts.IO)
 }
