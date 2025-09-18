@@ -473,8 +473,6 @@ func Test_createRun(t *testing.T) {
 				}
 			},
 			wantStdout: heredoc.Doc(`
-				https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1
-				
 				(rendered:) <raw-logs-one>
 				(rendered:) <raw-logs-two>
 			`),

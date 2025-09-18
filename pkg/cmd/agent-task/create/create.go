@@ -162,6 +162,10 @@ func createRun(opts *CreateOptions) error {
 		return err
 	}
 
+	if opts.Follow {
+		return followLogs(opts, client, job.SessionID)
+	}
+
 	sessionURL, err := fetchJobSessionURL(ctx, client, repo, job, opts.BackOff)
 	opts.IO.StopProgressIndicator()
 
@@ -177,9 +181,6 @@ func createRun(opts *CreateOptions) error {
 		fmt.Fprintf(opts.IO.Out, "job %s queued. View progress: %s\n", job.ID, capi.AgentsHomeURL)
 	}
 
-	if opts.Follow {
-		return followLogs(opts, client, job.SessionID)
-	}
 	return nil
 }
 
@@ -250,8 +251,13 @@ func fetchJobWithBackoff(ctx context.Context, client capi.CapiClient, repo ghrep
 }
 
 func followLogs(opts *CreateOptions, capiClient capi.CapiClient, sessionID string) error {
-	ctx := context.Background()
+	if err := opts.IO.StartPager(); err == nil {
+		defer opts.IO.StopPager()
+	} else {
+		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
+	}
 
+	ctx := context.Background()
 	renderer := opts.LogRenderer()
 
 	var called bool
@@ -267,6 +273,5 @@ func followLogs(opts *CreateOptions, capiClient capi.CapiClient, sessionID strin
 		return raw, nil
 	}
 
-	fmt.Fprintln(opts.IO.Out, "")
 	return renderer.Follow(fetcher, opts.IO.Out, opts.IO)
 }
