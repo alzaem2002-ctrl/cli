@@ -43,6 +43,10 @@ type session struct {
 	EventURL        string    `json:"event_url"`
 	EventType       string    `json:"event_type"`
 	PremiumRequests float64   `json:"premium_requests"`
+	Error           *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
 }
 
 // A shim of a full pull request because looking up by node ID
@@ -83,9 +87,15 @@ type Session struct {
 	EventURL        string
 	EventType       string
 	PremiumRequests float64
+	Error           *SessionError
 
 	PullRequest *api.PullRequest
 	User        *api.GitHubUser
+}
+
+type SessionError struct {
+	Code    string
+	Message string
 }
 
 // ListLatestSessionsForViewer lists all agent sessions for the
@@ -442,7 +452,7 @@ func generateUserNodeID(userID int64) string {
 }
 
 func fromAPISession(s session) *Session {
-	return &Session{
+	result := Session{
 		ID:              s.ID,
 		Name:            s.Name,
 		UserID:          s.UserID,
@@ -460,4 +470,11 @@ func fromAPISession(s session) *Session {
 		EventType:       s.EventType,
 		PremiumRequests: s.PremiumRequests,
 	}
+	if s.Error != nil {
+		result.Error = &SessionError{
+			Code:    s.Error.Code,
+			Message: s.Error.Message,
+		}
+	}
+	return &result
 }

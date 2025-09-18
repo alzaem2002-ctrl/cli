@@ -876,6 +876,118 @@ func TestListLatestSessionsForViewer(t *testing.T) {
 			},
 		},
 		{
+			name:  "session error is included",
+			limit: 10,
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(
+						httpmock.QueryMatcher("GET", "agents/sessions", url.Values{
+							"page_number": {"1"},
+							"page_size":   {"50"},
+							"sort":        {"last_updated_at,desc"},
+						}),
+						"api.githubcopilot.com",
+					),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"sessions": [
+								{
+									"id": "sessA",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "failed",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "pull",
+									"resource_id": 3000,
+									"created_at": "%[1]s",
+									"error": {
+										"code": "some-error-code",
+										"message": "some-error-message"
+									}
+								}
+							]
+						}`,
+						sampleDateString,
+					)),
+				)
+
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "PullRequest",
+										"id": "PR_node3000",
+										"fullDatabaseId": "3000",
+										"number": 100,
+										"title": "Improve docs",
+										"state": "OPEN",
+										"isDraft": true,
+										"url": "https://github.com/OWNER/REPO/pull/100",
+										"body": "",
+										"createdAt": "%[1]s",
+										"updatedAt": "%[1]s",
+										"repository": {"nameWithOwner": "OWNER/REPO"}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						// Expected encoded node IDs for resource IDs 3000 and user octocat
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNC7g", "U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: []*Session{
+				{
+					ID:           "sessA",
+					Name:         "Build artifacts",
+					UserID:       1,
+					AgentID:      2,
+					Logs:         "",
+					State:        "failed",
+					OwnerID:      10,
+					RepoID:       1000,
+					ResourceType: "pull",
+					ResourceID:   3000,
+					CreatedAt:    sampleDate,
+					Error: &SessionError{
+						Code:    "some-error-code",
+						Message: "some-error-message",
+					},
+					PullRequest: &api.PullRequest{
+						ID:             "PR_node3000",
+						FullDatabaseID: "3000",
+						Number:         100,
+						Title:          "Improve docs",
+						State:          "OPEN",
+						IsDraft:        true,
+						URL:            "https://github.com/OWNER/REPO/pull/100",
+						Body:           "",
+						CreatedAt:      sampleDate,
+						UpdatedAt:      sampleDate,
+						Repository: &api.PRRepository{
+							NameWithOwner: "OWNER/REPO",
+						},
+					},
+					User: &api.GitHubUser{Login: "octocat", Name: "Octocat", DatabaseID: 1},
+				},
+			},
+		},
+		{
 			name:  "API error",
 			limit: 10,
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
