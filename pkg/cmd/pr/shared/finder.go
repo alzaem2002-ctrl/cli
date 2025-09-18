@@ -198,6 +198,7 @@ func (f *finder) Find(opts FindOptions) (*api.PullRequest, ghrepo.Interface, err
 		return nil, nil, err
 	}
 
+	// TODO: Decouple the PR finder from IO
 	// TODO(josebalius): Should we be guarding here?
 	if !opts.DisableProgress && f.progress != nil {
 		f.progress.StartProgressIndicator()
