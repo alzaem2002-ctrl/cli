@@ -11,7 +11,7 @@ func ColorFuncForSessionState(s capi.Session, cs *iostreams.ColorScheme) func(st
 	switch s.State {
 	case "completed":
 		stateColor = cs.Green
-	case "canceled":
+	case "cancelled":
 		stateColor = cs.Muted
 	case "in_progress", "queued":
 		stateColor = cs.Yellow
