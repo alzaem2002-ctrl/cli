@@ -127,9 +127,9 @@ func listRun(opts *ListOptions) error {
 
 		// State
 		if tp.IsTTY() {
-			tp.AddField(s.State, tableprinter.WithColor(shared.ColorFuncForSessionState(*s, cs)))
+			tp.AddField(shared.SessionStateString(s.State), tableprinter.WithColor(shared.ColorFuncForSessionState(*s, cs)))
 		} else {
-			tp.AddField(s.State)
+			tp.AddField(shared.SessionStateString(s.State))
 		}
 
 		// Created

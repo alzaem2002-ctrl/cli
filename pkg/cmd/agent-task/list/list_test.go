@@ -151,8 +151,8 @@ func Test_listRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Showing 1 session
 
-				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1            #101          OWNER/REPO  completed      about 6 hours ago
+				SESSION NAME  PULL REQUEST  REPO        SESSION STATE     CREATED
+				s1            #101          OWNER/REPO  Ready for review  about 6 hours ago
 			`),
 		},
 		{
@@ -177,7 +177,7 @@ func Test_listRun(t *testing.T) {
 					}, nil
 				}
 			},
-			wantOut: "s1\t#101\tOWNER/REPO\tcompleted\t" + sampleDateString + "\n", // header omitted for non-tty
+			wantOut: "s1\t#101\tOWNER/REPO\tReady for review\t" + sampleDateString + "\n", // header omitted for non-tty
 		},
 		{
 			name: "viewer-scoped many sessions (tty)",
@@ -240,7 +240,7 @@ func Test_listRun(t *testing.T) {
 						{
 							ID:           "id5",
 							Name:         "s5",
-							State:        "canceled",
+							State:        "cancelled",
 							CreatedAt:    sampleDate,
 							ResourceType: "pull",
 							PullRequest: &api.PullRequest{
@@ -269,13 +269,13 @@ func Test_listRun(t *testing.T) {
 			wantOut: heredoc.Doc(`
 				Showing 6 sessions
 
-				SESSION NAME  PULL REQUEST  REPO        SESSION STATE  CREATED
-				s1            #101          OWNER/REPO  completed      about 6 hours ago
-				s2            #102          OWNER/REPO  failed         about 6 hours ago
-				s3            #103          OWNER/REPO  in_progress    about 6 hours ago
-				s4            #104          OWNER/REPO  queued         about 6 hours ago
-				s5            #105          OWNER/REPO  canceled       about 6 hours ago
-				s6            #106          OWNER/REPO  mystery        about 6 hours ago
+				SESSION NAME  PULL REQUEST  REPO        SESSION STATE     CREATED
+				s1            #101          OWNER/REPO  Ready for review  about 6 hours ago
+				s2            #102          OWNER/REPO  Failed            about 6 hours ago
+				s3            #103          OWNER/REPO  In progress       about 6 hours ago
+				s4            #104          OWNER/REPO  Queued            about 6 hours ago
+				s5            #105          OWNER/REPO  Cancelled         about 6 hours ago
+				s6            #106          OWNER/REPO  mystery           about 6 hours ago
 			`),
 		},
 		{
