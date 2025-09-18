@@ -1200,7 +1200,7 @@ func TestListSessionsByResourceIDRequiresResource(t *testing.T) {
 }
 
 func TestListSessionsByResourceID(t *testing.T) {
-	sampleDateString := "2025-08-29T00:00:00Z"
+	sampleDateString := "2025-08-29T07:00:00Z"
 	sampleDate, err := time.Parse(time.RFC3339, sampleDateString)
 	require.NoError(t, err)
 
@@ -1226,16 +1226,14 @@ func TestListSessionsByResourceID(t *testing.T) {
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(
-						httpmock.QueryMatcher("GET", "agents/sessions/resource/pull/999", url.Values{
-							"page_number": {"1"},
-							"page_size":   {"50"},
-						}),
+						httpmock.QueryMatcher("GET", "agents/resource/pull/999", url.Values{}),
 						"api.githubcopilot.com",
 					),
-					httpmock.StringResponse(`{"sessions":[]}`),
+
+					httpmock.StatusStringResponse(404, "{}"),
 				)
 			},
-			wantOut: nil,
+			wantErr: "failed to list sessions",
 		},
 		{
 			name:  "single session",
@@ -1243,14 +1241,123 @@ func TestListSessionsByResourceID(t *testing.T) {
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(
-						httpmock.QueryMatcher("GET", "agents/sessions/resource/pull/999", url.Values{
-							"page_number": {"1"},
-							"page_size":   {"50"},
-						}),
+						httpmock.QueryMatcher("GET", "agents/resource/pull/999", url.Values{}),
 						"api.githubcopilot.com",
 					),
 					httpmock.StringResponse(heredoc.Docf(`
 						{
+							"id": "resource:pull:2000",
+							"user_id": 1,
+							"resource_global_id": "PR_kwDNA-jNB9A",
+							"resource_type": "pull",
+							"resource_id": 2000,
+							"session_count": 1,
+							"last_updated_at": 1756450800,
+							"state": "completed",
+							"resource_state": "draft",
+							"sessions": [
+								{
+									"id": "sess1",
+									"name": "Build artifacts",
+									"state": "completed",
+									"last_updated_at": 1756450800
+								}
+							]
+						}`,
+						sampleDateString,
+					)),
+				)
+				// GraphQL hydration
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "PullRequest",
+										"id": "PR_node",
+										"fullDatabaseId": "2000",
+										"number": 42,
+										"title": "Improve docs",
+										"state": "OPEN",
+										"isDraft": true,
+										"url": "https://github.com/OWNER/REPO/pull/42",
+										"body": "",
+										"createdAt": "%[1]s",
+										"updatedAt": "%[1]s",
+										"repository": {
+											"nameWithOwner": "OWNER/REPO"
+										}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: []*Session{
+				{
+					ID:            "sess1",
+					LastUpdatedAt: sampleDate,
+					Name:          "Build artifacts",
+					UserID:        1,
+					State:         "completed",
+					ResourceType:  "pull",
+					ResourceID:    2000,
+					PullRequest: &api.PullRequest{
+						ID:             "PR_node",
+						FullDatabaseID: "2000",
+						Number:         42,
+						Title:          "Improve docs",
+						State:          "OPEN",
+						IsDraft:        true,
+						URL:            "https://github.com/OWNER/REPO/pull/42",
+						Body:           "",
+						CreatedAt:      sampleDate,
+						UpdatedAt:      sampleDate,
+						Repository: &api.PRRepository{
+							NameWithOwner: "OWNER/REPO",
+						},
+					},
+					User: &api.GitHubUser{
+						Login:      "octocat",
+						Name:       "Octocat",
+						DatabaseID: 1,
+					},
+				},
+			},
+		},
+		{
+			name:    "multiple sessions",
+			perPage: 1, // to enforce pagination
+			limit:   2,
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(
+						httpmock.QueryMatcher("GET", "agents/resource/pull/999", url.Values{}),
+						"api.githubcopilot.com",
+					),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"id": "resource:pull:2000",
+							"user_id": 1,
+							"resource_global_id": "PR_kwDNA-jNB9A",
+							"resource_type": "pull",
+							"resource_id": 2000,
+							"session_count": 1,
+							"last_updated_at": 1756450800,
+							"state": "completed",
+							"resource_state": "draft",
 							"sessions": [
 								{
 									"id": "sess1",
@@ -1263,6 +1370,20 @@ func TestListSessionsByResourceID(t *testing.T) {
 									"repo_id": 1000,
 									"resource_type": "pull",
 									"resource_id": 2000,
+									"created_at": "%[1]s",
+									"premium_requests": 0.1
+								},
+								{
+									"id": "sess2",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "completed",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "pull",
+									"resource_id": 2001,
 									"created_at": "%[1]s",
 									"premium_requests": 0.1
 								}
@@ -1311,177 +1432,12 @@ func TestListSessionsByResourceID(t *testing.T) {
 			},
 			wantOut: []*Session{
 				{
-
-					ID:              "sess1",
-					Name:            "Build artifacts",
-					UserID:          1,
-					AgentID:         2,
-					Logs:            "",
-					State:           "completed",
-					OwnerID:         10,
-					RepoID:          1000,
-					ResourceType:    "pull",
-					ResourceID:      2000,
-					CreatedAt:       sampleDate,
-					PremiumRequests: 0.1,
-					PullRequest: &api.PullRequest{
-						ID:             "PR_node",
-						FullDatabaseID: "2000",
-						Number:         42,
-						Title:          "Improve docs",
-						State:          "OPEN",
-						IsDraft:        true,
-						URL:            "https://github.com/OWNER/REPO/pull/42",
-						Body:           "",
-						CreatedAt:      sampleDate,
-						UpdatedAt:      sampleDate,
-						Repository: &api.PRRepository{
-							NameWithOwner: "OWNER/REPO",
-						},
-					},
-					User: &api.GitHubUser{
-						Login:      "octocat",
-						Name:       "Octocat",
-						DatabaseID: 1,
-					},
-				},
-			},
-		},
-		{
-			name:    "multiple sessions, paginated",
-			perPage: 1, // to enforce pagination
-			limit:   2,
-			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.WithHost(
-						httpmock.QueryMatcher("GET", "agents/sessions/resource/pull/999", url.Values{
-							"page_number": {"1"},
-							"page_size":   {"1"},
-						}),
-						"api.githubcopilot.com",
-					),
-					httpmock.StringResponse(heredoc.Docf(`
-						{
-							"sessions": [
-								{
-									"id": "sess1",
-									"name": "Build artifacts",
-									"user_id": 1,
-									"agent_id": 2,
-									"logs": "",
-									"state": "completed",
-									"owner_id": 10,
-									"repo_id": 1000,
-									"resource_type": "pull",
-									"resource_id": 2000,
-									"created_at": "%[1]s",
-									"premium_requests": 0.1
-								}
-							]
-						}`,
-						sampleDateString,
-					)),
-				)
-
-				// Second page
-				reg.Register(
-					httpmock.WithHost(
-						httpmock.QueryMatcher("GET", "agents/sessions/resource/pull/999", url.Values{
-							"page_number": {"2"},
-							"page_size":   {"1"},
-						}),
-						"api.githubcopilot.com",
-					),
-					httpmock.StringResponse(heredoc.Docf(`
-						{
-							"sessions": [
-								{
-									"id": "sess2",
-									"name": "Build artifacts",
-									"user_id": 1,
-									"agent_id": 2,
-									"logs": "",
-									"state": "completed",
-									"owner_id": 10,
-									"repo_id": 1000,
-									"resource_type": "pull",
-									"resource_id": 2001,
-									"created_at": "%[1]s",
-									"premium_requests": 0.1
-								}
-							]
-						}`,
-						sampleDateString,
-					)),
-				)
-				// GraphQL hydration
-				reg.Register(
-					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
-					httpmock.GraphQLQuery(heredoc.Docf(`
-						{
-							"data": {
-								"nodes": [
-									{
-										"__typename": "PullRequest",
-										"id": "PR_node",
-										"fullDatabaseId": "2000",
-										"number": 42,
-										"title": "Improve docs",
-										"state": "OPEN",
-										"isDraft": true,
-										"url": "https://github.com/OWNER/REPO/pull/42",
-										"body": "",
-										"createdAt": "%[1]s",
-										"updatedAt": "%[1]s",
-										"repository": {
-											"nameWithOwner": "OWNER/REPO"
-										}
-									},
-									{
-										"__typename": "PullRequest",
-										"id": "PR_node",
-										"fullDatabaseId": "2001",
-										"number": 43,
-										"title": "Improve docs",
-										"state": "OPEN",
-										"isDraft": true,
-										"url": "https://github.com/OWNER/REPO/pull/43",
-										"body": "",
-										"createdAt": "%[1]s",
-										"updatedAt": "%[1]s",
-										"repository": {
-											"nameWithOwner": "OWNER/REPO"
-										}
-									},
-									{
-										"__typename": "User",
-										"login": "octocat",
-										"name": "Octocat",
-										"databaseId": 1
-									}
-								]
-							}
-						}`,
-						sampleDateString,
-					), func(q string, vars map[string]interface{}) {
-						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "PR_kwDNA-jNB9E", "U_kgAB"}, vars["ids"])
-					}),
-				)
-			},
-			wantOut: []*Session{
-				{
-					ID:              "sess1",
-					Name:            "Build artifacts",
-					UserID:          1,
-					AgentID:         2,
-					Logs:            "",
-					State:           "completed",
-					OwnerID:         10,
-					RepoID:          1000,
-					ResourceType:    "pull",
-					ResourceID:      2000,
-					CreatedAt:       sampleDate,
-					PremiumRequests: 0.1,
+					ID:           "sess1",
+					Name:         "Build artifacts",
+					UserID:       1,
+					State:        "completed",
+					ResourceType: "pull",
+					ResourceID:   2000,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
 						FullDatabaseID: "2000",
@@ -1504,26 +1460,20 @@ func TestListSessionsByResourceID(t *testing.T) {
 					},
 				},
 				{
-					ID:              "sess2",
-					Name:            "Build artifacts",
-					UserID:          1,
-					AgentID:         2,
-					Logs:            "",
-					State:           "completed",
-					OwnerID:         10,
-					RepoID:          1000,
-					ResourceType:    "pull",
-					ResourceID:      2001,
-					CreatedAt:       sampleDate,
-					PremiumRequests: 0.1,
+					ID:           "sess2",
+					Name:         "Build artifacts",
+					UserID:       1,
+					State:        "completed",
+					ResourceType: "pull",
+					ResourceID:   2000,
 					PullRequest: &api.PullRequest{
 						ID:             "PR_node",
-						FullDatabaseID: "2001",
-						Number:         43,
+						FullDatabaseID: "2000",
+						Number:         42,
 						Title:          "Improve docs",
 						State:          "OPEN",
 						IsDraft:        true,
-						URL:            "https://github.com/OWNER/REPO/pull/43",
+						URL:            "https://github.com/OWNER/REPO/pull/42",
 						Body:           "",
 						CreatedAt:      sampleDate,
 						UpdatedAt:      sampleDate,
@@ -1545,10 +1495,7 @@ func TestListSessionsByResourceID(t *testing.T) {
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(
-						httpmock.QueryMatcher("GET", "agents/sessions/resource/pull/999", url.Values{
-							"page_number": {"1"},
-							"page_size":   {"50"},
-						}),
+						httpmock.QueryMatcher("GET", "agents/resource/pull/999", url.Values{}),
 						"api.githubcopilot.com",
 					),
 					httpmock.StatusStringResponse(500, "{}"),
@@ -1561,10 +1508,7 @@ func TestListSessionsByResourceID(t *testing.T) {
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(
-						httpmock.QueryMatcher("GET", "agents/sessions/resource/pull/999", url.Values{
-							"page_number": {"1"},
-							"page_size":   {"50"},
-						}),
+						httpmock.QueryMatcher("GET", "agents/resource/pull/999", url.Values{}),
 						"api.githubcopilot.com",
 					),
 					httpmock.StringResponse(heredoc.Docf(`

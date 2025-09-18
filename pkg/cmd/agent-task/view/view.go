@@ -224,10 +224,6 @@ func viewRun(opts *ViewOptions) error {
 			prURL = pr.URL
 		}
 
-		// TODO(babakks): currently we just fetch a pre-defined number of
-		// matching sessions to avoid hitting the API too many times, but it's
-		// technically possible for a PR to be associated with lots of sessions
-		// (i.e. above our selected limit).
 		sessions, err := capiClient.ListSessionsByResourceID(ctx, "pull", prID, defaultLimit)
 		if err != nil {
 			return fmt.Errorf("failed to list sessions for pull request: %w", err)
