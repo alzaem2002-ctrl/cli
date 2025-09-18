@@ -19,10 +19,10 @@ var _ LogRenderer = &LogRendererMock{}
 //
 //		// make and configure a mocked LogRenderer
 //		mockedLogRenderer := &LogRendererMock{
-//			FollowFunc: func(fetcher func() ([]byte, error), w io.Writer, cs *iostreams.IOStreams) error {
+//			FollowFunc: func(fetcher func() ([]byte, error), w io.Writer, ioMoqParam *iostreams.IOStreams) error {
 //				panic("mock out the Follow method")
 //			},
-//			RenderFunc: func(logs []byte, w io.Writer, cs *iostreams.IOStreams) (bool, error) {
+//			RenderFunc: func(logs []byte, w io.Writer, ioMoqParam *iostreams.IOStreams) (bool, error) {
 //				panic("mock out the Render method")
 //			},
 //		}
@@ -33,10 +33,10 @@ var _ LogRenderer = &LogRendererMock{}
 //	}
 type LogRendererMock struct {
 	// FollowFunc mocks the Follow method.
-	FollowFunc func(fetcher func() ([]byte, error), w io.Writer, cs *iostreams.IOStreams) error
+	FollowFunc func(fetcher func() ([]byte, error), w io.Writer, ioMoqParam *iostreams.IOStreams) error
 
 	// RenderFunc mocks the Render method.
-	RenderFunc func(logs []byte, w io.Writer, cs *iostreams.IOStreams) (bool, error)
+	RenderFunc func(logs []byte, w io.Writer, ioMoqParam *iostreams.IOStreams) (bool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -46,8 +46,8 @@ type LogRendererMock struct {
 			Fetcher func() ([]byte, error)
 			// W is the w argument value.
 			W io.Writer
-			// Cs is the cs argument value.
-			Cs *iostreams.IOStreams
+			// IoMoqParam is the ioMoqParam argument value.
+			IoMoqParam *iostreams.IOStreams
 		}
 		// Render holds details about calls to the Render method.
 		Render []struct {
@@ -55,8 +55,8 @@ type LogRendererMock struct {
 			Logs []byte
 			// W is the w argument value.
 			W io.Writer
-			// Cs is the cs argument value.
-			Cs *iostreams.IOStreams
+			// IoMoqParam is the ioMoqParam argument value.
+			IoMoqParam *iostreams.IOStreams
 		}
 	}
 	lockFollow sync.RWMutex
@@ -64,23 +64,23 @@ type LogRendererMock struct {
 }
 
 // Follow calls FollowFunc.
-func (mock *LogRendererMock) Follow(fetcher func() ([]byte, error), w io.Writer, cs *iostreams.IOStreams) error {
+func (mock *LogRendererMock) Follow(fetcher func() ([]byte, error), w io.Writer, ioMoqParam *iostreams.IOStreams) error {
 	if mock.FollowFunc == nil {
 		panic("LogRendererMock.FollowFunc: method is nil but LogRenderer.Follow was just called")
 	}
 	callInfo := struct {
-		Fetcher func() ([]byte, error)
-		W       io.Writer
-		Cs      *iostreams.IOStreams
+		Fetcher    func() ([]byte, error)
+		W          io.Writer
+		IoMoqParam *iostreams.IOStreams
 	}{
-		Fetcher: fetcher,
-		W:       w,
-		Cs:      cs,
+		Fetcher:    fetcher,
+		W:          w,
+		IoMoqParam: ioMoqParam,
 	}
 	mock.lockFollow.Lock()
 	mock.calls.Follow = append(mock.calls.Follow, callInfo)
 	mock.lockFollow.Unlock()
-	return mock.FollowFunc(fetcher, w, cs)
+	return mock.FollowFunc(fetcher, w, ioMoqParam)
 }
 
 // FollowCalls gets all the calls that were made to Follow.
@@ -88,14 +88,14 @@ func (mock *LogRendererMock) Follow(fetcher func() ([]byte, error), w io.Writer,
 //
 //	len(mockedLogRenderer.FollowCalls())
 func (mock *LogRendererMock) FollowCalls() []struct {
-	Fetcher func() ([]byte, error)
-	W       io.Writer
-	Cs      *iostreams.IOStreams
+	Fetcher    func() ([]byte, error)
+	W          io.Writer
+	IoMoqParam *iostreams.IOStreams
 } {
 	var calls []struct {
-		Fetcher func() ([]byte, error)
-		W       io.Writer
-		Cs      *iostreams.IOStreams
+		Fetcher    func() ([]byte, error)
+		W          io.Writer
+		IoMoqParam *iostreams.IOStreams
 	}
 	mock.lockFollow.RLock()
 	calls = mock.calls.Follow
@@ -104,23 +104,23 @@ func (mock *LogRendererMock) FollowCalls() []struct {
 }
 
 // Render calls RenderFunc.
-func (mock *LogRendererMock) Render(logs []byte, w io.Writer, cs *iostreams.IOStreams) (bool, error) {
+func (mock *LogRendererMock) Render(logs []byte, w io.Writer, ioMoqParam *iostreams.IOStreams) (bool, error) {
 	if mock.RenderFunc == nil {
 		panic("LogRendererMock.RenderFunc: method is nil but LogRenderer.Render was just called")
 	}
 	callInfo := struct {
-		Logs []byte
-		W    io.Writer
-		Cs   *iostreams.IOStreams
+		Logs       []byte
+		W          io.Writer
+		IoMoqParam *iostreams.IOStreams
 	}{
-		Logs: logs,
-		W:    w,
-		Cs:   cs,
+		Logs:       logs,
+		W:          w,
+		IoMoqParam: ioMoqParam,
 	}
 	mock.lockRender.Lock()
 	mock.calls.Render = append(mock.calls.Render, callInfo)
 	mock.lockRender.Unlock()
-	return mock.RenderFunc(logs, w, cs)
+	return mock.RenderFunc(logs, w, ioMoqParam)
 }
 
 // RenderCalls gets all the calls that were made to Render.
@@ -128,14 +128,14 @@ func (mock *LogRendererMock) Render(logs []byte, w io.Writer, cs *iostreams.IOSt
 //
 //	len(mockedLogRenderer.RenderCalls())
 func (mock *LogRendererMock) RenderCalls() []struct {
-	Logs []byte
-	W    io.Writer
-	Cs   *iostreams.IOStreams
+	Logs       []byte
+	W          io.Writer
+	IoMoqParam *iostreams.IOStreams
 } {
 	var calls []struct {
-		Logs []byte
-		W    io.Writer
-		Cs   *iostreams.IOStreams
+		Logs       []byte
+		W          io.Writer
+		IoMoqParam *iostreams.IOStreams
 	}
 	mock.lockRender.RLock()
 	calls = mock.calls.Render
