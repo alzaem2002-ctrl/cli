@@ -483,7 +483,7 @@ func TestListLatestSessionsForViewer(t *testing.T) {
 					)),
 				)
 
-				// Page 2 returns older duplicate sessions for 3000 and 3001, plus another new PR 3002
+				// Page 2 returns older duplicate sessions for 3000, plus another new PR 3002
 				reg.Register(
 					httpmock.WithHost(
 						httpmock.QueryMatcher("GET", "agents/sessions", url.Values{
