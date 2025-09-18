@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/MakeNowJust/heredoc"
 	cmdCreate "github.com/cli/cli/v2/pkg/cmd/agent-task/create"
 	cmdList "github.com/cli/cli/v2/pkg/cmd/agent-task/list"
 	cmdView "github.com/cli/cli/v2/pkg/cmd/agent-task/view"
@@ -16,9 +17,37 @@ import (
 // NewCmdAgentTask creates the base `agent-task` command.
 func NewCmdAgentTask(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "agent-task",
+		Use:     "agent-task <command>",
 		Aliases: []string{"agent-tasks", "agent", "agents"},
-		Short:   "Manage agent tasks (preview)",
+		Short:   "Work with agent tasks (preview)",
+		Long: heredoc.Docf(`
+			Working with agent tasks in the GitHub CLI is currently preview and
+			is subject to change without notice.
+		`),
+		Annotations: map[string]string{
+			"help:arguments": heredoc.Doc(`
+				A task can be identified as argument in any of the following formats:
+				- by pull request number, e.g. "123"; or
+				- by session ID, e.g. "12345abc-12345-12345-12345-12345abc"; or
+				- by URL, e.g. "https://github.com/OWNER/REPO/pull/123/agent-sessions/12345bc-12345-12345-12345-12345abc";
+
+				Identifying tasks by pull request is not recommended for non-interactive use cases as
+				there may be multiple tasks for a given pull request that require disambiguation.
+			`),
+		},
+		Example: heredoc.Doc(`
+			# List your most recent agent tasks
+			$ gh agent-task list
+			
+			# Create a new agent task on the current repository
+			$ gh agent-task create "Improve the performance of the data processing pipeline"
+			
+			# View details about agent tasks associated with a pull request
+			$ gh agent-task view 123
+
+			# View details about a specific agent task
+			$ gh agent-task view 12345abc-12345-12345-12345-12345abc
+		`),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return requireOAuthToken(f)
 		},
