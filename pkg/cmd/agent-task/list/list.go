@@ -38,7 +38,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List agent tasks",
+		Short: "List agent tasks (preview)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.Limit < 1 {
