@@ -30,7 +30,7 @@ func SessionStateString(state string) string {
 	case "queued":
 		return "Queued"
 	case "in_progress":
-		return "In Progress"
+		return "In progress"
 	case "completed":
 		return "Ready for review"
 	case "failed":
@@ -38,9 +38,9 @@ func SessionStateString(state string) string {
 	case "idle":
 		return "Idle"
 	case "waiting_for_user":
-		return "Waiting for User"
+		return "Waiting for user"
 	case "timed_out":
-		return "Timed Out"
+		return "Timed out"
 	case "cancelled":
 		return "Cancelled"
 	default:
