@@ -139,7 +139,13 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 			if _, exists := seenResources[s.ResourceID]; exists {
 				continue
 			}
-			seenResources[s.ResourceID] = struct{}{}
+
+			// A zero resource ID is a temporary situation before a PR/resource
+			// is associated with the session. We should not mark such case as seen.
+			if s.ResourceID != 0 {
+				seenResources[s.ResourceID] = struct{}{}
+			}
+
 			latestSessions = append(latestSessions, s)
 			if len(latestSessions) >= limit {
 				break
