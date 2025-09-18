@@ -20,7 +20,7 @@ func NewCmdAgentTask(f *cmdutil.Factory) *cobra.Command {
 		Use:     "agent-task <command>",
 		Aliases: []string{"agent-tasks", "agent", "agents"},
 		Short:   "Work with agent tasks (preview)",
-		Long: heredoc.Docf(`
+		Long: heredoc.Doc(`
 			Working with agent tasks in the GitHub CLI is in preview and
 			subject to change without notice.
 		`),
