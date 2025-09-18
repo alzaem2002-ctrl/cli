@@ -513,7 +513,6 @@ func Test_viewRun(t *testing.T) {
 				Used 1.5 premium request(s)
 
 				X blah blah
-				See the detailed logs in GitHub Actions:
 				https://github.com/OWNER/REPO/actions/runs/9999
 
 				For detailed session logs, try:

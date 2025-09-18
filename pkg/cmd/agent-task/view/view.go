@@ -333,7 +333,9 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 		fmt.Fprintf(opts.IO.Out, "%s %s\n", cs.FailureIconWithColor(cs.Red), message)
 
 		if workflowRunURL != "" {
-			fmt.Fprintf(opts.IO.Out, "See the detailed logs in GitHub Actions:\n%s\n", workflowRunURL)
+			// We don't need to prefix the link with any text (e.g. "checkout the logs here")
+			// because the error message already contains all the information.
+			fmt.Fprintf(opts.IO.Out, "%s\n", workflowRunURL)
 		}
 	}
 
