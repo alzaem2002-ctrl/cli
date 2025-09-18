@@ -99,8 +99,8 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 	pageSize := defaultSessionsPerPage
 
 	sessions := make([]session, 0, limit+pageSize)
-	var seenResources []int64
-	var latestSessions []session
+	seenResources := make(map[int64]struct{})
+	latestSessions := make([]session, 0, limit)
 	for page := 1; ; page++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 		if err != nil {
@@ -128,18 +128,22 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
 		}
 
-		sessions = append(sessions, response.Sessions...)
+		// Process only the newly fetched page worth of sessions.
+		pageSessions := response.Sessions
+		sessions = append(sessions, pageSessions...)
 
 		// De-duplicate sessions by resource ID.
-		// Because the API returns newest first,
-		// we can safely skip any additional sessions
-		// for a resource we have already seen.
-		for _, s := range sessions {
-			if slices.Contains(seenResources, s.ResourceID) {
+		// Because the API returns newest first, once we've seen
+		// a resource ID we can ignore any older sessions for it.
+		for _, s := range pageSessions {
+			if _, exists := seenResources[s.ResourceID]; exists {
 				continue
 			}
-			seenResources = append(seenResources, s.ResourceID)
+			seenResources[s.ResourceID] = struct{}{}
 			latestSessions = append(latestSessions, s)
+			if len(latestSessions) >= limit {
+				break
+			}
 		}
 
 		if len(response.Sessions) < pageSize || len(latestSessions) >= limit {
