@@ -108,7 +108,6 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 	url := baseCAPIURL + "/agents/sessions"
 	pageSize := defaultSessionsPerPage
 
-	sessions := make([]session, 0, limit+pageSize)
 	seenResources := make(map[int64]struct{})
 	latestSessions := make([]session, 0, limit)
 	for page := 1; ; page++ {
@@ -140,7 +139,6 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 
 		// Process only the newly fetched page worth of sessions.
 		pageSessions := response.Sessions
-		sessions = append(sessions, pageSessions...)
 
 		// De-duplicate sessions by resource ID.
 		// Because the API returns newest first, once we've seen
