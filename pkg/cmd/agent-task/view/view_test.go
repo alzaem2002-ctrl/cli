@@ -346,6 +346,89 @@ func Test_viewRun(t *testing.T) {
 			`),
 		},
 		{
+			name: "with session id, success, with zero premium requests (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:              "some-session-id",
+						State:           "completed",
+						CreatedAt:       sampleDate,
+						CompletedAt:     sampleCompletedAt,
+						PremiumRequests: 0,
+						PullRequest: &api.PullRequest{
+							Title:  "fix something",
+							Number: 101,
+							URL:    "https://github.com/OWNER/REPO/pull/101",
+							Repository: &api.PRRepository{
+								NameWithOwner: "OWNER/REPO",
+							},
+						},
+						User: &api.GitHubUser{
+							Login: "octocat",
+						},
+					}, nil
+				}
+			},
+			wantOut: heredoc.Doc(`
+				Ready for review • fix something • OWNER/REPO#101
+				Started on behalf of octocat about 6 hours ago
+				Used 0 premium request(s) • Duration 5m0s
+
+				For detailed session logs, try:
+				gh agent-task view 'some-session-id' --log
+
+				View this session on GitHub:
+				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
+			`),
+		},
+		{
+			name: "with session id, success, duration not available (tty)",
+			tty:  true,
+			opts: ViewOptions{
+				SelectorArg: "some-session-id",
+				SessionID:   "some-session-id",
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:              "some-session-id",
+						State:           "in_progress",
+						CreatedAt:       sampleDate,
+						PremiumRequests: 1.5,
+						PullRequest: &api.PullRequest{
+							Title:  "fix something",
+							Number: 101,
+							URL:    "https://github.com/OWNER/REPO/pull/101",
+							Repository: &api.PRRepository{
+								NameWithOwner: "OWNER/REPO",
+							},
+						},
+						User: &api.GitHubUser{
+							Login: "octocat",
+						},
+					}, nil
+				}
+			},
+			wantOut: heredoc.Doc(`
+				In progress • fix something • OWNER/REPO#101
+				Started on behalf of octocat about 6 hours ago
+				Used 1.5 premium request(s)
+
+				For detailed session logs, try:
+				gh agent-task view 'some-session-id' --log
+
+				View this session on GitHub:
+				https://github.com/OWNER/REPO/pull/101/agent-sessions/some-session-id
+			`),
+		},
+		{
 			name: "with session id, not found, web mode (tty)",
 			tty:  true,
 			opts: ViewOptions{

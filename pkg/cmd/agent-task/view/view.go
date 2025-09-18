@@ -307,20 +307,15 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 		fmt.Fprintf(opts.IO.Out, "Started %s\n", text.FuzzyAgo(time.Now(), session.CreatedAt))
 	}
 
-	additionalNotes := make([]string, 0, 2)
+	usedPremiumRequests := strings.TrimSuffix(fmt.Sprintf("%.1f", session.PremiumRequests), ".0")
+	usedPremiumRequestsNote := fmt.Sprintf("Used %s premium request(s)", usedPremiumRequests)
 
-	if session.PremiumRequests > 0 {
-		s := strings.TrimSuffix(fmt.Sprintf("%.1f", session.PremiumRequests), ".0")
-		additionalNotes = append(additionalNotes, fmt.Sprintf("Used %s premium request(s)", s))
-	}
-
+	var durationNote string
 	if session.CompletedAt.After(session.CreatedAt) {
-		additionalNotes = append(additionalNotes, fmt.Sprintf("Duration %s", session.CompletedAt.Sub(session.CreatedAt).Round(time.Second).String()))
+		durationNote = fmt.Sprintf(" • Duration %s", session.CompletedAt.Sub(session.CreatedAt).Round(time.Second).String())
 	}
 
-	if len(additionalNotes) > 0 {
-		fmt.Fprintf(opts.IO.Out, "%s\n", cs.Muted(strings.Join(additionalNotes, " • ")))
-	}
+	fmt.Fprintf(opts.IO.Out, "%s%s\n", cs.Muted(usedPremiumRequestsNote), cs.Muted(durationNote))
 
 	if !opts.Log {
 		fmt.Fprintln(opts.IO.Out, "")
