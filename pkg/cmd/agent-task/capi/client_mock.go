@@ -33,14 +33,11 @@ var _ CapiClient = &CapiClientMock{}
 //			GetSessionLogsFunc: func(ctx context.Context, id string) ([]byte, error) {
 //				panic("mock out the GetSessionLogs method")
 //			},
+//			ListLatestSessionsForViewerFunc: func(ctx context.Context, limit int) ([]*Session, error) {
+//				panic("mock out the ListLatestSessionsForViewer method")
+//			},
 //			ListSessionsByResourceIDFunc: func(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error) {
 //				panic("mock out the ListSessionsByResourceID method")
-//			},
-//			ListSessionsForRepoFunc: func(ctx context.Context, owner string, repo string, limit int) ([]*Session, error) {
-//				panic("mock out the ListSessionsForRepo method")
-//			},
-//			ListSessionsForViewerFunc: func(ctx context.Context, limit int) ([]*Session, error) {
-//				panic("mock out the ListSessionsForViewer method")
 //			},
 //		}
 //
@@ -64,14 +61,11 @@ type CapiClientMock struct {
 	// GetSessionLogsFunc mocks the GetSessionLogs method.
 	GetSessionLogsFunc func(ctx context.Context, id string) ([]byte, error)
 
+	// ListLatestSessionsForViewerFunc mocks the ListLatestSessionsForViewer method.
+	ListLatestSessionsForViewerFunc func(ctx context.Context, limit int) ([]*Session, error)
+
 	// ListSessionsByResourceIDFunc mocks the ListSessionsByResourceID method.
 	ListSessionsByResourceIDFunc func(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error)
-
-	// ListSessionsForRepoFunc mocks the ListSessionsForRepo method.
-	ListSessionsForRepoFunc func(ctx context.Context, owner string, repo string, limit int) ([]*Session, error)
-
-	// ListSessionsForViewerFunc mocks the ListSessionsForViewer method.
-	ListSessionsForViewerFunc func(ctx context.Context, limit int) ([]*Session, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -126,6 +120,13 @@ type CapiClientMock struct {
 			// ID is the id argument value.
 			ID string
 		}
+		// ListLatestSessionsForViewer holds details about calls to the ListLatestSessionsForViewer method.
+		ListLatestSessionsForViewer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Limit is the limit argument value.
+			Limit int
+		}
 		// ListSessionsByResourceID holds details about calls to the ListSessionsByResourceID method.
 		ListSessionsByResourceID []struct {
 			// Ctx is the ctx argument value.
@@ -137,33 +138,14 @@ type CapiClientMock struct {
 			// Limit is the limit argument value.
 			Limit int
 		}
-		// ListSessionsForRepo holds details about calls to the ListSessionsForRepo method.
-		ListSessionsForRepo []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Owner is the owner argument value.
-			Owner string
-			// Repo is the repo argument value.
-			Repo string
-			// Limit is the limit argument value.
-			Limit int
-		}
-		// ListSessionsForViewer holds details about calls to the ListSessionsForViewer method.
-		ListSessionsForViewer []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Limit is the limit argument value.
-			Limit int
-		}
 	}
-	lockCreateJob                sync.RWMutex
-	lockGetJob                   sync.RWMutex
-	lockGetPullRequestDatabaseID sync.RWMutex
-	lockGetSession               sync.RWMutex
-	lockGetSessionLogs           sync.RWMutex
-	lockListSessionsByResourceID sync.RWMutex
-	lockListSessionsForRepo      sync.RWMutex
-	lockListSessionsForViewer    sync.RWMutex
+	lockCreateJob                   sync.RWMutex
+	lockGetJob                      sync.RWMutex
+	lockGetPullRequestDatabaseID    sync.RWMutex
+	lockGetSession                  sync.RWMutex
+	lockGetSessionLogs              sync.RWMutex
+	lockListLatestSessionsForViewer sync.RWMutex
+	lockListSessionsByResourceID    sync.RWMutex
 }
 
 // CreateJob calls CreateJobFunc.
@@ -378,6 +360,42 @@ func (mock *CapiClientMock) GetSessionLogsCalls() []struct {
 	return calls
 }
 
+// ListLatestSessionsForViewer calls ListLatestSessionsForViewerFunc.
+func (mock *CapiClientMock) ListLatestSessionsForViewer(ctx context.Context, limit int) ([]*Session, error) {
+	if mock.ListLatestSessionsForViewerFunc == nil {
+		panic("CapiClientMock.ListLatestSessionsForViewerFunc: method is nil but CapiClient.ListLatestSessionsForViewer was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Limit int
+	}{
+		Ctx:   ctx,
+		Limit: limit,
+	}
+	mock.lockListLatestSessionsForViewer.Lock()
+	mock.calls.ListLatestSessionsForViewer = append(mock.calls.ListLatestSessionsForViewer, callInfo)
+	mock.lockListLatestSessionsForViewer.Unlock()
+	return mock.ListLatestSessionsForViewerFunc(ctx, limit)
+}
+
+// ListLatestSessionsForViewerCalls gets all the calls that were made to ListLatestSessionsForViewer.
+// Check the length with:
+//
+//	len(mockedCapiClient.ListLatestSessionsForViewerCalls())
+func (mock *CapiClientMock) ListLatestSessionsForViewerCalls() []struct {
+	Ctx   context.Context
+	Limit int
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Limit int
+	}
+	mock.lockListLatestSessionsForViewer.RLock()
+	calls = mock.calls.ListLatestSessionsForViewer
+	mock.lockListLatestSessionsForViewer.RUnlock()
+	return calls
+}
+
 // ListSessionsByResourceID calls ListSessionsByResourceIDFunc.
 func (mock *CapiClientMock) ListSessionsByResourceID(ctx context.Context, resourceType string, resourceID int64, limit int) ([]*Session, error) {
 	if mock.ListSessionsByResourceIDFunc == nil {
@@ -419,85 +437,5 @@ func (mock *CapiClientMock) ListSessionsByResourceIDCalls() []struct {
 	mock.lockListSessionsByResourceID.RLock()
 	calls = mock.calls.ListSessionsByResourceID
 	mock.lockListSessionsByResourceID.RUnlock()
-	return calls
-}
-
-// ListSessionsForRepo calls ListSessionsForRepoFunc.
-func (mock *CapiClientMock) ListSessionsForRepo(ctx context.Context, owner string, repo string, limit int) ([]*Session, error) {
-	if mock.ListSessionsForRepoFunc == nil {
-		panic("CapiClientMock.ListSessionsForRepoFunc: method is nil but CapiClient.ListSessionsForRepo was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		Owner string
-		Repo  string
-		Limit int
-	}{
-		Ctx:   ctx,
-		Owner: owner,
-		Repo:  repo,
-		Limit: limit,
-	}
-	mock.lockListSessionsForRepo.Lock()
-	mock.calls.ListSessionsForRepo = append(mock.calls.ListSessionsForRepo, callInfo)
-	mock.lockListSessionsForRepo.Unlock()
-	return mock.ListSessionsForRepoFunc(ctx, owner, repo, limit)
-}
-
-// ListSessionsForRepoCalls gets all the calls that were made to ListSessionsForRepo.
-// Check the length with:
-//
-//	len(mockedCapiClient.ListSessionsForRepoCalls())
-func (mock *CapiClientMock) ListSessionsForRepoCalls() []struct {
-	Ctx   context.Context
-	Owner string
-	Repo  string
-	Limit int
-} {
-	var calls []struct {
-		Ctx   context.Context
-		Owner string
-		Repo  string
-		Limit int
-	}
-	mock.lockListSessionsForRepo.RLock()
-	calls = mock.calls.ListSessionsForRepo
-	mock.lockListSessionsForRepo.RUnlock()
-	return calls
-}
-
-// ListSessionsForViewer calls ListSessionsForViewerFunc.
-func (mock *CapiClientMock) ListSessionsForViewer(ctx context.Context, limit int) ([]*Session, error) {
-	if mock.ListSessionsForViewerFunc == nil {
-		panic("CapiClientMock.ListSessionsForViewerFunc: method is nil but CapiClient.ListSessionsForViewer was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		Limit int
-	}{
-		Ctx:   ctx,
-		Limit: limit,
-	}
-	mock.lockListSessionsForViewer.Lock()
-	mock.calls.ListSessionsForViewer = append(mock.calls.ListSessionsForViewer, callInfo)
-	mock.lockListSessionsForViewer.Unlock()
-	return mock.ListSessionsForViewerFunc(ctx, limit)
-}
-
-// ListSessionsForViewerCalls gets all the calls that were made to ListSessionsForViewer.
-// Check the length with:
-//
-//	len(mockedCapiClient.ListSessionsForViewerCalls())
-func (mock *CapiClientMock) ListSessionsForViewerCalls() []struct {
-	Ctx   context.Context
-	Limit int
-} {
-	var calls []struct {
-		Ctx   context.Context
-		Limit int
-	}
-	mock.lockListSessionsForViewer.RLock()
-	calls = mock.calls.ListSessionsForViewer
-	mock.lockListSessionsForViewer.RUnlock()
 	return calls
 }

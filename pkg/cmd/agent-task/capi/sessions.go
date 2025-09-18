@@ -88,9 +88,9 @@ type Session struct {
 	User        *api.GitHubUser
 }
 
-// ListSessionsForViewer lists all agent sessions for the
+// ListLatestSessionsForViewer lists all agent sessions for the
 // authenticated user up to limit.
-func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*Session, error) {
+func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int) ([]*Session, error) {
 	if limit == 0 {
 		return nil, nil
 	}
@@ -99,7 +99,8 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 	pageSize := defaultSessionsPerPage
 
 	sessions := make([]session, 0, limit+pageSize)
-
+	seenResources := make(map[int64]struct{})
+	latestSessions := make([]session, 0, limit)
 	for page := 1; ; page++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 		if err != nil {
@@ -109,6 +110,7 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 		q := req.URL.Query()
 		q.Set("page_size", strconv.Itoa(pageSize))
 		q.Set("page_number", strconv.Itoa(page))
+		q.Set("sort", "last_updated_at,desc")
 		req.URL.RawQuery = q.Encode()
 
 		res, err := c.httpClient.Do(req)
@@ -126,81 +128,45 @@ func (c *CAPIClient) ListSessionsForViewer(ctx context.Context, limit int) ([]*S
 			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
 		}
 
-		sessions = append(sessions, response.Sessions...)
-		if len(response.Sessions) < pageSize || len(sessions) >= limit {
+		// Process only the newly fetched page worth of sessions.
+		pageSessions := response.Sessions
+		sessions = append(sessions, pageSessions...)
+
+		// De-duplicate sessions by resource ID.
+		// Because the API returns newest first, once we've seen
+		// a resource ID we can ignore any older sessions for it.
+		for _, s := range pageSessions {
+			if _, exists := seenResources[s.ResourceID]; exists {
+				continue
+			}
+
+			// A zero resource ID is a temporary situation before a PR/resource
+			// is associated with the session. We should not mark such case as seen.
+			if s.ResourceID != 0 {
+				seenResources[s.ResourceID] = struct{}{}
+			}
+
+			latestSessions = append(latestSessions, s)
+			if len(latestSessions) >= limit {
+				break
+			}
+		}
+
+		if len(response.Sessions) < pageSize || len(latestSessions) >= limit {
 			break
 		}
 	}
 
 	// Drop any above the limit
-	if len(sessions) > limit {
-		sessions = sessions[:limit]
+	if len(latestSessions) > limit {
+		latestSessions = latestSessions[:limit]
 	}
 
-	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
+	result, err := c.hydrateSessionPullRequestsAndUsers(latestSessions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
 	}
 
-	return result, nil
-}
-
-// ListSessionsForRepo lists agent sessions for a specific repository identified by owner/name up to limit.
-func (c *CAPIClient) ListSessionsForRepo(ctx context.Context, owner string, repo string, limit int) ([]*Session, error) {
-	if owner == "" || repo == "" {
-		return nil, fmt.Errorf("owner and repo are required")
-	}
-
-	if limit == 0 {
-		return nil, nil
-	}
-
-	url := fmt.Sprintf("%s/agents/sessions/nwo/%s/%s", baseCAPIURL, url.PathEscape(owner), url.PathEscape(repo))
-	pageSize := defaultSessionsPerPage
-
-	sessions := make([]session, 0, limit+pageSize)
-
-	for page := 1; ; page++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-		if err != nil {
-			return nil, err
-		}
-
-		q := req.URL.Query()
-		q.Set("page_size", strconv.Itoa(pageSize))
-		q.Set("page_number", strconv.Itoa(page))
-		req.URL.RawQuery = q.Encode()
-
-		res, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("failed to list sessions: %s", res.Status)
-		}
-		var response struct {
-			Sessions []session `json:"sessions"`
-		}
-		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
-		}
-
-		sessions = append(sessions, response.Sessions...)
-		if len(response.Sessions) < pageSize || len(sessions) >= limit {
-			break
-		}
-	}
-
-	// Drop any above the limit
-	if len(sessions) > limit {
-		sessions = sessions[:limit]
-	}
-
-	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch session resources: %w", err)
-	}
 	return result, nil
 }
 
