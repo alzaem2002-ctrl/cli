@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cli/cli/v2/internal/browser"
-	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/cli/cli/v2/internal/tableprinter"
 	"github.com/cli/cli/v2/internal/text"
 	"github.com/cli/cli/v2/pkg/cmd/agent-task/capi"
@@ -24,7 +23,6 @@ type ListOptions struct {
 	IO         *iostreams.IOStreams
 	Limit      int
 	CapiClient func() (capi.CapiClient, error)
-	BaseRepo   func() (ghrepo.Interface, error)
 	Web        bool
 	Browser    browser.Browser
 }
@@ -43,9 +41,6 @@ func NewCmdList(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Short: "List agent tasks",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Support -R/--repo override
-			opts.BaseRepo = f.BaseRepo
-
 			if opts.Limit < 1 {
 				return cmdutil.FlagErrorf("invalid limit: %v", opts.Limit)
 			}
