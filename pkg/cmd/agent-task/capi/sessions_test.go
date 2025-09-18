@@ -588,7 +588,7 @@ func TestListLatestSessionsForViewer(t *testing.T) {
 						}`,
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
-						// Expected encoded node IDs for resource IDs 3000,3001,3002
+						// Expected encoded node IDs for resource IDs 3000,3001,3002 and user octocat
 						assert.Equal(t, []interface{}{"PR_kwDNA-jNC7g", "PR_kwDNA-jNC7k", "PR_kwDNA-jNC7o", "U_kgAB"}, vars["ids"])
 					}),
 				)
@@ -680,6 +680,198 @@ func TestListLatestSessionsForViewer(t *testing.T) {
 						},
 					},
 					User: &api.GitHubUser{Login: "octocat", Name: "Octocat", DatabaseID: 1},
+				},
+			},
+		},
+		{
+			name:    "multiple pages with zero resource IDs all kept",
+			perPage: 2,
+			limit:   3,
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				// Page 1 returns newest sessions, one with a zero resource ID
+				reg.Register(
+					httpmock.WithHost(
+						httpmock.QueryMatcher("GET", "agents/sessions", url.Values{
+							"page_number": {"1"},
+							"page_size":   {"2"},
+							"sort":        {"last_updated_at,desc"},
+						}),
+						"api.githubcopilot.com",
+					),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"sessions": [
+								{
+									"id": "sessA-new",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "completed",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "pull",
+									"resource_id": 3000,
+									"created_at": "%[1]s"
+								},
+								{
+									"id": "sessB-new",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "queued",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "",
+									"resource_id": 0,
+									"created_at": "%[1]s"
+								}
+							]
+						}`,
+						sampleDateString,
+					)),
+				)
+
+				// Page 2 returns older duplicate sessions for 3000, plus another new session with zero resource ID
+				reg.Register(
+					httpmock.WithHost(
+						httpmock.QueryMatcher("GET", "agents/sessions", url.Values{
+							"page_number": {"2"},
+							"page_size":   {"2"},
+							"sort":        {"last_updated_at,desc"},
+						}),
+						"api.githubcopilot.com",
+					),
+					httpmock.StringResponse(heredoc.Docf(`
+						{
+							"sessions": [
+								{
+									"id": "sessA-old",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "completed",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "pull",
+									"resource_id": 3000,
+									"created_at": "%[1]s"
+								},
+								{
+									"id": "sessC-new",
+									"name": "Build artifacts",
+									"user_id": 1,
+									"agent_id": 2,
+									"logs": "",
+									"state": "queued",
+									"owner_id": 10,
+									"repo_id": 1000,
+									"resource_type": "",
+									"resource_id": 0,
+									"created_at": "%[1]s"
+								}
+							]
+						}`,
+						sampleDateString,
+					)),
+				)
+
+				// GraphQL hydration for PRs 3000 and user 1
+				reg.Register(
+					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
+					httpmock.GraphQLQuery(heredoc.Docf(`
+						{
+							"data": {
+								"nodes": [
+									{
+										"__typename": "PullRequest",
+										"id": "PR_node3000",
+										"fullDatabaseId": "3000",
+										"number": 100,
+										"title": "Improve docs",
+										"state": "OPEN",
+										"isDraft": true,
+										"url": "https://github.com/OWNER/REPO/pull/100",
+										"body": "",
+										"createdAt": "%[1]s",
+										"updatedAt": "%[1]s",
+										"repository": {"nameWithOwner": "OWNER/REPO"}
+									},
+									{
+										"__typename": "User",
+										"login": "octocat",
+										"name": "Octocat",
+										"databaseId": 1
+									}
+								]
+							}
+						}`,
+						sampleDateString,
+					), func(q string, vars map[string]interface{}) {
+						// Expected encoded node IDs for resource IDs 3000 and user octocat
+						assert.Equal(t, []interface{}{"PR_kwDNA-jNC7g", "U_kgAB"}, vars["ids"])
+					}),
+				)
+			},
+			wantOut: []*Session{
+				{
+					ID:           "sessA-new",
+					Name:         "Build artifacts",
+					UserID:       1,
+					AgentID:      2,
+					Logs:         "",
+					State:        "completed",
+					OwnerID:      10,
+					RepoID:       1000,
+					ResourceType: "pull",
+					ResourceID:   3000,
+					CreatedAt:    sampleDate,
+					PullRequest: &api.PullRequest{
+						ID:             "PR_node3000",
+						FullDatabaseID: "3000",
+						Number:         100,
+						Title:          "Improve docs",
+						State:          "OPEN",
+						IsDraft:        true,
+						URL:            "https://github.com/OWNER/REPO/pull/100",
+						Body:           "",
+						CreatedAt:      sampleDate,
+						UpdatedAt:      sampleDate,
+						Repository: &api.PRRepository{
+							NameWithOwner: "OWNER/REPO",
+						},
+					},
+					User: &api.GitHubUser{Login: "octocat", Name: "Octocat", DatabaseID: 1},
+				},
+				{
+					ID:           "sessB-new",
+					Name:         "Build artifacts",
+					UserID:       1,
+					AgentID:      2,
+					Logs:         "",
+					State:        "queued",
+					OwnerID:      10,
+					RepoID:       1000,
+					ResourceType: "",
+					ResourceID:   0,
+					CreatedAt:    sampleDate,
+					User:         &api.GitHubUser{Login: "octocat", Name: "Octocat", DatabaseID: 1},
+				},
+				{
+					ID:           "sessC-new",
+					Name:         "Build artifacts",
+					UserID:       1,
+					AgentID:      2,
+					Logs:         "",
+					State:        "queued",
+					OwnerID:      10,
+					RepoID:       1000,
+					ResourceType: "",
+					ResourceID:   0,
+					CreatedAt:    sampleDate,
+					User:         &api.GitHubUser{Login: "octocat", Name: "Octocat", DatabaseID: 1},
 				},
 			},
 		},
