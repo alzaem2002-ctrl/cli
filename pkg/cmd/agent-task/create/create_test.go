@@ -158,101 +158,41 @@ func Test_createRun(t *testing.T) {
 		wantErrIs        error
 	}{
 		{
-			name: "interactive with file prompts to edit with file contents",
-			opts: &CreateOptions{
-				BaseRepo:             func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
-				ProblemStatement:     "",
-				ProblemStatementFile: taskDescFile,
-				Prompter: &prompter.PrompterMock{
-					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
-						require.Equal(t, "Enter the task description", prompt)
-						require.Equal(t, "task description from file", defaultValue)
-						return "edited task description", nil
-					},
-					ConfirmFunc: func(message string, defaultValue bool) (bool, error) {
-						require.Equal(t, "Submit agent task", message)
-						return true, nil
-					},
-				},
-			},
+			name:  "interactive, problem statement from arg",
 			isTTY: true,
+			opts: &CreateOptions{
+				BaseRepo:         func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+				ProblemStatement: "task description from arg",
+			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
 					require.Equal(t, "OWNER", owner)
 					require.Equal(t, "REPO", repo)
-					require.Equal(t, "edited task description", problemStatement)
+					require.Equal(t, "task description from arg", problemStatement)
 					return &createdJobSuccessWithPR, nil
 				}
 			},
 			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
 		},
 		{
-			name: "interactively rejecting confirmation prompt aborts task creation",
+			name: "non-interactive, problem statement from arg",
 			opts: &CreateOptions{
 				BaseRepo:         func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
-				ProblemStatement: "",
-				Prompter: &prompter.PrompterMock{
-					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
-						require.Equal(t, "Enter the task description", prompt)
-						return "From editor", nil
-					},
-					ConfirmFunc: func(message string, defaultValue bool) (bool, error) {
-						require.Equal(t, "Submit agent task", message)
-						return false, nil
-					},
-				},
-			},
-			isTTY:      true,
-			wantErr:    "SilentError",
-			wantErrIs:  cmdutil.SilentError,
-			wantStdErr: "",
-		},
-		{
-			name:  "interactively entering task description with editor, no file",
-			isTTY: true,
-			opts: &CreateOptions{
-				BaseRepo: func() (ghrepo.Interface, error) {
-					return ghrepo.New("OWNER", "REPO"), nil
-				},
-				ProblemStatement: "",
-				Prompter: &prompter.PrompterMock{
-					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
-						require.Equal(t, "Enter the task description", prompt)
-						return "From editor", nil
-					},
-					ConfirmFunc: func(message string, defaultValue bool) (bool, error) {
-						require.Equal(t, "Submit agent task", message)
-						return true, nil
-					},
-				},
+				ProblemStatement: "task description from arg",
 			},
 			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
 				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
-					require.Equal(t, "From editor", problemStatement)
+					require.Equal(t, "OWNER", owner)
+					require.Equal(t, "REPO", repo)
+					require.Equal(t, "task description from arg", problemStatement)
 					return &createdJobSuccessWithPR, nil
 				}
 			},
 			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
 		},
 		{
-			name:  "empty task description from interactive prompt returns error",
+			name:  "interactive, problem statement from file",
 			isTTY: true,
-			opts: &CreateOptions{
-				BaseRepo: func() (ghrepo.Interface, error) {
-					return ghrepo.New("OWNER", "REPO"), nil
-				},
-				Prompter: &prompter.PrompterMock{
-					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
-						return "   ", nil
-					},
-				},
-			},
-			wantErr:    "SilentError",
-			wantErrIs:  cmdutil.SilentError,
-			wantStdErr: "a task description is required.\n",
-		},
-		{
-			name: "problem statement loaded from file non-interactively doesn't prompt or return error",
 			opts: &CreateOptions{
 				BaseRepo:             func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
 				ProblemStatement:     "",
@@ -269,24 +209,66 @@ func Test_createRun(t *testing.T) {
 			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
 		},
 		{
+			name: "non-interactive, problem statement loaded from file",
+			opts: &CreateOptions{
+				BaseRepo:             func() (ghrepo.Interface, error) { return ghrepo.New("OWNER", "REPO"), nil },
+				ProblemStatement:     "",
+				ProblemStatementFile: taskDescFile,
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
+					require.Equal(t, "OWNER", owner)
+					require.Equal(t, "REPO", repo)
+					require.Equal(t, "task description from file", problemStatement)
+					return &createdJobSuccessWithPR, nil
+				}
+			},
+			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
+		},
+		{
+			name:  "interactive, problem statement from prompt/editor",
+			isTTY: true,
+			opts: &CreateOptions{
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+				Prompter: &prompter.PrompterMock{
+					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
+						require.Equal(t, "Enter the task description", prompt)
+						return "From editor", nil
+					},
+				},
+			},
+			capiStubs: func(t *testing.T, m *capi.CapiClientMock) {
+				m.CreateJobFunc = func(ctx context.Context, owner, repo, problemStatement, baseBranch string) (*capi.Job, error) {
+					require.Equal(t, "From editor", problemStatement)
+					return &createdJobSuccessWithPR, nil
+				}
+			},
+			wantStdout: "https://github.com/OWNER/REPO/pull/42/agent-sessions/sess1\n",
+		},
+		{
+			name:  "interactive, empty task description from editor returns error",
+			isTTY: true,
+			opts: &CreateOptions{
+				BaseRepo: func() (ghrepo.Interface, error) {
+					return ghrepo.New("OWNER", "REPO"), nil
+				},
+				Prompter: &prompter.PrompterMock{
+					MarkdownEditorFunc: func(prompt, defaultValue string, blankAllowed bool) (string, error) {
+						return "   ", nil
+					},
+				},
+			},
+			wantErr: "a task description is required",
+		},
+		{
 			name: "missing repo returns error",
 			opts: &CreateOptions{
 				BaseRepo: func() (ghrepo.Interface, error) {
 					return nil, nil
 				}},
 			wantErr: "a repository is required; re-run in a repository or supply one with --repo owner/name",
-		},
-		{
-			name: "non-interactive empty description returns error",
-			opts: &CreateOptions{
-				BaseRepo: func() (ghrepo.Interface, error) {
-					return ghrepo.New("OWNER", "REPO"), nil
-				},
-				ProblemStatement: "",
-			},
-			wantErr:    "SilentError",
-			wantErrIs:  cmdutil.SilentError,
-			wantStdErr: "a task description is required.\n",
 		},
 		{
 			name: "problem statement loaded from arg non-interactively doesn't prompt or return error",

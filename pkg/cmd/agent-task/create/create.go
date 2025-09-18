@@ -121,36 +121,30 @@ func createRun(opts *CreateOptions) error {
 	}
 
 	if opts.ProblemStatement == "" {
-		// Load initial problem statement from file, if provided
 		if opts.ProblemStatementFile != "" {
 			fileContent, err := cmdutil.ReadFile(opts.ProblemStatementFile, opts.IO.In)
 			if err != nil {
-				return cmdutil.FlagErrorf("could not read task description file: %v", err)
+				return fmt.Errorf("could not read task description file: %w", err)
 			}
-			opts.ProblemStatement = strings.TrimSpace(string(fileContent))
-		}
 
-		if opts.IO.CanPrompt() {
+			trimmed := strings.TrimSpace(string(fileContent))
+			if trimmed == "" {
+				return errors.New("task description file cannot be empty")
+			}
+
+			opts.ProblemStatement = trimmed
+		} else {
 			desc, err := opts.Prompter.MarkdownEditor("Enter the task description", opts.ProblemStatement, false)
 			if err != nil {
 				return err
 			}
-			opts.ProblemStatement = strings.TrimSpace(desc)
-		}
-	}
 
-	if opts.ProblemStatement == "" {
-		fmt.Fprintf(opts.IO.ErrOut, "a task description is required.\n")
-		return cmdutil.SilentError
-	}
+			trimmed := strings.TrimSpace(string(desc))
+			if trimmed == "" {
+				return errors.New("a task description is required")
+			}
 
-	if opts.IO.CanPrompt() {
-		confirm, err := opts.Prompter.Confirm("Submit agent task", true)
-		if err != nil {
-			return err
-		}
-		if !confirm {
-			return cmdutil.SilentError
+			opts.ProblemStatement = trimmed
 		}
 	}
 
