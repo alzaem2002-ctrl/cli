@@ -682,22 +682,33 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:              "some-session-id",
-							State:           "completed",
-							CreatedAt:       sampleDate,
-							CompletedAt:     sampleCompletedAt,
-							PremiumRequests: 1.5,
-							PullRequest: &api.PullRequest{
-								Title:  "fix something",
-								Number: 101,
-								URL:    "https://github.com/OWNER/REPO/pull/101",
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
+							ID:            "some-session-id",
+							Name:          "session one",
+							State:         "completed",
+							LastUpdatedAt: sampleCompletedAt,
+							// Rest of the fields are not not meant to be used or relied upon
+						},
+					}, nil
+				}
+
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:              "some-session-id",
+						State:           "completed",
+						CreatedAt:       sampleDate,
+						CompletedAt:     sampleCompletedAt,
+						PremiumRequests: 1.5,
+						PullRequest: &api.PullRequest{
+							Title:  "fix something",
+							Number: 101,
+							URL:    "https://github.com/OWNER/REPO/pull/101",
+							Repository: &api.PRRepository{
+								NameWithOwner: "OWNER/REPO",
 							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+						},
+						User: &api.GitHubUser{
+							Login: "octocat",
 						},
 					}, nil
 				}
@@ -735,42 +746,42 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:              "some-session-id",
-							Name:            "session one",
-							State:           "completed",
-							CreatedAt:       sampleDate,
-							CompletedAt:     sampleCompletedAt,
-							PremiumRequests: 1.5,
-							PullRequest: &api.PullRequest{
-								Title:  "fix something",
-								Number: 101,
-								URL:    "https://github.com/OWNER/REPO/pull/101",
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+							ID:            "some-session-id",
+							Name:          "session one",
+							State:         "completed",
+							LastUpdatedAt: sampleCompletedAt,
+							// Rest of the fields are not not meant to be used or relied upon
 						},
 						{
-							ID:              "some-other-session-id",
-							Name:            "session two",
-							State:           "completed",
-							CreatedAt:       sampleDate,
-							CompletedAt:     sampleCompletedAt,
-							PremiumRequests: 1.5,
-							PullRequest: &api.PullRequest{
-								Title:  "fix something",
-								Number: 101,
-								URL:    "https://github.com/OWNER/REPO/pull/101",
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
+							ID:            "some-other-session-id",
+							Name:          "session two",
+							State:         "completed",
+							LastUpdatedAt: sampleCompletedAt,
+							// Rest of the fields are not not meant to be used or relied upon
+						},
+					}, nil
+				}
+
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:              "some-session-id",
+						Name:            "session one",
+						State:           "completed",
+						CreatedAt:       sampleDate,
+						LastUpdatedAt:   sampleCompletedAt,
+						CompletedAt:     sampleCompletedAt,
+						PremiumRequests: 1.5,
+						PullRequest: &api.PullRequest{
+							Title:  "fix something",
+							Number: 101,
+							URL:    "https://github.com/OWNER/REPO/pull/101",
+							Repository: &api.PRRepository{
+								NameWithOwner: "OWNER/REPO",
 							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+						},
+						User: &api.GitHubUser{
+							Login: "octocat",
 						},
 					}, nil
 				}
@@ -779,11 +790,11 @@ func Test_viewRun(t *testing.T) {
 				pm.RegisterSelect(
 					"Select a session",
 					[]string{
-						"✓ session one • about 6 hours ago",
-						"✓ session two • about 6 hours ago",
+						"✓ session one • updated about 5 hours ago",
+						"✓ session two • updated about 5 hours ago",
 					},
 					func(_, _ string, opts []string) (int, error) {
-						return prompter.IndexFor(opts, "✓ session one • about 6 hours ago")
+						return prompter.IndexFor(opts, "✓ session one • updated about 5 hours ago")
 					},
 				)
 			},
@@ -822,42 +833,42 @@ func Test_viewRun(t *testing.T) {
 					assert.Equal(t, defaultLimit, limit)
 					return []*capi.Session{
 						{
-							ID:              "some-session-id",
-							Name:            "session one",
-							State:           "completed",
-							CreatedAt:       sampleDate,
-							CompletedAt:     sampleCompletedAt,
-							PremiumRequests: 1.5,
-							PullRequest: &api.PullRequest{
-								Title:  "fix something",
-								Number: 101,
-								URL:    "https://github.com/OWNER/REPO/pull/101",
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
-							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+							ID:            "some-session-id",
+							Name:          "session one",
+							State:         "completed",
+							LastUpdatedAt: sampleCompletedAt,
+							// Rest of the fields are not not meant to be used or relied upon
 						},
 						{
-							ID:              "some-other-session-id",
-							Name:            "session two",
-							State:           "completed",
-							CreatedAt:       sampleDate,
-							CompletedAt:     sampleCompletedAt,
-							PremiumRequests: 1.5,
-							PullRequest: &api.PullRequest{
-								Title:  "fix something",
-								Number: 101,
-								URL:    "https://github.com/OWNER/REPO/pull/101",
-								Repository: &api.PRRepository{
-									NameWithOwner: "OWNER/REPO",
-								},
+							ID:            "some-other-session-id",
+							Name:          "session two",
+							State:         "completed",
+							LastUpdatedAt: sampleCompletedAt,
+							// Rest of the fields are not not meant to be used or relied upon
+						},
+					}, nil
+				}
+
+				m.GetSessionFunc = func(_ context.Context, id string) (*capi.Session, error) {
+					assert.Equal(t, "some-session-id", id)
+					return &capi.Session{
+						ID:              "some-session-id",
+						Name:            "session one",
+						State:           "completed",
+						CreatedAt:       sampleDate,
+						CompletedAt:     sampleCompletedAt,
+						LastUpdatedAt:   sampleCompletedAt,
+						PremiumRequests: 1.5,
+						PullRequest: &api.PullRequest{
+							Title:  "fix something",
+							Number: 101,
+							URL:    "https://github.com/OWNER/REPO/pull/101",
+							Repository: &api.PRRepository{
+								NameWithOwner: "OWNER/REPO",
 							},
-							User: &api.GitHubUser{
-								Login: "octocat",
-							},
+						},
+						User: &api.GitHubUser{
+							Login: "octocat",
 						},
 					}, nil
 				}
@@ -866,11 +877,11 @@ func Test_viewRun(t *testing.T) {
 				pm.RegisterSelect(
 					"Select a session",
 					[]string{
-						"✓ session one • about 6 hours ago",
-						"✓ session two • about 6 hours ago",
+						"✓ session one • updated about 5 hours ago",
+						"✓ session two • updated about 5 hours ago",
 					},
 					func(_, _ string, opts []string) (int, error) {
-						return prompter.IndexFor(opts, "✓ session one • about 6 hours ago")
+						return prompter.IndexFor(opts, "✓ session one • updated about 5 hours ago")
 					},
 				)
 			},

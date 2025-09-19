@@ -251,16 +251,16 @@ func viewRun(opts *ViewOptions) error {
 			return opts.Browser.Browse(webURL)
 		}
 
-		session = sessions[0]
+		selectedSession := sessions[0]
 		if len(sessions) > 1 {
 			now := time.Now()
 			options := make([]string, 0, len(sessions))
 			for _, session := range sessions {
 				options = append(options, fmt.Sprintf(
-					"%s %s • %s",
+					"%s %s • updated %s",
 					shared.SessionSymbol(cs, session.State),
 					session.Name,
-					text.FuzzyAgo(now, session.CreatedAt),
+					text.FuzzyAgo(now, session.LastUpdatedAt),
 				))
 			}
 
@@ -269,8 +269,20 @@ func viewRun(opts *ViewOptions) error {
 				return err
 			}
 
-			session = sessions[selected]
+			selectedSession = sessions[selected]
 		}
+
+		opts.IO.StartProgressIndicatorWithLabel("Fetching agent session...")
+		defer opts.IO.StopProgressIndicator()
+
+		// Sessions returned by ListSessionsByResourceID do not have all fields populated.
+		// So, we need to fetch the individual session to get all the details.
+		session, err = capiClient.GetSession(ctx, selectedSession.ID)
+		if err != nil {
+			return err
+		}
+
+		opts.IO.StopProgressIndicator()
 	}
 
 	if opts.Log {
