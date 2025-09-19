@@ -330,6 +330,10 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 		return nil, nil
 	}
 
+	// When the session is fetched via the resources endpoint, the session user
+	// ID can be zero, which means it's the viewer user.
+	var includeViewer bool
+
 	prNodeIds := make([]string, 0, len(sessions))
 	userNodeIds := make([]string, 0, len(sessions))
 	for _, session := range sessions {
@@ -343,9 +347,13 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 			}
 		}
 
-		userNodeId := generateUserNodeID(session.UserID)
-		if !slices.Contains(userNodeIds, userNodeId) {
-			userNodeIds = append(userNodeIds, userNodeId)
+		if session.UserID != 0 {
+			userNodeId := generateUserNodeID(session.UserID)
+			if !slices.Contains(userNodeIds, userNodeId) {
+				userNodeIds = append(userNodeIds, userNodeId)
+			}
+		} else {
+			includeViewer = true
 		}
 	}
 	apiClient := api.NewClientFromHTTP(c.httpClient)
@@ -356,6 +364,7 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 			PullRequest sessionPullRequest `graphql:"... on PullRequest"`
 			User        api.GitHubUser     `graphql:"... on User"`
 		} `graphql:"nodes(ids: $ids)"`
+		Viewer api.GitHubUser `graphql:"viewer @include(if: $includeViewer)"`
 	}
 
 	ids := make([]string, 0, len(prNodeIds)+len(userNodeIds))
@@ -365,7 +374,8 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 	// TODO handle pagination
 	host, _ := c.authCfg.DefaultHost()
 	err := apiClient.Query(host, "FetchPRsAndUsersForAgentTaskSessions", &resp, map[string]any{
-		"ids": ids,
+		"ids":           ids,
+		"includeViewer": includeViewer,
 	})
 
 	if err != nil {
@@ -401,7 +411,12 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 	for _, s := range sessions {
 		newSession := fromAPISession(s)
 		newSession.PullRequest = prMap[strconv.FormatInt(s.ResourceID, 10)]
-		newSession.User = userMap[s.UserID]
+		if s.UserID != 0 {
+			newSession.User = userMap[s.UserID]
+		} else {
+			newSession.UserID = resp.Viewer.DatabaseID
+			newSession.User = &resp.Viewer
+		}
 		newSessions = append(newSessions, newSession)
 	}
 
