@@ -215,6 +215,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -233,9 +234,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review • fix something • OWNER/REPO#101
+				Ready for review • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -258,6 +261,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -273,9 +277,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review • fix something • OWNER/REPO#101
+				Ready for review • session one
 				Started about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -298,6 +304,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -308,7 +315,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review
+				Ready for review • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
 
@@ -330,6 +337,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -337,7 +345,7 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review
+				Ready for review • session one
 				Started about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
 
@@ -358,6 +366,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 0,
@@ -376,9 +385,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review • fix something • OWNER/REPO#101
+				Ready for review • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 0 premium request(s) • Duration 5m0s
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -400,6 +411,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "in_progress",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						PremiumRequests: 1.5,
 						PullRequest: &api.PullRequest{
@@ -417,9 +429,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				In progress • fix something • OWNER/REPO#101
+				In progress • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s)
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -441,6 +455,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "failed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						PremiumRequests: 1.5,
 						Error: &capi.SessionError{
@@ -461,9 +476,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Failed • fix something • OWNER/REPO#101
+				Failed • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s)
+
+				OWNER/REPO#101 • fix something
 
 				X blah blah
 
@@ -487,6 +504,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "failed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						PremiumRequests: 1.5,
 						WorkflowRunID:   9999,
@@ -508,9 +526,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Failed • fix something • OWNER/REPO#101
+				Failed • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s)
+
+				OWNER/REPO#101 • fix something
 
 				X blah blah
 				https://github.com/OWNER/REPO/actions/runs/9999
@@ -696,6 +716,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -714,9 +735,11 @@ func Test_viewRun(t *testing.T) {
 				}
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review • fix something • OWNER/REPO#101
+				Ready for review • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -799,9 +822,11 @@ func Test_viewRun(t *testing.T) {
 				)
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review • fix something • OWNER/REPO#101
+				Ready for review • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log
@@ -886,9 +911,11 @@ func Test_viewRun(t *testing.T) {
 				)
 			},
 			wantOut: heredoc.Doc(`
-				Ready for review • fix something • OWNER/REPO#101
+				Ready for review • session one
 				Started on behalf of octocat about 6 hours ago
 				Used 1.5 premium request(s) • Duration 5m0s
+
+				OWNER/REPO#101 • fix something
 
 				For detailed session logs, try:
 				gh agent-task view 'some-session-id' --log

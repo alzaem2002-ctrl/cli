@@ -296,17 +296,10 @@ func viewRun(opts *ViewOptions) error {
 func printSession(opts *ViewOptions, session *capi.Session) {
 	cs := opts.IO.ColorScheme()
 
-	if session.PullRequest != nil {
-		fmt.Fprintf(opts.IO.Out, "%s • %s • %s%s\n",
-			shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)),
-			cs.Bold(session.PullRequest.Title),
-			session.PullRequest.Repository.NameWithOwner,
-			cs.ColorFromString(prShared.ColorForPRState(*session.PullRequest))(fmt.Sprintf("#%d", session.PullRequest.Number)),
-		)
-	} else {
-		// This can happen when the session is just created and a PR is not yet available for it
-		fmt.Fprintf(opts.IO.Out, "%s\n", shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)))
-	}
+	fmt.Fprintf(opts.IO.Out, "%s • %s\n",
+		shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)),
+		cs.Bold(session.Name),
+	)
 
 	if session.User != nil {
 		fmt.Fprintf(opts.IO.Out, "Started on behalf of %s %s\n", session.User.Login, text.FuzzyAgo(time.Now(), session.CreatedAt))
@@ -324,6 +317,15 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 	}
 
 	fmt.Fprintf(opts.IO.Out, "%s%s\n", cs.Muted(usedPremiumRequestsNote), cs.Muted(durationNote))
+
+	// Note that when the session is just created, a PR is not yet available for it.
+	if session.PullRequest != nil {
+		fmt.Fprintf(opts.IO.Out, "\n%s%s • %s\n",
+			session.PullRequest.Repository.NameWithOwner,
+			cs.ColorFromString(prShared.ColorForPRState(*session.PullRequest))(fmt.Sprintf("#%d", session.PullRequest.Number)),
+			cs.Bold(session.PullRequest.Title),
+		)
+	}
 
 	if session.Error != nil {
 		var workflowRunURL string
@@ -347,9 +349,9 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 	}
 
 	if !opts.Log {
-		fmt.Fprintf(opts.IO.Out, "\nFor detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID)
+		fmt.Fprint(opts.IO.Out, cs.Mutedf("\nFor detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID))
 	} else if !opts.Follow {
-		fmt.Fprintf(opts.IO.Out, "\nTo follow session logs, try:\ngh agent-task view '%s' --log --follow\n", session.ID)
+		fmt.Fprint(opts.IO.Out, cs.Mutedf("\nTo follow session logs, try:\ngh agent-task view '%s' --log --follow\n", session.ID))
 	}
 
 	if session.PullRequest != nil {
