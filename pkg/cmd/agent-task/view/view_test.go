@@ -572,6 +572,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -596,6 +597,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -970,6 +972,7 @@ func Test_viewRun(t *testing.T) {
 						{
 							ID:              "some-session-id",
 							State:           "completed",
+							Name:            "session one",
 							CreatedAt:       sampleDate,
 							CompletedAt:     sampleCompletedAt,
 							PremiumRequests: 1.5,
@@ -1127,6 +1130,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
@@ -1166,6 +1170,7 @@ func Test_viewRun(t *testing.T) {
 					return &capi.Session{
 						ID:              "some-session-id",
 						State:           "completed",
+						Name:            "session one",
 						CreatedAt:       sampleDate,
 						CompletedAt:     sampleCompletedAt,
 						PremiumRequests: 1.5,
