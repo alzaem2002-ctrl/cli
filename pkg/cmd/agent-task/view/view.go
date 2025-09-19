@@ -337,8 +337,7 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 		if message == "" {
 			message = "An error occurred"
 		}
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintf(opts.IO.Out, "%s %s\n", cs.FailureIconWithColor(cs.Red), message)
+		fmt.Fprintf(opts.IO.Out, "\n%s %s\n", cs.FailureIconWithColor(cs.Red), message)
 
 		if workflowRunURL != "" {
 			// We don't need to prefix the link with any text (e.g. "checkout the logs here")
@@ -348,16 +347,13 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 	}
 
 	if !opts.Log {
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintf(opts.IO.Out, "For detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID)
+		fmt.Fprintf(opts.IO.Out, "\nFor detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID)
 	} else if !opts.Follow {
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintf(opts.IO.Out, "To follow session logs, try:\ngh agent-task view '%s' --log --follow\n", session.ID)
+		fmt.Fprintf(opts.IO.Out, "\nTo follow session logs, try:\ngh agent-task view '%s' --log --follow\n", session.ID)
 	}
 
 	if session.PullRequest != nil {
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintln(opts.IO.Out, cs.Muted("View this session on GitHub:"))
+		fmt.Fprintln(opts.IO.Out, cs.Muted("\nView this session on GitHub:"))
 		fmt.Fprintln(opts.IO.Out, cs.Muted(fmt.Sprintf("%s/agent-sessions/%s", session.PullRequest.URL, url.PathEscape(session.ID))))
 	}
 }
