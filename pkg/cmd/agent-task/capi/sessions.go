@@ -339,6 +339,8 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 	for _, session := range sessions {
 		if session.ResourceType == "pull" {
 			prNodeID := session.ResourceGlobalID
+			// TODO: probably this can be dropped since the API should always
+			// keep returning the resource global ID.
 			if session.ResourceGlobalID == "" {
 				prNodeID = generatePullRequestNodeID(int64(session.RepoID), session.ResourceID)
 			}
