@@ -302,16 +302,19 @@ func (c *CAPIClient) ListSessionsByResourceID(ctx context.Context, resourceType 
 
 	sessions := make([]session, 0, len(response.Sessions))
 	for _, s := range response.Sessions {
-		sessions = append(sessions, session{
+		session := session{
 			ID:               s.SessionID,
 			Name:             s.Name,
 			UserID:           int64(response.UserID),
 			ResourceType:     response.ResourceType,
 			ResourceID:       response.ResourceID,
 			ResourceGlobalID: response.ResourceGlobalID,
-			LastUpdatedAt:    time.Unix(s.SessionLastUpdatedAt, 0),
 			State:            s.SessionState,
-		})
+		}
+		if s.SessionLastUpdatedAt != 0 {
+			session.LastUpdatedAt = time.Unix(s.SessionLastUpdatedAt, 0).UTC()
+		}
+		sessions = append(sessions, session)
 	}
 
 	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
