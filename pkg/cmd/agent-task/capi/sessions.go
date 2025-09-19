@@ -101,7 +101,7 @@ type SessionError struct {
 	Message string
 }
 
-type Resource struct {
+type resource struct {
 	ID                   string            `json:"id"`
 	UserID               uint64            `json:"user_id"`
 	ResourceType         string            `json:"resource_type"`
@@ -295,7 +295,7 @@ func (c *CAPIClient) ListSessionsByResourceID(ctx context.Context, resourceType 
 		return nil, fmt.Errorf("failed to list sessions: %s", res.Status)
 	}
 
-	var response Resource
+	var response resource
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 		return nil, fmt.Errorf("failed to decode sessions response: %w", err)
 	}
