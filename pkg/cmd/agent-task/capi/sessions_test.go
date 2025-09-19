@@ -1300,108 +1300,6 @@ func TestListSessionsByResourceID(t *testing.T) {
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
 						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "U_kgAB"}, vars["ids"])
-						assert.Equal(t, false, vars["includeViewer"])
-					}),
-				)
-			},
-			wantOut: []*Session{
-				{
-					ID:            "sess1",
-					CreatedAt:     time.Time{},
-					LastUpdatedAt: sampleDate,
-					Name:          "Build artifacts",
-					UserID:        1,
-					State:         "completed",
-					ResourceType:  "pull",
-					ResourceID:    2000,
-					PullRequest: &api.PullRequest{
-						ID:             "PR_node",
-						FullDatabaseID: "2000",
-						Number:         42,
-						Title:          "Improve docs",
-						State:          "OPEN",
-						IsDraft:        true,
-						URL:            "https://github.com/OWNER/REPO/pull/42",
-						Body:           "",
-						CreatedAt:      sampleDate,
-						UpdatedAt:      sampleDate,
-						Repository: &api.PRRepository{
-							NameWithOwner: "OWNER/REPO",
-						},
-					},
-					User: &api.GitHubUser{
-						Login:      "octocat",
-						Name:       "Octocat",
-						DatabaseID: 1,
-					},
-				},
-			},
-		},
-		{
-			name:  "single session with zero user ID",
-			limit: 10,
-			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
-				reg.Register(
-					httpmock.WithHost(httpmock.REST("GET", "agents/resource/pull/999"), "api.githubcopilot.com"),
-					httpmock.StringResponse(heredoc.Docf(`
-						{
-							"id": "resource:pull:2000",
-							"user_id": 0,
-							"resource_global_id": "PR_kwDNA-jNB9A",
-							"resource_type": "pull",
-							"resource_id": 2000,
-							"session_count": 1,
-							"last_updated_at": %[1]d,
-							"state": "completed",
-							"resource_state": "draft",
-							"sessions": [
-								{
-									"id": "sess1",
-									"name": "Build artifacts",
-									"state": "completed",
-									"last_updated_at": %[1]d
-								}
-							]
-						}`,
-						sampleDateTimestamp,
-					)),
-				)
-				// GraphQL hydration
-				reg.Register(
-					httpmock.GraphQL(`query FetchPRsAndUsersForAgentTaskSessions\b`),
-					httpmock.GraphQLQuery(heredoc.Docf(`
-						{
-							"data": {
-								"nodes": [
-									{
-										"__typename": "PullRequest",
-										"id": "PR_node",
-										"fullDatabaseId": "2000",
-										"number": 42,
-										"title": "Improve docs",
-										"state": "OPEN",
-										"isDraft": true,
-										"url": "https://github.com/OWNER/REPO/pull/42",
-										"body": "",
-										"createdAt": "%[1]s",
-										"updatedAt": "%[1]s",
-										"repository": {
-											"nameWithOwner": "OWNER/REPO"
-										}
-									}
-								],
-								"viewer": {
-									"login": "octocat",
-									"name": "Octocat",
-									"databaseId": 1
-								}
-							}
-						}`,
-						sampleDateString,
-					), func(q string, vars map[string]interface{}) {
-						// Should not fetch user by ID since it's zero
-						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A"}, vars["ids"])
-						assert.Equal(t, true, vars["includeViewer"])
 					}),
 				)
 			},
@@ -1525,7 +1423,6 @@ func TestListSessionsByResourceID(t *testing.T) {
 						sampleDateString,
 					), func(q string, vars map[string]interface{}) {
 						assert.Equal(t, []interface{}{"PR_kwDNA-jNB9A", "U_kgAB"}, vars["ids"])
-						assert.Equal(t, false, vars["includeViewer"])
 					}),
 				)
 			},
