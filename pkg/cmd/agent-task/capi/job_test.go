@@ -330,7 +330,17 @@ func TestCreateJob(t *testing.T) {
 			wantErr: "failed to create job: 500 Internal Server Error",
 		},
 		{
-			name: "invalid JSON response",
+			name: "invalid JSON response, non-HTTP 200",
+			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),
+					httpmock.StatusStringResponse(401, `Unauthorized`),
+				)
+			},
+			wantErr: "failed to create job: 401 Unauthorized",
+		},
+		{
+			name: "invalid JSON response, HTTP 200",
 			httpStubs: func(t *testing.T, reg *httpmock.Registry) {
 				reg.Register(
 					httpmock.WithHost(httpmock.REST("POST", "agents/swe/v1/jobs/OWNER/REPO"), "api.githubcopilot.com"),

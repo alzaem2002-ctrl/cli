@@ -90,6 +90,11 @@ func (c *CAPIClient) CreateJob(ctx context.Context, owner, repo, problemStatemen
 
 	var j Job
 	if err := json.NewDecoder(res.Body).Decode(&j); err != nil {
+		if res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusOK { // accept 201 or 200
+			// This happens when there's an error like unauthorized (401).
+			statusText := fmt.Sprintf("%d %s", res.StatusCode, http.StatusText(res.StatusCode))
+			return nil, fmt.Errorf("failed to create job: %s", statusText)
+		}
 		return nil, fmt.Errorf("failed to decode create job response: %w", err)
 	}
 
