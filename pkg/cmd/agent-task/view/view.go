@@ -224,10 +224,6 @@ func viewRun(opts *ViewOptions) error {
 			prURL = pr.URL
 		}
 
-		// TODO(babakks): currently we just fetch a pre-defined number of
-		// matching sessions to avoid hitting the API too many times, but it's
-		// technically possible for a PR to be associated with lots of sessions
-		// (i.e. above our selected limit).
 		sessions, err := capiClient.ListSessionsByResourceID(ctx, "pull", prID, defaultLimit)
 		if err != nil {
 			return fmt.Errorf("failed to list sessions for pull request: %w", err)
@@ -255,16 +251,16 @@ func viewRun(opts *ViewOptions) error {
 			return opts.Browser.Browse(webURL)
 		}
 
-		session = sessions[0]
+		selectedSession := sessions[0]
 		if len(sessions) > 1 {
 			now := time.Now()
 			options := make([]string, 0, len(sessions))
 			for _, session := range sessions {
 				options = append(options, fmt.Sprintf(
-					"%s %s • %s",
+					"%s %s • updated %s",
 					shared.SessionSymbol(cs, session.State),
 					session.Name,
-					text.FuzzyAgo(now, session.CreatedAt),
+					text.FuzzyAgo(now, session.LastUpdatedAt),
 				))
 			}
 
@@ -273,8 +269,20 @@ func viewRun(opts *ViewOptions) error {
 				return err
 			}
 
-			session = sessions[selected]
+			selectedSession = sessions[selected]
 		}
+
+		opts.IO.StartProgressIndicatorWithLabel("Fetching agent session...")
+		defer opts.IO.StopProgressIndicator()
+
+		// Sessions returned by ListSessionsByResourceID do not have all fields populated.
+		// So, we need to fetch the individual session to get all the details.
+		session, err = capiClient.GetSession(ctx, selectedSession.ID)
+		if err != nil {
+			return err
+		}
+
+		opts.IO.StopProgressIndicator()
 	}
 
 	if opts.Log {
@@ -288,17 +296,10 @@ func viewRun(opts *ViewOptions) error {
 func printSession(opts *ViewOptions, session *capi.Session) {
 	cs := opts.IO.ColorScheme()
 
-	if session.PullRequest != nil {
-		fmt.Fprintf(opts.IO.Out, "%s • %s • %s%s\n",
-			shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)),
-			cs.Bold(session.PullRequest.Title),
-			session.PullRequest.Repository.NameWithOwner,
-			cs.ColorFromString(prShared.ColorForPRState(*session.PullRequest))(fmt.Sprintf("#%d", session.PullRequest.Number)),
-		)
-	} else {
-		// This can happen when the session is just created and a PR is not yet available for it
-		fmt.Fprintf(opts.IO.Out, "%s\n", shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)))
-	}
+	fmt.Fprintf(opts.IO.Out, "%s • %s\n",
+		shared.ColorFuncForSessionState(*session, cs)(shared.SessionStateString(session.State)),
+		cs.Bold(session.Name),
+	)
 
 	if session.User != nil {
 		fmt.Fprintf(opts.IO.Out, "Started on behalf of %s %s\n", session.User.Login, text.FuzzyAgo(time.Now(), session.CreatedAt))
@@ -317,17 +318,44 @@ func printSession(opts *ViewOptions, session *capi.Session) {
 
 	fmt.Fprintf(opts.IO.Out, "%s%s\n", cs.Muted(usedPremiumRequestsNote), cs.Muted(durationNote))
 
+	// Note that when the session is just created, a PR is not yet available for it.
+	if session.PullRequest != nil {
+		fmt.Fprintf(opts.IO.Out, "\n%s%s • %s\n",
+			session.PullRequest.Repository.NameWithOwner,
+			cs.ColorFromString(prShared.ColorForPRState(*session.PullRequest))(fmt.Sprintf("#%d", session.PullRequest.Number)),
+			cs.Bold(session.PullRequest.Title),
+		)
+	}
+
+	if session.Error != nil {
+		var workflowRunURL string
+		if session.WorkflowRunID != 0 && session.PullRequest != nil {
+			if u, err := url.Parse(session.PullRequest.URL); err == nil {
+				workflowRunURL = fmt.Sprintf("%s://%s/%s/actions/runs/%d", u.Scheme, u.Host, session.PullRequest.Repository.NameWithOwner, session.WorkflowRunID)
+			}
+		}
+
+		message := session.Error.Message
+		if message == "" {
+			message = "An error occurred"
+		}
+		fmt.Fprintf(opts.IO.Out, "\n%s %s\n", cs.FailureIconWithColor(cs.Red), message)
+
+		if workflowRunURL != "" {
+			// We don't need to prefix the link with any text (e.g. "checkout the logs here")
+			// because the error message already contains all the information.
+			fmt.Fprintf(opts.IO.Out, "%s\n", workflowRunURL)
+		}
+	}
+
 	if !opts.Log {
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintf(opts.IO.Out, "For detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID)
+		fmt.Fprint(opts.IO.Out, cs.Mutedf("\nFor detailed session logs, try:\ngh agent-task view '%s' --log\n", session.ID))
 	} else if !opts.Follow {
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintf(opts.IO.Out, "To follow session logs, try:\ngh agent-task view '%s' --log --follow\n", session.ID)
+		fmt.Fprint(opts.IO.Out, cs.Mutedf("\nTo follow session logs, try:\ngh agent-task view '%s' --log --follow\n", session.ID))
 	}
 
 	if session.PullRequest != nil {
-		fmt.Fprintln(opts.IO.Out, "")
-		fmt.Fprintln(opts.IO.Out, cs.Muted("View this session on GitHub:"))
+		fmt.Fprintln(opts.IO.Out, cs.Muted("\nView this session on GitHub:"))
 		fmt.Fprintln(opts.IO.Out, cs.Muted(fmt.Sprintf("%s/agent-sessions/%s", session.PullRequest.URL, url.PathEscape(session.ID))))
 	}
 }

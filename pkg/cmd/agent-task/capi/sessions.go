@@ -27,22 +27,28 @@ var ErrSessionNotFound = errors.New("not found")
 
 // session is an in-flight agent task
 type session struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	UserID          int64     `json:"user_id"`
-	AgentID         int64     `json:"agent_id"`
-	Logs            string    `json:"logs"`
-	State           string    `json:"state"`
-	OwnerID         uint64    `json:"owner_id"`
-	RepoID          uint64    `json:"repo_id"`
-	ResourceType    string    `json:"resource_type"`
-	ResourceID      int64     `json:"resource_id"`
-	LastUpdatedAt   time.Time `json:"last_updated_at,omitempty"`
-	CreatedAt       time.Time `json:"created_at,omitempty"`
-	CompletedAt     time.Time `json:"completed_at,omitempty"`
-	EventURL        string    `json:"event_url"`
-	EventType       string    `json:"event_type"`
-	PremiumRequests float64   `json:"premium_requests"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	UserID           int64     `json:"user_id"`
+	AgentID          int64     `json:"agent_id"`
+	Logs             string    `json:"logs"`
+	State            string    `json:"state"`
+	OwnerID          uint64    `json:"owner_id"`
+	RepoID           uint64    `json:"repo_id"`
+	ResourceType     string    `json:"resource_type"`
+	ResourceID       int64     `json:"resource_id"`
+	ResourceGlobalID string    `json:"resource_global_id"`
+	LastUpdatedAt    time.Time `json:"last_updated_at,omitempty"`
+	CreatedAt        time.Time `json:"created_at,omitempty"`
+	CompletedAt      time.Time `json:"completed_at,omitempty"`
+	EventURL         string    `json:"event_url"`
+	EventType        string    `json:"event_type"`
+	PremiumRequests  float64   `json:"premium_requests"`
+	WorkflowRunID    uint64    `json:"workflow_run_id,omitempty"`
+	Error            *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
 }
 
 // A shim of a full pull request because looking up by node ID
@@ -83,9 +89,36 @@ type Session struct {
 	EventURL        string
 	EventType       string
 	PremiumRequests float64
+	WorkflowRunID   uint64
+	Error           *SessionError
 
 	PullRequest *api.PullRequest
 	User        *api.GitHubUser
+}
+
+type SessionError struct {
+	Code    string
+	Message string
+}
+
+type resource struct {
+	ID                   string            `json:"id"`
+	UserID               uint64            `json:"user_id"`
+	ResourceType         string            `json:"resource_type"`
+	ResourceID           int64             `json:"resource_id"`
+	ResourceGlobalID     string            `json:"resource_global_id"`
+	SessionCount         int               `json:"session_count"`
+	SessionLastUpdatedAt int64             `json:"last_updated_at"`
+	SessionState         string            `json:"state,omitempty"`
+	ResourceState        string            `json:"resource_state"`
+	Sessions             []resourceSession `json:"sessions"`
+}
+
+type resourceSession struct {
+	SessionID            string `json:"id"`
+	Name                 string `json:"name"`
+	SessionState         string `json:"state,omitempty"`
+	SessionLastUpdatedAt int64  `json:"last_updated_at"`
 }
 
 // ListLatestSessionsForViewer lists all agent sessions for the
@@ -98,7 +131,6 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 	url := baseCAPIURL + "/agents/sessions"
 	pageSize := defaultSessionsPerPage
 
-	sessions := make([]session, 0, limit+pageSize)
 	seenResources := make(map[int64]struct{})
 	latestSessions := make([]session, 0, limit)
 	for page := 1; ; page++ {
@@ -130,7 +162,6 @@ func (c *CAPIClient) ListLatestSessionsForViewer(ctx context.Context, limit int)
 
 		// Process only the newly fetched page worth of sessions.
 		pageSessions := response.Sessions
-		sessions = append(sessions, pageSessions...)
 
 		// De-duplicate sessions by resource ID.
 		// Because the API returns newest first, once we've seen
@@ -248,46 +279,42 @@ func (c *CAPIClient) ListSessionsByResourceID(ctx context.Context, resourceType 
 		return nil, nil
 	}
 
-	url := fmt.Sprintf("%s/agents/sessions/resource/%s/%d", baseCAPIURL, url.PathEscape(resourceType), resourceID)
-	pageSize := defaultSessionsPerPage
+	url := fmt.Sprintf("%s/agents/resource/%s/%d", baseCAPIURL, url.PathEscape(resourceType), resourceID)
 
-	sessions := make([]session, 0, limit+pageSize)
-
-	for page := 1; ; page++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-		if err != nil {
-			return nil, err
-		}
-
-		q := req.URL.Query()
-		q.Set("page_size", strconv.Itoa(pageSize))
-		q.Set("page_number", strconv.Itoa(page))
-		req.URL.RawQuery = q.Encode()
-
-		res, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("failed to list sessions: %s", res.Status)
-		}
-		var response struct {
-			Sessions []session `json:"sessions"`
-		}
-		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-			return nil, fmt.Errorf("failed to decode sessions response: %w", err)
-		}
-
-		sessions = append(sessions, response.Sessions...)
-		if len(response.Sessions) < pageSize || len(sessions) >= limit {
-			break
-		}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, err
 	}
 
-	// Drop any above the limit
-	if len(sessions) > limit {
-		sessions = sessions[:limit]
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to list sessions: %s", res.Status)
+	}
+
+	var response resource
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode sessions response: %w", err)
+	}
+
+	sessions := make([]session, 0, len(response.Sessions))
+	for _, s := range response.Sessions {
+		session := session{
+			ID:               s.SessionID,
+			Name:             s.Name,
+			UserID:           int64(response.UserID),
+			ResourceType:     response.ResourceType,
+			ResourceID:       response.ResourceID,
+			ResourceGlobalID: response.ResourceGlobalID,
+			State:            s.SessionState,
+		}
+		if s.SessionLastUpdatedAt != 0 {
+			session.LastUpdatedAt = time.Unix(s.SessionLastUpdatedAt, 0).UTC()
+		}
+		sessions = append(sessions, session)
 	}
 
 	result, err := c.hydrateSessionPullRequestsAndUsers(sessions)
@@ -307,7 +334,12 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 	userNodeIds := make([]string, 0, len(sessions))
 	for _, session := range sessions {
 		if session.ResourceType == "pull" {
-			prNodeID := generatePullRequestNodeID(int64(session.RepoID), session.ResourceID)
+			prNodeID := session.ResourceGlobalID
+			// TODO: probably this can be dropped since the API should always
+			// keep returning the resource global ID.
+			if session.ResourceGlobalID == "" {
+				prNodeID = generatePullRequestNodeID(int64(session.RepoID), session.ResourceID)
+			}
 			if !slices.Contains(prNodeIds, prNodeID) {
 				prNodeIds = append(prNodeIds, prNodeID)
 			}
@@ -442,7 +474,7 @@ func generateUserNodeID(userID int64) string {
 }
 
 func fromAPISession(s session) *Session {
-	return &Session{
+	result := Session{
 		ID:              s.ID,
 		Name:            s.Name,
 		UserID:          s.UserID,
@@ -459,5 +491,13 @@ func fromAPISession(s session) *Session {
 		EventURL:        s.EventURL,
 		EventType:       s.EventType,
 		PremiumRequests: s.PremiumRequests,
+		WorkflowRunID:   s.WorkflowRunID,
 	}
+	if s.Error != nil {
+		result.Error = &SessionError{
+			Code:    s.Error.Code,
+			Message: s.Error.Message,
+		}
+	}
+	return &result
 }
