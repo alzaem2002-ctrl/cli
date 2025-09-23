@@ -41,10 +41,9 @@ func NewCmdVerify(f *cmdutil.Factory, runF func(config *VerifyConfig) error) *co
 	opts := &VerifyOptions{}
 
 	cmd := &cobra.Command{
-		Use:    "verify [<tag>]",
-		Short:  "Verify the attestation for a GitHub Release.",
-		Hidden: true,
-		Args:   cobra.MaximumNArgs(1),
+		Use:   "verify [<tag>]",
+		Short: "Verify the attestation for a GitHub Release.",
+		Args:  cobra.MaximumNArgs(1),
 		Long: heredoc.Doc(`
 			Verify that a GitHub Release is accompanied by a valid cryptographically signed attestation.
 

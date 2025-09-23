@@ -55,8 +55,7 @@ func NewCmdVerifyAsset(f *cmdutil.Factory, runF func(*VerifyAssetConfig) error) 
 			* The asset's digest matches the subject in the attestation
 			* The attestation is associated with the specified release
 		`),
-		Hidden: true,
-		Args:   cobra.MaximumNArgs(2),
+		Args: cobra.MaximumNArgs(2),
 		Example: heredoc.Doc(`
 			# Verify an asset from the latest release
 			$ gh release verify-asset ./dist/my-asset.zip
