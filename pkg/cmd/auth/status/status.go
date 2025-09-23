@@ -19,40 +19,56 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type authEntryState string
+
+const (
+	authEntryStateSuccess = "success"
+	authEntryStateTimeout = "timeout"
+	authEntryStateError   = "error"
+)
+
 type authEntry struct {
-	State       authState `json:"state"`
-	Error       string    `json:"error"`
-	Active      bool      `json:"active"`
-	Host        string    `json:"host"`
-	Login       string    `json:"login"`
-	TokenSource string    `json:"tokenSource"`
-	Token       string    `json:"token"`
-	Scopes      string    `json:"scopes"`
-	GitProtocol string    `json:"gitProtocol"`
+	State       authEntryState `json:"state"`
+	Error       string         `json:"error,omitempty"`
+	Active      bool           `json:"active"`
+	Host        string         `json:"host"`
+	Login       string         `json:"login"`
+	TokenSource string         `json:"tokenSource"`
+	Token       string         `json:"token,omitempty"`
+	Scopes      string         `json:"scopes,omitempty"`
+	GitProtocol string         `json:"gitProtocol"`
 }
 
-var authFields = []string{
-	"state",
-	"error",
-	"active",
-	"host",
-	"login",
-	"tokenSource",
-	"token",
-	"scopes",
-	"gitProtocol",
+type authStatus struct {
+	Hosts map[string][]authEntry `json:"hosts"`
 }
 
-func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
+func newAuthStatus() *authStatus {
+	return &authStatus{
+		Hosts: make(map[string][]authEntry),
+	}
+}
+
+var authStatusFields = []string{
+	"hosts",
+}
+
+func (a authStatus) ExportData(fields []string) map[string]interface{} {
+	return cmdutil.StructExportData(a, fields)
+}
+
+func (e authEntry) String(cs *iostreams.ColorScheme) string {
 	var sb strings.Builder
-	if e.State == authStateSuccess {
+
+	switch e.State {
+	case authEntryStateSuccess:
 		sb.WriteString(
 			fmt.Sprintf("  %s Logged in to %s account %s (%s)\n", cs.SuccessIcon(), e.Host, cs.Bold(e.Login), e.TokenSource),
 		)
 		activeStr := fmt.Sprintf("%v", e.Active)
 		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 		sb.WriteString(fmt.Sprintf("  - Git operations protocol: %s\n", cs.Bold(e.GitProtocol)))
-		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(displayToken(e.Token, showToken))))
+		sb.WriteString(fmt.Sprintf("  - Token: %s\n", cs.Bold(e.Token)))
 
 		if expectScopes(e.Token) {
 			sb.WriteString(fmt.Sprintf("  - Token scopes: %s\n", cs.Bold(displayScopes(e.Scopes))))
@@ -68,18 +84,15 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 				}
 			}
 		}
-		return sb.String()
-	}
 
-	if e.Login != "" {
-		sb.WriteString(fmt.Sprintf("  %s %s to %s account %s (%s)\n", cs.Red("X"), e.Error, e.Host, cs.Bold(e.Login), e.TokenSource))
-	} else {
-		sb.WriteString(fmt.Sprintf("  %s %s to %s using token (%s)\n", cs.Red("X"), e.Error, e.Host, e.TokenSource))
-	}
-	activeStr := fmt.Sprintf("%v", e.Active)
-	sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
-
-	if e.State == authStateError {
+	case authEntryStateError:
+		if e.Login != "" {
+			sb.WriteString(fmt.Sprintf("  %s Failed to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
+		} else {
+			sb.WriteString(fmt.Sprintf("  %s Failed to log in to %s using token (%s)\n", cs.Red("X"), e.Host, e.TokenSource))
+		}
+		activeStr := fmt.Sprintf("%v", e.Active)
+		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
 		sb.WriteString(fmt.Sprintf("  - The token in %s is invalid.\n", e.TokenSource))
 		if authTokenWriteable(e.TokenSource) {
 			loginInstructions := fmt.Sprintf("gh auth login -h %s", e.Host)
@@ -87,12 +100,18 @@ func (e authEntry) String(cs *iostreams.ColorScheme, showToken bool) string {
 			sb.WriteString(fmt.Sprintf("  - To re-authenticate, run: %s\n", cs.Bold(loginInstructions)))
 			sb.WriteString(fmt.Sprintf("  - To forget about this account, run: %s\n", cs.Bold(logoutInstructions)))
 		}
-	}
-	return sb.String()
-}
 
-func (e authEntry) ExportData(fields []string) map[string]interface{} {
-	return cmdutil.StructExportData(e, fields)
+	case authEntryStateTimeout:
+		if e.Login != "" {
+			sb.WriteString(fmt.Sprintf("  %s Timeout trying to log in to %s account %s (%s)\n", cs.Red("X"), e.Host, cs.Bold(e.Login), e.TokenSource))
+		} else {
+			sb.WriteString(fmt.Sprintf("  %s Timeout trying to log in to %s using token (%s)\n", cs.Red("X"), e.Host, e.TokenSource))
+		}
+		activeStr := fmt.Sprintf("%v", e.Active)
+		sb.WriteString(fmt.Sprintf("  - Active account: %s\n", cs.Bold(activeStr)))
+	}
+
+	return sb.String()
 }
 
 type StatusOptions struct {
@@ -138,22 +157,15 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 			$ gh auth status --show-token
 
 			# Format authentication status as JSON
-			$ gh auth status --json active,login,host
+			$ gh auth status --json hosts
 
 			# Include plain text token in JSON output
-			$ gh auth status --json token,login
+			$ gh auth status --json hosts --show-token
 
-			# Format output as a flat JSON array
-			$ gh auth status --json active,host,login --jq add
+			# Format hosts as a flat JSON array
+			$ gh auth status --json hosts --jq '.hosts | add'
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmdutil.MutuallyExclusive(
-				"`--json` and `--show-token` cannot be used together. To include the token in the JSON output, use `--json token`.",
-				opts.Exporter != nil,
-				opts.ShowToken,
-			); err != nil {
-				return err
-			}
 			if runF != nil {
 				return runF(opts)
 			}
@@ -167,7 +179,7 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&opts.Active, "active", "a", false, "Display the active account only")
 
 	// the json flags are intentionally not given a shorthand to avoid conflict with -t/--show-token
-	cmdutil.AddJSONFlagsWithoutShorthand(cmd, &opts.Exporter, authFields)
+	cmdutil.AddJSONFlagsWithoutShorthand(cmd, &opts.Exporter, authStatusFields)
 
 	return cmd
 }
@@ -183,20 +195,13 @@ func statusRun(opts *StatusOptions) error {
 	stdout := opts.IO.Out
 	cs := opts.IO.ColorScheme()
 
-	showToken := opts.ShowToken
-	if opts.Exporter != nil && slices.Contains(opts.Exporter.Fields(), "token") {
-		showToken = true
-	}
-
-	statuses := make(map[string][]authEntry)
-
 	hostnames := authCfg.Hosts()
 	if len(hostnames) == 0 {
 		fmt.Fprintf(stderr,
 			"You are not logged into any GitHub hosts. To log in, run: %s\n", cs.Bold("gh auth login"))
 		if opts.Exporter != nil {
 			// In machine-friendly mode, we always exit with no error.
-			opts.Exporter.Write(opts.IO, struct{}{})
+			opts.Exporter.Write(opts.IO, newAuthStatus())
 			return nil
 		}
 		return cmdutil.SilentError
@@ -207,7 +212,7 @@ func statusRun(opts *StatusOptions) error {
 			"You are not logged into any accounts on %s\n", opts.Hostname)
 		if opts.Exporter != nil {
 			// In machine-friendly mode, we always exit with no error.
-			opts.Exporter.Write(opts.IO, struct{}{})
+			opts.Exporter.Write(opts.IO, newAuthStatus())
 			return nil
 		}
 		return cmdutil.SilentError
@@ -217,6 +222,9 @@ func statusRun(opts *StatusOptions) error {
 	if err != nil {
 		return err
 	}
+
+	var finalErr error
+	statuses := newAuthStatus()
 
 	for _, hostname := range hostnames {
 		if opts.Hostname != "" && opts.Hostname != hostname {
@@ -233,15 +241,14 @@ func statusRun(opts *StatusOptions) error {
 			active:      true,
 			gitProtocol: gitProtocol,
 			hostname:    hostname,
-			showToken:   showToken,
 			token:       activeUserToken,
 			tokenSource: activeUserTokenSource,
 			username:    activeUser,
 		})
-		statuses[hostname] = append(statuses[hostname], entry)
+		statuses.Hosts[hostname] = append(statuses.Hosts[hostname], entry)
 
-		if err == nil && !isValidEntry(entry) {
-			err = cmdutil.SilentError
+		if finalErr == nil && entry.State != authEntryStateSuccess {
+			finalErr = cmdutil.SilentError
 		}
 
 		if opts.Active {
@@ -258,33 +265,46 @@ func statusRun(opts *StatusOptions) error {
 				active:      false,
 				gitProtocol: gitProtocol,
 				hostname:    hostname,
-				showToken:   showToken,
 				token:       token,
 				tokenSource: tokenSource,
 				username:    username,
 			})
-			statuses[hostname] = append(statuses[hostname], entry)
+			statuses.Hosts[hostname] = append(statuses.Hosts[hostname], entry)
 
-			if err == nil && !isValidEntry(entry) {
-				err = cmdutil.SilentError
+			if finalErr == nil && entry.State != authEntryStateSuccess {
+				finalErr = cmdutil.SilentError
+			}
+		}
+	}
+
+	if !opts.ShowToken {
+		for _, host := range statuses.Hosts {
+			for i := range host {
+				if opts.Exporter != nil {
+					// In machine-readable we just drop the token
+					host[i].Token = ""
+				} else {
+					host[i].Token = maskToken(host[i].Token)
+				}
 			}
 		}
 	}
 
 	if opts.Exporter != nil {
+		// In machine-friendly mode, we always exit with no error.
 		opts.Exporter.Write(opts.IO, statuses)
 		return nil
 	}
 
 	prevEntry := false
 	for _, hostname := range hostnames {
-		entries, ok := statuses[hostname]
+		entries, ok := statuses.Hosts[hostname]
 		if !ok {
 			continue
 		}
 
 		stream := stdout
-		if err != nil {
+		if finalErr != nil {
 			stream = stderr
 		}
 
@@ -294,26 +314,21 @@ func statusRun(opts *StatusOptions) error {
 		prevEntry = true
 		fmt.Fprintf(stream, "%s\n", cs.Bold(hostname))
 		for i, entry := range entries {
-			fmt.Fprintf(stream, "%s", entry.String(cs, showToken))
+			fmt.Fprintf(stream, "%s", entry.String(cs))
 			if i < len(entries)-1 {
 				fmt.Fprint(stream, "\n")
 			}
 		}
 	}
 
-	return err
+	return finalErr
 }
 
-func displayToken(token string, printRaw bool) string {
-	if printRaw {
-		return token
-	}
-
+func maskToken(token string) string {
 	if idx := strings.LastIndexByte(token, '_'); idx > -1 {
 		prefix := token[0 : idx+1]
 		return prefix + strings.Repeat("*", len(token)-len(prefix))
 	}
-
 	return strings.Repeat("*", len(token))
 }
 
@@ -336,7 +351,6 @@ type buildEntryOptions struct {
 	active      bool
 	gitProtocol string
 	hostname    string
-	showToken   bool
 	token       string
 	tokenSource string
 	username    string
@@ -367,8 +381,8 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 		var err error
 		entry.Login, err = api.CurrentLoginName(apiClient, opts.hostname)
 		if err != nil {
-			entry.State = authStateError
-			entry.Error = "Failed to log in"
+			entry.State = authEntryStateError
+			entry.Error = err.Error()
 			return entry
 		}
 	}
@@ -378,25 +392,21 @@ func buildEntry(httpClient *http.Client, opts buildEntryOptions) authEntry {
 	if err != nil {
 		var networkError net.Error
 		if errors.As(err, &networkError) && networkError.Timeout() {
-			entry.State = authStateTimeout
-			entry.Error = "Timeout trying to log in"
+			entry.State = authEntryStateTimeout
+			entry.Error = err.Error()
 			return entry
 		}
 
-		entry.State = authStateError
-		entry.Error = "Failed to log in"
+		entry.State = authEntryStateError
+		entry.Error = err.Error()
 		return entry
 	}
 	entry.Scopes = scopesHeader
 
-	entry.State = authStateSuccess
+	entry.State = authEntryStateSuccess
 	return entry
 }
 
 func authTokenWriteable(src string) bool {
 	return !strings.HasSuffix(src, "_TOKEN")
-}
-
-func isValidEntry(entry authEntry) bool {
-	return entry.State == authStateSuccess
 }
