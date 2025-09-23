@@ -151,11 +151,13 @@ func (c *LiveClient) getAttestations(params FetchParams) ([]*Attestation, error)
 
 			// filter by the initiator type
 			if params.Initiator != "" {
-				for i := len(resp.Attestations) - 1; i >= 0; i-- {
-					if resp.Attestations[i].Initiator != params.Initiator {
-						resp.Attestations = append(resp.Attestations[:i], resp.Attestations[i+1:]...)
+				filtered := make([]*Attestation, 0, len(resp.Attestations))
+				for _, att := range resp.Attestations {
+					if att.Initiator == params.Initiator {
+						filtered = append(filtered, att)
 					}
 				}
+				resp.Attestations = filtered
 			}
 			attestations = append(attestations, resp.Attestations...)
 
