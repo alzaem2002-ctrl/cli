@@ -412,6 +412,13 @@ func (c *CAPIClient) hydrateSessionPullRequestsAndUsers(sessions []session) ([]*
 
 // GetPullRequestDatabaseID retrieves the database ID and URL of a pull request given its number in a repository.
 func (c *CAPIClient) GetPullRequestDatabaseID(ctx context.Context, hostname string, owner string, repo string, number int) (int64, string, error) {
+	// TODO: better int handling so we don't need to do bounds checks
+	// to both ensure a panic is impossible and that we do not trigger
+	// CodeQL alerts.
+	if number <= 0 || number > math.MaxInt32 {
+		return 0, "", fmt.Errorf("pull request number %d out of bounds", number)
+	}
+
 	var resp struct {
 		Repository struct {
 			PullRequest struct {
