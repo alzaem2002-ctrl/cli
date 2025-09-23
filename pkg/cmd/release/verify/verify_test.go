@@ -66,6 +66,42 @@ func TestNewCmdVerify_Args(t *testing.T) {
 	}
 }
 
+// Test that Initiator is set to "github" when fetching attestations in verifyRun
+func Test_verifyRun_InitiatorParam(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	tagName := "v1.2.3"
+
+	fakeHTTP := &httpmock.Registry{}
+	defer fakeHTTP.Verify(t)
+	fakeSHA := "1234567890abcdef1234567890abcdef12345678"
+	shared.StubFetchRefSHA(t, fakeHTTP, "owner", "repo", tagName, fakeSHA)
+
+	baseRepo, err := ghrepo.FromFullName("owner/repo")
+	require.NoError(t, err)
+
+	// Capture FetchParams passed to GetByDigest
+	var gotParams api.FetchParams
+	mockClient := &api.MockClient{
+		OnGetByDigest: func(params api.FetchParams) ([]*api.Attestation, error) {
+			gotParams = params
+			return []*api.Attestation{}, nil
+		},
+	}
+
+	cfg := &VerifyConfig{
+		Opts: &VerifyOptions{
+			TagName:  tagName,
+			BaseRepo: baseRepo,
+		},
+		IO:         ios,
+		HttpClient: &http.Client{Transport: fakeHTTP},
+		AttClient:  mockClient,
+	}
+	// Execute verifyRun, ignoring error since mockClient returns empty slice
+	_ = verifyRun(cfg)
+	assert.Equal(t, "github", gotParams.Initiator)
+}
+
 func Test_verifyRun_Success(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	tagName := "v6"

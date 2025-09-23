@@ -83,6 +83,43 @@ func TestNewCmdVerifyAsset_Args(t *testing.T) {
 	}
 }
 
+// Test that Initiator is set to "github" when fetching attestations
+func Test_verifyAssetRun_InitiatorParam(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	tagName := "v6"
+
+	fakeHTTP := &httpmock.Registry{}
+	defer fakeHTTP.Verify(t)
+	fakeSHA := "1234567890abcdef1234567890abcdef12345678"
+	shared.StubFetchRefSHA(t, fakeHTTP, "owner", "repo", tagName, fakeSHA)
+
+	baseRepo, err := ghrepo.FromFullName("owner/repo")
+	require.NoError(t, err)
+
+	// Capture FetchParams passed to GetByDigest
+	var gotParams api.FetchParams
+	mockClient := &api.MockClient{
+		OnGetByDigest: func(params api.FetchParams) ([]*api.Attestation, error) {
+			gotParams = params
+			return []*api.Attestation{}, nil
+		},
+	}
+
+	cfg := &VerifyAssetConfig{
+		Opts: &VerifyAssetOptions{
+			AssetFilePath: test.NormalizeRelativePath("../../attestation/test/data/github_release_artifact.zip"),
+			TagName:       tagName,
+			BaseRepo:      baseRepo,
+		},
+		IO:          ios,
+		HttpClient:  &http.Client{Transport: fakeHTTP},
+		AttClient:   mockClient,
+		AttVerifier: nil,
+	}
+	_ = verifyAssetRun(cfg)
+	assert.Equal(t, "github", gotParams.Initiator)
+}
+
 func Test_verifyAssetRun_Success(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	tagName := "v6"
