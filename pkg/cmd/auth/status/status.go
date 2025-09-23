@@ -141,8 +141,10 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 
 			For each host, the authentication state of each known account is tested and any issues are included in the output.
 			Each host section will indicate the active account, which will be used when targeting that host.
+
 			If an account on any host (or only the one given via %[1]s--hostname%[1]s) has authentication issues,
-			the command will exit with 1 and output to stderr.
+			the command will exit with 1 and output to stderr. Note that when using the %[1]s--json%[1]s option, the command
+			will always exit with zero regardless of any authentication issues, unless there is a fatal error.
 
 			To change the active account for a host, see %[1]sgh auth switch%[1]s.
 		`, "`"),
