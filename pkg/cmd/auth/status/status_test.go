@@ -3,6 +3,7 @@ package status
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -750,8 +751,9 @@ func Test_statusRun(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			output := strings.ReplaceAll(stdout.String(), config.ConfigDir()+string(filepath.Separator), "GH_CONFIG_DIR/")
-			errorOutput := strings.ReplaceAll(stderr.String(), config.ConfigDir()+string(filepath.Separator), "GH_CONFIG_DIR/")
+
+			output := replaceAll(stdout.String(), config.ConfigDir()+string(filepath.Separator), "GH_CONFIG_DIR/")
+			errorOutput := replaceAll(stderr.String(), config.ConfigDir()+string(filepath.Separator), "GH_CONFIG_DIR/")
 
 			require.Equal(t, tt.wantErrOut, errorOutput)
 			require.Equal(t, tt.wantOut, output)
@@ -763,4 +765,20 @@ func login(t *testing.T, c gh.Config, hostname, username, token, protocol string
 	t.Helper()
 	_, err := c.Authentication().Login(hostname, username, token, protocol, false)
 	require.NoError(t, err)
+}
+
+// replaceAll replaces all instances of old with new in s, as well as all instances
+// of the JSON-escaped version of old with the JSON-escaped version of new.
+// This is because when the test is run on Windows the paths will have backslashes
+// escaped in JSON and a simple strings.ReplaceAll won't catch them.
+func replaceAll(s string, old string, new string) string {
+	jsonEscapedOld, _ := json.Marshal(old)
+	jsonEscapedOld = jsonEscapedOld[1 : len(jsonEscapedOld)-1]
+
+	jsonEscapedNew, _ := json.Marshal(new)
+	jsonEscapedNew = jsonEscapedNew[1 : len(jsonEscapedNew)-1]
+
+	replaced := strings.ReplaceAll(s, string(jsonEscapedOld), string(jsonEscapedNew))
+	replaced = strings.ReplaceAll(replaced, old, new)
+	return replaced
 }
