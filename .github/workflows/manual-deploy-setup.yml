@@ -6,7 +6,7 @@ jobs:
   setup-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run secure deploy setup script
