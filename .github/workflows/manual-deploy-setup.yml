@@ -1,0 +1,21 @@
+name: Manual Deploy Setup
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run secure deploy setup script
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          REPO: ${{ github.repository }}
+        run: |
+          chmod +x secure_setup_deploy_key.sh
+          ./secure_setup_deploy_key.sh
