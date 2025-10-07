@@ -1,6 +1,4 @@
 const express = require('express');
-const serverless = require('serverless-http');
-
 const app = express();
 
 app.get('/', (req, res) => {
@@ -11,4 +9,4 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-module.exports = serverless(app);
+module.exports = (req, res) => app(req, res);
