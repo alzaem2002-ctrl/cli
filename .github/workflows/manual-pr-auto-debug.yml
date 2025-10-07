@@ -1,0 +1,55 @@
+name: Manual PR Auto Debug
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pr-auto:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug Info
+        run: |
+          echo "Runner OS: $RUNNER_OS"
+          echo "Working Directory: $PWD"
+          ls -la
+
+      - name: Check Secrets
+        run: |
+          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "❌ Missing GITHUB_TOKEN" | tee debug.log
+            exit 4
+          fi
+          echo "✅ GITHUB_TOKEN is available" | tee -a debug.log
+          
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "⚠️ DEPLOY_KEY not set (might be optional)" | tee -a debug.log
+          else
+            echo "✅ DEPLOY_KEY is set" | tee -a debug.log
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Test Command
+        run: |
+          echo "Running test command..." | tee -a debug.log
+          npm -v 2>&1 | tee -a debug.log || echo "⚠️ npm not installed" | tee -a debug.log
+          node -v 2>&1 | tee -a debug.log || echo "⚠️ node not installed" | tee -a debug.log
+
+      - name: Upload debug log
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-log
+          path: debug.log
+
+      - name: Compress workspace (exclude node_modules and .git)
+        run: |
+          tar --exclude='./node_modules' --exclude='./.git' -czf workspace.tar.gz .
+
+      - name: Upload full workspace archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-workspace-archive
+          path: workspace.tar.gz
