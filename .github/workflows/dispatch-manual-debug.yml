@@ -1,0 +1,18 @@
+name: Dispatch Manual PR Auto Debug
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Manual PR Auto Debug on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run ".github/workflows/manual-pr-auto-debug.yml" --ref main
