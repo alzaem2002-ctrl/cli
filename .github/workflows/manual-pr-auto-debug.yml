@@ -46,7 +46,10 @@ jobs:
 
       - name: Compress workspace (exclude node_modules and .git)
         run: |
-          tar --exclude='./node_modules' --exclude='./.git' -czf workspace.tar.gz .
+          set -euo pipefail
+          # Create a stable file list to avoid "file changed as we read it"
+          git ls-files -z | tr '\0' '\n' | grep -v '^node_modules/' | grep -v '^\.git/' > filelist.txt
+          tar -czf workspace.tar.gz -T filelist.txt
 
       - name: Upload full workspace archive
         uses: actions/upload-artifact@v4
