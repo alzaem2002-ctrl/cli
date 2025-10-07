@@ -1,0 +1,51 @@
+name: Vercel Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Build (fallback)
+        run: |
+          if [ -f package.json ]; then
+            npm ci || npm i
+            npm run build || echo "No build script, skipping"
+          else
+            echo "No package.json; deploying static content"
+          fi
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          PROJECT_NAME=${{ github.repository_owner }}-cli
+          # Try to link or create project
+          vercel link --project "$PROJECT_NAME" --yes --token "$VERCEL_TOKEN" || true
+          # Determine output directory
+          OUTDIR=""
+          if [ -d dist ]; then OUTDIR=dist; elif [ -d build ]; then OUTDIR=build; elif [ -d site ]; then OUTDIR=site; else OUTDIR=.; fi
+          echo "Using output: $OUTDIR"
+          URL=$(vercel deploy "$OUTDIR" --prod --prebuilt --yes --token "$VERCEL_TOKEN" 2>&1 | tail -n1)
+          echo "vercel_url=$URL" >> $GITHUB_OUTPUT
+        id: vercel
+
+      - name: Output Vercel URL
+        run: echo "Vercel URL: ${{ steps.vercel.outputs.vercel_url }}"
