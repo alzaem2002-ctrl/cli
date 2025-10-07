@@ -1,0 +1,111 @@
+name: Auto PR to trunk and Run Debug
+
+on:
+  push:
+    branches:
+      - mirror-workflow-to-trunk
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  auto:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create PR to trunk if not exists
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BASE=trunk
+          HEAD=mirror-workflow-to-trunk
+          if gh pr view --head "$HEAD" --base "$BASE" --json url -q .url >/dev/null 2>&1; then
+            PR_URL=$(gh pr view --head "$HEAD" --base "$BASE" --json url -q .url)
+          else
+            PR_URL=$(gh pr create --base "$BASE" --head "$HEAD" \
+              --title "chore: add manual debug workflow with artifacts upload" \
+              --body "This PR adds a manual debug workflow with logs and a compressed workspace artifact for troubleshooting.")
+          fi
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Get PR number and id
+        id: pr_meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PR_URL="${{ steps.create_pr.outputs.pr_url }}"
+          PR_NUM=$(basename "$PR_URL")
+          PR_ID=$(gh api graphql -f query='query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$num){id,url}}}' \
+            -F owner="${GITHUB_REPOSITORY%/*}" -F repo="${GITHUB_REPOSITORY#*/}" -F num="$PR_NUM" -q .data.repository.pullRequest.id)
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+          echo "pr_id=$PR_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Enable auto-merge (MERGE)
+        id: auto_merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PR_ID="${{ steps.pr_meta.outputs.pr_id }}"
+          gh api graphql -f query='mutation($prId:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$prId, mergeMethod:MERGE}){clientMutationId}}' -F prId="$PR_ID" || echo "auto-merge enable failed; will try direct merge after checks"
+
+      - name: Merge PR if possible (fallback)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr merge "${{ steps.pr_meta.outputs.pr_number }}" --merge --delete-branch || true
+
+      - name: Wait for PR to merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 120); do
+            STATE=$(gh pr view "${{ steps.pr_meta.outputs.pr_number }}" --json mergedAt,mergeStateStatus -q 'if .mergedAt != null then "merged" else .mergeStateStatus end' || echo "unknown")
+            if [ "$STATE" = "merged" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "PR did not merge in time" >&2
+          exit 1
+
+      - name: Trigger Manual PR Auto Debug on trunk
+        id: dispatch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh workflow run ".github/workflows/manual-pr-auto-debug.yml" --ref trunk
+          sleep 5
+          RUN_ID=$(gh run list --workflow ".github/workflows/manual-pr-auto-debug.yml" --branch trunk --limit 1 --json databaseId -q '.[0].databaseId')
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "run_url=https://github.com/${GITHUB_REPOSITORY}/actions/runs/$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for workflow run completion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh run watch "${{ steps.dispatch.outputs.run_id }}" --exit-status
+
+      - name: Verify artifacts exist
+        id: verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          NAMES=$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/${{ steps.dispatch.outputs.run_id }}/artifacts -q '.artifacts[].name')
+          echo "$NAMES" | grep -Fx "debug-log" >/dev/null
+          echo "$NAMES" | grep -Fx "full-workspace-archive" >/dev/null
