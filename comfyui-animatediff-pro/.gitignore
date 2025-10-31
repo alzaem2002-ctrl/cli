@@ -1,0 +1,41 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ComfyUI
+ComfyUI/
+
+# Models (large files)
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+
+# Output
+output/
+*.mp4
+*.avi
+*.mov
+*.gif
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Workflow cache
+workflow_cache/
+temp/
