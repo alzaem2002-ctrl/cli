@@ -2,6 +2,10 @@
 
 This directory contains a Jupyter notebook tutorial for working with the GitHub API using Python.
 
+## ✓ Environment Ready
+
+All required packages are installed and the tutorial is ready to run in this environment!
+
 ## File: manage-prompts-with-sdk-tutorial.ipynb
 
 A comprehensive tutorial that demonstrates how to programmatically interact with GitHub repositories, issues, pull requests, and more using the PyGithub library.
@@ -14,7 +18,9 @@ A comprehensive tutorial that demonstrates how to programmatically interact with
 
 ### Installation
 
-Install the required dependencies:
+**Already installed in this environment!** ✓
+
+If you need to install in a different environment:
 
 ```bash
 pip install -r tutorial-requirements.txt
@@ -24,6 +30,14 @@ Or install them individually:
 
 ```bash
 pip install PyGithub requests jupyter notebook
+```
+
+### Quick Test
+
+Run the example script to verify everything is working:
+
+```bash
+python3 example_usage.py
 ```
 
 ### Running the Tutorial
