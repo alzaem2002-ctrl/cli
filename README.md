@@ -10,6 +10,14 @@ GitHub CLI is supported for users on GitHub.com, GitHub Enterprise Cloud, and Gi
 
 For [installation options see below](#installation), for usage instructions [see the manual]( https://cli.github.com/manual/).
 
+### 🐍 Python SDK Tutorial
+
+Want to interact with GitHub programmatically using Python? Check out our [GitHub SDK Tutorial](TUTORIAL_SUMMARY.md) which includes:
+- Interactive Jupyter notebook with hands-on examples
+- Support for desktop and **iPad Air** 📱
+- Complete setup guides for iOS apps (Juno, Carnets)
+- Learn to automate issues, PRs, and more with PyGithub
+
 ## Contributing
 
 If anything feels off or if you feel that some functionality is missing, please check out the [contributing page](.github/CONTRIBUTING.md). There you will find instructions for sharing your feedback, building the tool locally, and submitting pull requests to the project.
