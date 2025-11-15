@@ -2,6 +2,10 @@
 
 This directory contains a Jupyter notebook tutorial for working with the GitHub API using Python.
 
+## 📱 iPad Air Users
+
+**Running this tutorial on iPad Air?** See the [iPad Setup Guide](IPAD_SETUP_GUIDE.md) for detailed instructions on using Juno, Juno Connect, or Carnets apps.
+
 ## ✓ Environment Ready
 
 All required packages are installed and the tutorial is ready to run in this environment!
@@ -12,9 +16,10 @@ A comprehensive tutorial that demonstrates how to programmatically interact with
 
 ### Prerequisites
 
-- Python 3.7 or higher
+- Python 3.7 or higher (3.12.3 recommended)
 - A GitHub personal access token with appropriate permissions
 - Jupyter Notebook or JupyterLab
+- **For iPad Air**: Juno, Juno Connect, Carnets, or similar iOS Python environment (see [iPad Setup Guide](IPAD_SETUP_GUIDE.md))
 
 ### Installation
 
@@ -42,6 +47,8 @@ python3 example_usage.py
 
 ### Running the Tutorial
 
+#### On Desktop/Laptop:
+
 1. Set your GitHub token as an environment variable:
    ```bash
    export GITHUB_TOKEN=your_personal_access_token
@@ -55,6 +62,14 @@ python3 example_usage.py
 3. Open `manage-prompts-with-sdk-tutorial.ipynb` in the Jupyter interface
 
 4. Follow the tutorial step by step, running each cell
+
+#### On iPad Air:
+
+1. See the comprehensive [iPad Setup Guide](IPAD_SETUP_GUIDE.md)
+2. Use Juno, Juno Connect, or Carnets app
+3. Install PyGithub and requests via the app's package manager
+4. Modify the notebook to include your token directly (iOS doesn't support environment variables)
+5. Run the notebook step by step
 
 ### What You'll Learn
 
