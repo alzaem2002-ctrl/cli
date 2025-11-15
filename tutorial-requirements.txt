@@ -1,0 +1,5 @@
+# Requirements for manage-prompts-with-sdk-tutorial.ipynb
+PyGithub>=2.1.1
+requests>=2.31.0
+jupyter>=1.0.0
+notebook>=7.0.0
