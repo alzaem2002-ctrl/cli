@@ -44,6 +44,13 @@ Custom installation directory example:
 PREFIX=/usr/local curl -fsSL https://raw.githubusercontent.com/cli/cli/trunk/install.sh | sh
 ```
 
+**Note:** When piped from curl/wget, the script runs in non-interactive mode and will automatically proceed if `gh` is already installed. To force installation interactively, download and run the script directly:
+```bash
+curl -fsSL https://raw.githubusercontent.com/cli/cli/trunk/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
+```
+
 ### [macOS](docs/install_macos.md)
 
 - [Homebrew](docs/install_macos.md#homebrew)

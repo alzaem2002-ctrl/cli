@@ -109,14 +109,24 @@ download_and_install() {
     
     print_info "Downloading $TARBALL..."
     
+    DOWNLOAD_SUCCESS=0
     if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$URL" -o "$TMPDIR/$TARBALL"
+        if curl -fsSL "$URL" -o "$TMPDIR/$TARBALL"; then
+            DOWNLOAD_SUCCESS=1
+        else
+            print_error "Download failed with curl. HTTP error or network issue."
+        fi
     elif command -v wget >/dev/null 2>&1; then
-        wget -q "$URL" -O "$TMPDIR/$TARBALL"
+        if wget -q "$URL" -O "$TMPDIR/$TARBALL"; then
+            DOWNLOAD_SUCCESS=1
+        else
+            print_error "Download failed with wget. HTTP error or network issue."
+        fi
     fi
     
-    if [ ! -f "$TMPDIR/$TARBALL" ]; then
-        print_error "Failed to download $TARBALL"
+    if [ "$DOWNLOAD_SUCCESS" -eq 0 ] || [ ! -f "$TMPDIR/$TARBALL" ]; then
+        print_error "Failed to download $TARBALL from $URL"
+        print_info "Please check your internet connection and try again."
         rm -rf "$TMPDIR"
         exit 1
     fi
@@ -163,6 +173,13 @@ check_existing() {
     if command -v gh >/dev/null 2>&1; then
         INSTALLED_VERSION=$(gh version 2>/dev/null | head -n1 | awk '{print $3}' | sed 's/v//')
         print_warning "GitHub CLI is already installed (version: $INSTALLED_VERSION)"
+        
+        # Check if we're running non-interactively (e.g., piped from curl)
+        if [ -n "$FORCE_INSTALL" ] || [ ! -t 0 ]; then
+            print_info "Continuing with installation (non-interactive mode or FORCE_INSTALL set)"
+            return 0
+        fi
+        
         printf "Do you want to continue with installation? [y/N] "
         read -r response
         case "$response" in
