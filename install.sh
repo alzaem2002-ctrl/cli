@@ -86,9 +86,9 @@ get_latest_version() {
     if [ -z "$VERSION" ]; then
         print_warning "GitHub API rate limit reached, trying alternative method..."
         if command -v curl >/dev/null 2>&1; then
-            VERSION=$(curl -fsSL "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -oP 'releases/tag/v\K[0-9.]+' | head -n1)
+            VERSION=$(curl -fsSL "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -o 'releases/tag/v[0-9.][0-9.]*' | head -n1 | sed 's/.*v//')
         elif command -v wget >/dev/null 2>&1; then
-            VERSION=$(wget -qO- "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -oP 'releases/tag/v\K[0-9.]+' | head -n1)
+            VERSION=$(wget -qO- "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -o 'releases/tag/v[0-9.][0-9.]*' | head -n1 | sed 's/.*v//')
         fi
     fi
     
