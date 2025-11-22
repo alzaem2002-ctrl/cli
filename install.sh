@@ -86,9 +86,9 @@ get_latest_version() {
     if [ -z "$VERSION" ]; then
         print_warning "GitHub API rate limit reached, trying alternative method..."
         if command -v curl >/dev/null 2>&1; then
-            VERSION=$(curl -fsSL "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -o 'releases/tag/v[0-9.][0-9.]*' | head -n1 | sed 's/.*v//')
+            VERSION=$(curl -fsSL "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -o 'releases/tag/v[0-9][0-9.]*' | head -n1 | sed 's/.*v//')
         elif command -v wget >/dev/null 2>&1; then
-            VERSION=$(wget -qO- "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -o 'releases/tag/v[0-9.][0-9.]*' | head -n1 | sed 's/.*v//')
+            VERSION=$(wget -qO- "https://github.com/$REPO/releases/latest" 2>/dev/null | grep -o 'releases/tag/v[0-9][0-9.]*' | head -n1 | sed 's/.*v//')
         fi
     fi
     
@@ -143,9 +143,13 @@ download_and_install() {
     chmod +x "$PREFIX/bin/gh"
     
     # Install man pages if they exist
-    if [ -d "$EXTRACT_DIR/share/man/man1" ]; then
+    if [ -d "$EXTRACT_DIR/share/man/man1" ] && [ -n "$(ls -A "$EXTRACT_DIR/share/man/man1" 2>/dev/null)" ]; then
         print_info "Installing man pages..."
-        cp "$EXTRACT_DIR/share/man/man1"/* "$PREFIX/share/man/man1/" 2>/dev/null || true
+        for manpage in "$EXTRACT_DIR/share/man/man1"/*; do
+            if [ -f "$manpage" ]; then
+                cp "$manpage" "$PREFIX/share/man/man1/"
+            fi
+        done
     fi
     
     # Cleanup
@@ -175,12 +179,17 @@ check_existing() {
 
 # Verify installation
 verify_installation() {
-    if ! command -v "$PREFIX/bin/gh" >/dev/null 2>&1; then
-        print_error "Installation verification failed"
+    if [ ! -x "$PREFIX/bin/gh" ]; then
+        print_error "Installation verification failed: binary not found or not executable"
         exit 1
     fi
     
-    INSTALLED_VERSION=$("$PREFIX/bin/gh" version 2>/dev/null | head -n1 || echo "unknown")
+    INSTALLED_VERSION=$("$PREFIX/bin/gh" version 2>/dev/null | head -n1)
+    if [ -z "$INSTALLED_VERSION" ]; then
+        print_error "Installation verification failed: unable to run gh version"
+        exit 1
+    fi
+    
     print_success "Verification successful!"
     print_info "Installed version: $INSTALLED_VERSION"
 }
