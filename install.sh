@@ -154,22 +154,19 @@ download_and_install() {
     
     # Install man pages if they exist
     if [ -d "$EXTRACT_DIR/share/man/man1" ]; then
-        # Check if there are any files to install
-        has_manpages=0
+        print_info "Installing man pages..."
+        # Use a subshell with nullglob-like behavior to handle empty directories
+        installed_count=0
         for manpage in "$EXTRACT_DIR/share/man/man1"/*; do
+            # Skip if glob didn't match any files (file doesn't exist)
+            [ -e "$manpage" ] || continue
             if [ -f "$manpage" ]; then
-                has_manpages=1
-                break
+                cp "$manpage" "$PREFIX/share/man/man1/"
+                installed_count=$((installed_count + 1))
             fi
         done
-        
-        if [ "$has_manpages" -eq 1 ]; then
-            print_info "Installing man pages..."
-            for manpage in "$EXTRACT_DIR/share/man/man1"/*; do
-                if [ -f "$manpage" ]; then
-                    cp "$manpage" "$PREFIX/share/man/man1/"
-                fi
-            done
+        if [ "$installed_count" -eq 0 ]; then
+            print_warning "No man pages found to install"
         fi
     fi
     
