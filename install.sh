@@ -1,8 +1,8 @@
 #!/bin/sh
 # GitHub CLI Installation Script
 # This script installs the GitHub CLI (gh) on Unix-like systems
-# Usage: curl -fsSL https://cli.github.com/install.sh | sh
-# or: wget -qO- https://cli.github.com/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/cli/cli/trunk/install.sh | sh
+# or: wget -qO- https://raw.githubusercontent.com/cli/cli/trunk/install.sh | sh
 
 set -e
 
@@ -74,9 +74,9 @@ get_latest_version() {
     
     # Try to get version from GitHub API
     if command -v curl >/dev/null 2>&1; then
-        VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+        VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name":' | sed 's/.*"v\([^"]*\)".*/\1/')
     elif command -v wget >/dev/null 2>&1; then
-        VERSION=$(wget -qO- "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+        VERSION=$(wget -qO- "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name":' | sed 's/.*"v\([^"]*\)".*/\1/')
     else
         print_error "Neither curl nor wget is available. Please install one of them."
         exit 1
@@ -153,13 +153,24 @@ download_and_install() {
     chmod +x "$PREFIX/bin/gh"
     
     # Install man pages if they exist
-    if [ -d "$EXTRACT_DIR/share/man/man1" ] && [ -n "$(ls -A "$EXTRACT_DIR/share/man/man1" 2>/dev/null)" ]; then
-        print_info "Installing man pages..."
+    if [ -d "$EXTRACT_DIR/share/man/man1" ]; then
+        # Check if there are any files to install
+        has_manpages=0
         for manpage in "$EXTRACT_DIR/share/man/man1"/*; do
             if [ -f "$manpage" ]; then
-                cp "$manpage" "$PREFIX/share/man/man1/"
+                has_manpages=1
+                break
             fi
         done
+        
+        if [ "$has_manpages" -eq 1 ]; then
+            print_info "Installing man pages..."
+            for manpage in "$EXTRACT_DIR/share/man/man1"/*; do
+                if [ -f "$manpage" ]; then
+                    cp "$manpage" "$PREFIX/share/man/man1/"
+                fi
+            done
+        fi
     fi
     
     # Cleanup
