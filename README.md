@@ -19,6 +19,31 @@ If you are a hubber and are interested in shipping new commands for the CLI, che
 <!-- this anchor is linked to from elsewhere, so avoid renaming it -->
 ## Installation
 
+### Quick Install (Unix-like systems)
+
+For a quick installation on macOS, Linux, BSD, and other Unix-like systems:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cli/cli/trunk/install.sh | sh
+```
+
+Or with wget:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/cli/cli/trunk/install.sh | sh
+```
+
+The script will:
+- Detect your operating system and architecture
+- Download the latest release
+- Install `gh` to `~/.local/bin` (customizable with `PREFIX` environment variable)
+- Provide instructions for adding it to your PATH
+
+Custom installation directory example:
+```bash
+PREFIX=/usr/local curl -fsSL https://raw.githubusercontent.com/cli/cli/trunk/install.sh | sh
+```
+
 ### [macOS](docs/install_macos.md)
 
 - [Homebrew](docs/install_macos.md#homebrew)
